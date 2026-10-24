@@ -268,7 +268,7 @@
     // notebooks / canvases / favorites / course / no course
     const subj = A.SU.get(filter);
     const title = { notebooks: 'Notebooks', canvases: 'Canvases', favorites: 'Favorites', none: 'No course' }[filter] || subj.name;
-    const search = h('input', { type: 'search', id: 'g-search', placeholder: 'Search ' + (filter === 'notebooks' ? 'notebooks' : filter === 'canvases' ? 'canvases' : 'notebooks and canvases'), value: query, 'aria-label': 'Search' });
+    const search = h('input', { type: 'search', id: 'g-search', placeholder: 'Search', value: query, 'aria-label': 'Search' });
     const acts = filter === 'notebooks' ? [h('button', { class: 'btn primary', onclick: newNotebook }, A.iconEl('plus'), 'New')] : filter === 'canvases' ? [h('button', { class: 'btn primary', onclick: newDrawing }, A.iconEl('plus'), 'New')] : [newMenuBtn()];
     main.append(h('header', { class: 'page-hero' },
       h('div', null, h('h1', { class: 'page-title' }, subj ? h('i', { class: 'dot big', style: { background: subj.color } }) : null, title)),
@@ -288,10 +288,15 @@
         return g;
       };
       if (filter === 'notebooks' || filter === 'canvases') body.append(grid(list, filter === 'notebooks', true));
-      else {
+      else if (!list.length && !q) {
+        body.append(h('div', { class: 'course-empty' },
+          h('h3', null, subj ? `Nothing in ${subj.name} yet` : filter === 'favorites' ? 'No favourites yet' : 'Everything has a course'),
+          h('p', null, subj ? 'Start a notebook for lectures, a canvas for problem solving, or add the course textbook.' : filter === 'favorites' ? 'Mark notebooks and canvases as favourites from their ••• menu.' : 'Notebooks and canvases without a course appear here.'),
+          subj ? newMenuBtn() : null));
+      } else {
         const nbs = list.filter(isNb), cvs = list.filter((m) => !isNb(m));
-        if (nbs.length || subj) body.append(section('Notebooks', null, grid(nbs, true, !!subj)));
-        if (cvs.length || subj) body.append(section('Canvases', null, grid(cvs, false, !!subj)));
+        if (nbs.length) body.append(section('Notebooks', null, grid(nbs, true, false)));
+        if (cvs.length) body.append(section('Canvases', null, grid(cvs, false, false)));
       }
       if (!list.length && q) body.append(h('p', { class: 'empty-note' }, `Nothing matches “${query}”.`));
     };
@@ -299,7 +304,7 @@
     renderGrid();
     if (subj) {
       const cd = docs.filter((d) => d.subject === subj.id);
-      main.append(section('Books for ' + subj.name, addDocBtn(), cd.length ? shelf(cd) : h('p', { class: 'muted small' }, 'No books or problem sets in this course yet.')));
+      if (cd.length) main.append(section('Books for ' + subj.name, null, shelf(cd)));
     }
   }
   /* daily reading goal ring (minutes read today vs goal) */

@@ -967,6 +967,21 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
 .ts-key .field { margin: 0; flex: 1; }
 .model-sel.app-mode { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; font-size: 12.5px; color: var(--accent); }
 .model-sel.app-mode .ic { width: 15px; height: 15px; }
+
+/* ---------- library behaves like an app: fixed sidebar, only the content scrolls, no page bounce ---------- */
+#gallery-view { overflow: hidden; overscroll-behavior: none; }
+.g-wrap.g-layout { height: 100%; padding-block: 0; align-items: stretch; }
+.g-layout > .g-side { position: static; height: 100%; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-top: calc(22px + env(safe-area-inset-top, 0px)); padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); scrollbar-width: none; }
+.g-layout > .g-main { height: 100%; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-top: calc(22px + env(safe-area-inset-top, 0px)); padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); padding-right: 4px; scrollbar-width: none; }
+.g-layout > .g-side::-webkit-scrollbar, .g-layout > .g-main::-webkit-scrollbar { display: none; }
+@media (max-width: 760px) {
+  .g-wrap.g-layout { grid-template-rows: auto 1fr; }
+  .g-layout > .g-side { height: auto; overflow-y: visible; overflow-x: auto; padding-bottom: 4px; }
+  .g-layout > .g-main { padding-top: 6px; }
+}
+.course-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 34px 32px; border-radius: 20px; border: 1px dashed var(--line-strong); max-width: 560px; margin-top: 8px; }
+.course-empty h3 { margin: 0; font: 500 26px/1.15 var(--ff-mark); }
+.course-empty p { margin: 0 0 6px; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -988,7 +1003,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
 </div>
 <div id="toasts" aria-live="polite"></div>
 
-<script>window.AXIOM_BUILD = 'mvmkkj24';
+<script>window.AXIOM_BUILD = 'mvmkqvvn';
 /* ---- core.js ---- */
 /* Axiom core: namespace, math, color, events, DOM helpers */
 'use strict';
@@ -9825,7 +9840,7 @@ A.fmtDate = (t) => {
     // notebooks / canvases / favorites / course / no course
     const subj = A.SU.get(filter);
     const title = { notebooks: 'Notebooks', canvases: 'Canvases', favorites: 'Favorites', none: 'No course' }[filter] || subj.name;
-    const search = h('input', { type: 'search', id: 'g-search', placeholder: 'Search ' + (filter === 'notebooks' ? 'notebooks' : filter === 'canvases' ? 'canvases' : 'notebooks and canvases'), value: query, 'aria-label': 'Search' });
+    const search = h('input', { type: 'search', id: 'g-search', placeholder: 'Search', value: query, 'aria-label': 'Search' });
     const acts = filter === 'notebooks' ? [h('button', { class: 'btn primary', onclick: newNotebook }, A.iconEl('plus'), 'New')] : filter === 'canvases' ? [h('button', { class: 'btn primary', onclick: newDrawing }, A.iconEl('plus'), 'New')] : [newMenuBtn()];
     main.append(h('header', { class: 'page-hero' },
       h('div', null, h('h1', { class: 'page-title' }, subj ? h('i', { class: 'dot big', style: { background: subj.color } }) : null, title)),
@@ -9845,10 +9860,15 @@ A.fmtDate = (t) => {
         return g;
       };
       if (filter === 'notebooks' || filter === 'canvases') body.append(grid(list, filter === 'notebooks', true));
-      else {
+      else if (!list.length && !q) {
+        body.append(h('div', { class: 'course-empty' },
+          h('h3', null, subj ? `Nothing in ${subj.name} yet` : filter === 'favorites' ? 'No favourites yet' : 'Everything has a course'),
+          h('p', null, subj ? 'Start a notebook for lectures, a canvas for problem solving, or add the course textbook.' : filter === 'favorites' ? 'Mark notebooks and canvases as favourites from their ••• menu.' : 'Notebooks and canvases without a course appear here.'),
+          subj ? newMenuBtn() : null));
+      } else {
         const nbs = list.filter(isNb), cvs = list.filter((m) => !isNb(m));
-        if (nbs.length || subj) body.append(section('Notebooks', null, grid(nbs, true, !!subj)));
-        if (cvs.length || subj) body.append(section('Canvases', null, grid(cvs, false, !!subj)));
+        if (nbs.length) body.append(section('Notebooks', null, grid(nbs, true, false)));
+        if (cvs.length) body.append(section('Canvases', null, grid(cvs, false, false)));
       }
       if (!list.length && q) body.append(h('p', { class: 'empty-note' }, `Nothing matches “${query}”.`));
     };
@@ -9856,7 +9876,7 @@ A.fmtDate = (t) => {
     renderGrid();
     if (subj) {
       const cd = docs.filter((d) => d.subject === subj.id);
-      main.append(section('Books for ' + subj.name, addDocBtn(), cd.length ? shelf(cd) : h('p', { class: 'muted small' }, 'No books or problem sets in this course yet.')));
+      if (cd.length) main.append(section('Books for ' + subj.name, null, shelf(cd)));
     }
   }
   /* daily reading goal ring (minutes read today vs goal) */
