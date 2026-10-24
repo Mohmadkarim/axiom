@@ -124,13 +124,19 @@ A.h = (tag, attrs, ...kids) => {
   return el;
 };
 
+/* one toast at a time: a new message replaces the current one instead of stacking */
 A.toast = (msg, ms = 1800) => {
   const host = A.$('#toasts');
   if (!host) return;
-  const t = A.h('div', { class: 'toast', role: 'status' }, msg);
-  host.append(t);
-  requestAnimationFrame(() => t.classList.add('in'));
-  setTimeout(() => { t.classList.remove('in'); setTimeout(() => t.remove(), 300); }, ms);
+  let t = host.querySelector('.toast');
+  if (!t) {
+    t = A.h('div', { class: 'toast', role: 'status' });
+    host.append(t);
+    requestAnimationFrame(() => t.classList.add('in'));
+  } else t.classList.add('in');
+  t.textContent = msg;
+  clearTimeout(t._hide); clearTimeout(t._rm);
+  t._hide = setTimeout(() => { t.classList.remove('in'); t._rm = setTimeout(() => t.remove(), 300); }, ms);
 };
 
 /* in-page confirm / prompt (native dialogs are unavailable in some hosts) */

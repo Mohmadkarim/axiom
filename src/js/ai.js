@@ -196,7 +196,7 @@
     (opts.attachments || []).forEach(AI.attach);
     if (!root || !root.isConnected) return;
     draw();
-    if (!S.aiKey) return;
+    if (!S.aiKey && S.aiMode !== 'app') return;
     els.ta.value = text || '';
     if (opts.send !== false && text) send(); else els.ta.focus();
   };
@@ -214,14 +214,25 @@
   const draw = () => {
     if (!root) return;
     root.innerHTML = '';
-    if (!S.aiKey) { root.append(setupCard()); return; }
+    if (!S.aiKey && S.aiMode !== 'app') { root.append(setupCard()); return; }
     const c = chat();
     const convBtn = h('button', { class: 'conv-btn', title: 'Conversations' }, h('span', { class: 'grow' }, c.title), A.iconEl('chevdown'));
     convBtn.addEventListener('click', () => convMenu(convBtn));
     const modeSeg = h('div', { class: 'seg mode-seg' });
     AI.modes.filter((m) => ctx.kind !== 'reader' || m.id !== 'check').forEach((m) => modeSeg.append(h('button', { class: m.id === mode ? 'on' : '', onclick: () => { mode = m.id; draw(); } }, m.name)));
-    const model = h('select', { class: 'model-sel', id: 'ai-model', 'aria-label': 'Model' }, ...AI.models.map((m) => h('option', { value: m.id, selected: S.aiModel === m.id }, m.name)));
-    model.addEventListener('change', () => { S.aiModel = model.value; A.saveSettings(); });
+    let model;
+    if (S.aiMode === 'app') {
+      model = h('button', { class: 'model-sel app-mode', title: 'Answers open in your Claude or ChatGPT app' }, 'Your AI app', A.iconEl('chevdown'));
+      model.addEventListener('click', () => {
+        const box = h('div', { class: 'menu' });
+        box.append(h('div', { class: 'sub' }, 'Questions open in your Claude or ChatGPT app, using your subscription.'));
+        box.append(h('button', { onclick: () => { A.closePopovers(); S.aiMode = S.aiKey ? 'key' : null; A.saveSettings(); draw(); } }, A.iconEl('spark'), S.aiKey ? 'Answer inside Axiom (API key)' : 'Use an API key instead'));
+        A.popover(box, model, { side: 'down' });
+      });
+    } else {
+      model = h('select', { class: 'model-sel', id: 'ai-model', 'aria-label': 'Model' }, ...AI.models.map((m) => h('option', { value: m.id, selected: S.aiModel === m.id }, m.name)));
+      model.addEventListener('change', () => { S.aiModel = model.value; A.saveSettings(); });
+    }
     const list = h('div', { class: 'msgs', 'aria-live': 'polite' });
     list.addEventListener('click', (e) => {
       const b = e.target.closest('.cite');
@@ -234,7 +245,7 @@
     c.msgs.forEach((m) => list.append(msgEl(m)));
     const chipsRow = h('div', { class: 'att-row' });
     els.chips = chipsRow;
-    const ta = h('textarea', { class: 'composer-in', id: 'ai-input', rows: 1, placeholder: ctx.placeholder ? ctx.placeholder(mode) : (mode === 'check' ? 'What should I check? (your canvas is attached)' : 'Ask about your work, a page, or a concept…') });
+    const ta = h('textarea', { class: 'composer-in', id: 'ai-input', rows: 1, placeholder: S.aiMode === 'app' ? 'Ask, then send to your Claude or ChatGPT app…' : ctx.placeholder ? ctx.placeholder(mode) : (mode === 'check' ? 'What should I check? (your canvas is attached)' : 'Ask about your work, a page, or a concept…') });
     els.ta = ta;
     const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(180, ta.scrollHeight) + 'px'; };
     ta.addEventListener('input', grow);
@@ -301,14 +312,46 @@
   };
   const setupCard = () => {
     const inp = h('input', { class: 'field', id: 'ai-key', type: 'password', placeholder: 'sk-ant-…', autocomplete: 'off', spellcheck: 'false' });
-    const save = h('button', { class: 'btn primary', onclick: () => { const v = inp.value.trim(); if (!/^sk-ant-/.test(v)) return A.toast('That doesn\'t look like an Anthropic API key (it starts with sk-ant-)'); S.aiKey = v; A.saveSettings(); A.toast('Tutor connected'); draw(); } }, 'Connect');
+    const save = h('button', { class: 'btn', onclick: () => { const v = inp.value.trim(); if (!/^sk-ant-/.test(v)) return A.toast('That doesn\'t look like an Anthropic API key (it starts with sk-ant-)'); S.aiKey = v; S.aiMode = 'key'; A.saveSettings(); A.toast('Tutor connected'); draw(); } }, 'Connect');
+    const keyBox = h('div', { class: 'ts-key', hidden: true }, h('p', { class: 'small muted' }, 'Create a key at console.anthropic.com › API Keys. You pay Anthropic per use; the key stays on this device.'), h('div', { class: 'row gap' }, inp, save));
     return h('div', { class: 'tutor-setup' },
       h('div', { class: 'te-mark', html: A.icon('spark') }),
-      h('h4', null, 'Connect the tutor'),
-      h('p', null, 'The tutor runs on Claude using your own Anthropic API key. You pay Anthropic directly for what you use. The key is stored only on this device.'),
-      h('ol', null, h('li', null, 'Go to console.anthropic.com, open API Keys and create a key.'), h('li', null, 'Paste it below.')),
-      inp, h('div', { class: 'row end' }, save),
-      h('p', { class: 'small muted' }, 'You can remove the key any time in Settings › Tutor.'));
+      h('h4', null, 'Choose how the tutor answers'),
+      h('button', { class: 'ts-opt', onclick: () => { S.aiMode = 'app'; A.saveSettings(); draw(); } },
+        h('b', null, 'My Claude or ChatGPT app'),
+        h('span', null, 'Uses your existing subscription. Axiom sends your pages and question to the app, and the chat is saved in your account there.')),
+      h('button', { class: 'ts-opt', onclick: () => { keyBox.hidden = !keyBox.hidden; if (!keyBox.hidden) setTimeout(() => inp.focus(), 50); } },
+        h('b', null, 'Inside Axiom with an API key'),
+        h('span', null, 'Answers appear right here, with tappable citations that highlight the exact lines in your book.')),
+      keyBox);
+  };
+  /* ---------- hand-off to the Claude or ChatGPT app (no API key needed) ---------- */
+  const handoffPrompt = (text, att, extra) => {
+    const cur = A.SU.name(ctx.subject());
+    const majors = A.SU.majorNames();
+    const lines = [
+      `I'm a university student${majors.length ? ' in ' + majors.join(', ') : ''}${cur ? `, working on ${cur}` : ''}. Please answer with precise mathematical language (LaTeX for math), no analogies unless I ask.`,
+      MODE_TEXT[mode] ? MODE_TEXT[mode].replace(/\[\[p\d+[^\]]*\]\]/g, '') : '',
+      att.some((a) => a.kind === 'image') ? `The attached image${att.filter((a) => a.kind === 'image').length > 1 ? 's are' : ' is'} from my notes or textbook (${att.filter((a) => a.kind === 'image').map((a) => a.label).join(', ')}).` : '',
+      ...att.filter((a) => a.kind === 'text' && a.text).map((a) => `Selected passage:\n"""\n${a.text.slice(0, 3000)}\n"""`),
+      extra ? 'Context from the page:\n' + String(extra).replace(/L\d+: /g, '').slice(0, 3500) : '',
+      '',
+      text || 'Please help me with this.',
+    ];
+    return lines.filter((x, i) => x || i === lines.length - 2).join('\n\n').trim();
+  };
+  AI.handoff = async (text, att, extra) => {
+    const prompt = handoffPrompt(text, att, extra);
+    const images = att.filter((a) => a.kind === 'image' && a.url).map((a) => a.url.split(',')[1]);
+    try { await navigator.clipboard.writeText(prompt); } catch (e) { /* the native side copies it too */ }
+    if (A.native) { await A.native.post({ op: 'shareItems', text: prompt, images }); return true; }
+    try {
+      const files = await Promise.all(images.map(async (b64, i) => new File([await (await fetch('data:image/jpeg;base64,' + b64)).blob()], `axiom-${i + 1}.jpg`, { type: 'image/jpeg' })));
+      const data = files.length ? { files, text: prompt } : { text: prompt };
+      if (navigator.canShare && navigator.canShare(data)) { await navigator.share(data); return true; }
+    } catch (e) { if (e && e.name === 'AbortError') return false; }
+    A.toast('Question copied. Paste it into Claude or ChatGPT.', 3200);
+    return true;
   };
 
   /* ---------- request ---------- */
@@ -375,6 +418,12 @@
     const um = { role: 'user', text, att: att.map((a) => ({ id: a.id, kind: a.kind, label: a.label, url: a.url, page: a.page, rect: a.rect, text: a.kind === 'text' ? a.text : undefined, cfi: a.cfi })), ctx: extra || undefined, t: Date.now() };
     c.msgs.push(um);
     if (c.title === 'New conversation') c.title = (text || att[0].label).slice(0, 48);
+    if (S.aiMode === 'app') {
+      c.msgs.push({ role: 'assistant', text: '_Sent to your AI app. The answer and the conversation are saved there. The question was also copied, in case the app only takes the pictures._', t: Date.now() });
+      ctx.save(); draw();
+      AI.handoff(text, att, extra);
+      return;
+    }
     const bm = { role: 'assistant', text: '', t: Date.now() };
     c.msgs.push(bm);
     busy = true;

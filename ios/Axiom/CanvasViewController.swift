@@ -156,6 +156,10 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
             setOrientationLock(body["lock"] as? Bool ?? false)
             replyHandler(orientationLock != nil, nil)
             return
+        case "shareItems":
+            shareItems(text: body["text"] as? String ?? "", images: body["images"] as? [String] ?? [])
+            replyHandler(true, nil)
+            return
         case "keepAwake":
             UIApplication.shared.isIdleTimerDisabled = body["on"] as? Bool ?? false
             replyHandler(true, nil)
@@ -200,6 +204,27 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
             }
             DispatchQueue.main.async { replyHandler(result ?? NSNull(), error) }
         }
+    }
+
+    /// Hands a question (text + page images) to another app such as Claude or ChatGPT through the share sheet.
+    /// The text is also put on the clipboard, because some apps keep only the images from a share.
+    private func shareItems(text: String, images: [String]) {
+        var items: [Any] = []
+        for b64 in images.prefix(10) {
+            if let data = Data(base64Encoded: b64), let img = UIImage(data: data) { items.append(img) }
+        }
+        if !text.isEmpty {
+            items.append(text)
+            UIPasteboard.general.string = text
+        }
+        guard !items.isEmpty else { return }
+        let sheet = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        if let pop = sheet.popoverPresentationController {
+            pop.sourceView = view
+            pop.sourceRect = CGRect(x: view.bounds.maxX - 200, y: view.bounds.maxY - 120, width: 1, height: 1)
+            pop.permittedArrowDirections = [.down, .right]
+        }
+        present(sheet, animated: true)
     }
 
     private func share(_ body: [String: Any]) {

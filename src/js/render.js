@@ -13,6 +13,9 @@
   R.selPreview = null;          // world matrix applied to selected items while transforming
   R.fadeOthers = false;
 
+  /* undo, redo, restores and page edits replace the whole scene: redraw right away */
+  A.on('doc:changed', (k) => { if (k === 'all' && D.doc) { R.cacheValid = false; R.render(); } });
+  A.on('history', () => { if (D.doc) R.renderOverlay(); });
   R.init = (main, overlay) => {
     R.main = main; R.overlay = overlay;
     R.mctx = main.getContext('2d');

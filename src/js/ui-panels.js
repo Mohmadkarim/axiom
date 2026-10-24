@@ -311,6 +311,8 @@
     renderSelMenu();
   };
   const cmds = {
+    undo() { D.undo(); },
+    redo() { D.redo(); },
     selectAll() {
       const ids = [];
       for (const l of D.doc.layers) if (l.visible && !l.locked && (!A.IN.selLayerOnly || l.id === D.doc.activeLayerId)) for (const it of l.items) if (B.isBox(it) || !B.catalog[it.b].mask) ids.push(it.id);
@@ -806,6 +808,7 @@
           row('Shape recognition in notebooks', 'Draw a shape and hold to clean it up', toggleSw(S.nbShapes !== false, (v) => { set('nbShapes', v); if (D.doc && D.isNotebook()) { D.doc.precision.recog = v; D.changed('precision'); } }, 's-nbs')));
       } else if (cur === 'tutor') {
         add(h('h5', null, 'Tutor'),
+          row('How the tutor answers', S.aiMode === 'app' ? 'Your question and pages open in the Claude or ChatGPT app; the chat is saved in your account there.' : 'Answers appear inside Axiom using your API key.', segc([['app', 'My AI app'], ['key', 'API key']], S.aiMode === 'app' ? 'app' : 'key', (v) => { S.aiMode = v; A.saveSettings(); rebuild(); })),
           row('Anthropic API key', S.aiKey ? 'Connected (stored only on this device)' : 'Not connected. Open the tutor to connect.', S.aiKey ? h('button', { class: 'btn', onclick: () => { S.aiKey = ''; A.saveSettings(); rebuild(); A.toast('API key removed'); } }, 'Remove key') : h('span')),
           row('Default model', null, sel('aiModel', A.AI.models.map((m) => [m.id, m.name]))),
           h('p', { class: 'small muted' }, 'The tutor sees only what you attach or ask about: a page, a selection, your notebook pages or a passage from a book. Answers can include interactive practice questions and flashcards.'));

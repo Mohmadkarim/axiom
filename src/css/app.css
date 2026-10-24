@@ -943,3 +943,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
 .btn.ghost-btn { background: transparent; border-color: transparent; color: var(--muted); font-weight: 600; padding: 0 10px; }
 .menu button small { display: block; font-size: 11.5px; color: var(--muted); font-weight: 400; margin-top: 1px; }
 .paper-opt.more { justify-content: center; color: var(--muted); border-style: dashed; } .paper-opt.more .more-ic { height: 118px; display: grid; place-items: center; }
+.ts-opt { display: flex; flex-direction: column; gap: 4px; text-align: left; width: 100%; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line-strong); background: var(--panel-2); margin-top: 10px; }
+.ts-opt b { font-size: 14.5px; }
+.ts-opt span { font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+.ts-opt:active { border-color: var(--accent); }
+.ts-key { margin-top: 10px; }
+.ts-key .field { margin: 0; flex: 1; }
+.model-sel.app-mode { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; font-size: 12.5px; color: var(--accent); }
+.model-sel.app-mode .ic { width: 15px; height: 15px; }

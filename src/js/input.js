@@ -992,8 +992,8 @@
         const ts = touchSession; touchSession = null;
         const dt = performance.now() - ts.t0;
         if (dt < 320 && ts.moved < 14) {
-          if (ts.max === 2 && A.settings.twoFingerUndo) { if (D.undo()) A.toast('Undo'); }
-          else if (ts.max === 3 && A.settings.threeFingerRedo) { if (D.redo()) A.toast('Redo'); }
+          if (ts.max === 2 && A.settings.twoFingerUndo) { if (D.undo()) A.toast('Undo', 700); }
+          else if (ts.max === 3 && A.settings.threeFingerRedo) { if (D.redo()) A.toast('Redo', 700); }
         }
       }
     }
