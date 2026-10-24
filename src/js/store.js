@@ -9,6 +9,9 @@
   const NATIVE = !!(window.AXIOM_NATIVE && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.axiom);
   const post = (m) => window.webkit.messageHandlers.axiom.postMessage(m);
   A.native = NATIVE ? { post } : null;
+  // the app serves stored files as raw bytes at axiom://app/_files/<id> (see ios/Axiom/AppSchemeHandler.swift)
+  const RAW = NATIVE && location.protocol === 'axiom:';
+  const rawURL = (id) => '_files/' + encodeURIComponent(id);
 
   function open() {
     if (dbp) return dbp;
@@ -74,6 +77,9 @@
     },
     /* binary files: PDFs, photos, saved visuals (Blob in, Blob out) */
     async saveFile(id, blob) {
+      if (RAW) {
+        try { const r = await fetch(rawURL(id), { method: 'POST', body: blob }); if (r.ok) return; } catch (e) { /* fall back to the message bridge */ }
+      }
       if (NATIVE) {
         const data = await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.readAsDataURL(blob); });
         await post({ op: 'fileSave', id, data });
@@ -85,6 +91,13 @@
       await tx('files', 'readwrite', (s) => s.put({ id, buf, type: blob.type }));
     },
     async loadFile(id, type = 'application/octet-stream') {
+      if (RAW) {
+        try {
+          const r = await fetch(rawURL(id));
+          if (r.status === 404) return null;
+          if (r.ok) return new Blob([await r.arrayBuffer()], { type });
+        } catch (e) { /* fall back to the message bridge */ }
+      }
       if (NATIVE) {
         const b64 = await post({ op: 'fileLoad', id });
         if (!b64) return null;

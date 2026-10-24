@@ -37,6 +37,13 @@
     if (pdfCache.size > 5) { const k = pdfCache.keys().next().value; try { pdfCache.get(k).destroy(); } catch (e) { /* ignore */ } pdfCache.delete(k); }
     return pdf;
   };
+  ST.pdfError = (e) => {
+    const n = (e && (e.name || '')) + ' ' + (e && (e.message || ''));
+    if (/missing file/.test(n)) return 'This PDF\'s file is missing. Remove it and import it again.';
+    if (/Password/i.test(n)) return 'This PDF is password-protected. Remove the password and import it again.';
+    if (/Invalid|Missing PDF|corrupt/i.test(n)) return 'This file does not look like a valid PDF, or it is damaged.';
+    return 'This PDF could not be opened (' + (n.trim() || 'unknown error') + ').';
+  };
   ST.renderPage = async (meta, n, scale = 2, type = 'image/jpeg') => {
     const pdf = await ST.loadPdf(meta);
     const page = await pdf.getPage(n);
@@ -261,7 +268,8 @@
       try {
         this.pdf = await ST.loadPdf(m);
       } catch (e) {
-        this.inner.append(h('p', { class: 'muted', style: { padding: '20px' } }, 'This PDF could not be opened. ' + (navigator.onLine ? '' : 'You may need to be online the first time.')));
+        console.error(e);
+        this.inner.append(h('p', { class: 'muted', style: { padding: '20px' } }, ST.pdfError(e)));
         return;
       }
       const n = this.pdf.numPages;

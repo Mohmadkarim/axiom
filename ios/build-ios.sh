@@ -1,15 +1,16 @@
 #!/bin/sh
 # Bundle the latest web build into the iPad app and build it.
 #   ./build-ios.sh sim            → build for the iPad simulator
-#   ./build-ios.sh device TEAMID  → build + sign for a connected iPad
+#   ./build-ios.sh device TEAMID [UDID]  → build + sign for a connected iPad (UDID from `xcrun devicectl list devices`)
 set -e
 cd "$(dirname "$0")"
 (cd .. && node build.mjs >/dev/null)
 rm -rf web && mkdir web && cp ../dist/index.html ../dist/*.png web/ && cp -R ../dist/vendor web/vendor
 "$HOME/.local/share/xcodegen/xcodegen/bin/xcodegen" generate --quiet
 if [ "$1" = "device" ]; then
-  xcodebuild -project Axiom.xcodeproj -scheme Axiom -configuration Release -destination 'generic/platform=iOS' \
-    -derivedDataPath build DEVELOPMENT_TEAM="$2" -allowProvisioningUpdates -quiet build
+  DEST='generic/platform=iOS'; [ -n "$3" ] && DEST="platform=iOS,id=$3"
+  xcodebuild -project Axiom.xcodeproj -scheme Axiom -configuration Release -destination "$DEST" \
+    -derivedDataPath build DEVELOPMENT_TEAM="$2" -allowProvisioningUpdates -allowProvisioningDeviceRegistration -quiet build
   echo "$(pwd)/build/Build/Products/Release-iphoneos/Axiom.app"
 else
   xcodebuild -project Axiom.xcodeproj -scheme Axiom -configuration Debug -destination 'generic/platform=iOS Simulator' \

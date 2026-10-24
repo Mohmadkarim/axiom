@@ -701,7 +701,8 @@
       await A.ST.pdfLib();
       st.pdf = await A.ST.loadPdf(meta);
     } catch (e) {
-      pagesWrap.append(h('p', { class: 'muted rd-pad' }, 'This PDF could not be opened.'));
+      console.error(e);
+      pagesWrap.append(h('p', { class: 'muted rd-pad' }, A.ST.pdfError(e)));
       return;
     }
     if (!st || st.token !== token) return;

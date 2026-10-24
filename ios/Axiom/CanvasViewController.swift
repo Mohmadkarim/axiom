@@ -6,6 +6,7 @@ import WebKit
 final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithReply, WKNavigationDelegate, UIPencilInteractionDelegate {
     private var webView: WKWebView!
     private let store = DrawingStore()
+    private var schemeHandler: AppSchemeHandler?
 
     // MARK: - Setup
 
@@ -19,6 +20,11 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         let config = WKWebViewConfiguration()
         config.userContentController = content
         config.allowsInlineMediaPlayback = true
+        if let web = Bundle.main.url(forResource: "web", withExtension: nil) {
+            let handler = AppSchemeHandler(root: web, store: store)
+            config.setURLSchemeHandler(handler, forURLScheme: AppSchemeHandler.scheme)
+            schemeHandler = handler
+        }
 
         webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = self
@@ -45,8 +51,11 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        guard let url = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "web") else { return }
-        webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+        if schemeHandler != nil {
+            webView.load(URLRequest(url: AppSchemeHandler.startURL))
+        } else if let url = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "web") {
+            webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+        }
     }
 
     override func viewDidAppear(_ animated: Bool) {

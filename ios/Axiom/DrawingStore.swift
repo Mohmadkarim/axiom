@@ -59,6 +59,13 @@ final class DrawingStore {
         try data.write(to: filesDir.appendingPathComponent(safe(id) + ".bin"), options: .atomic)
     }
 
+    func fileURL(_ id: String) -> URL { filesDir.appendingPathComponent(safe(id) + ".bin") }
+
+    func writeFile(id: String, data: Data) throws {
+        guard !safe(id).isEmpty else { return }
+        try data.write(to: fileURL(id), options: .atomic)
+    }
+
     func loadFile(_ id: String) -> Any {
         guard let data = try? Data(contentsOf: filesDir.appendingPathComponent(safe(id) + ".bin")) else { return NSNull() }
         return data.base64EncodedString()
