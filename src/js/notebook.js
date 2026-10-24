@@ -39,7 +39,25 @@
     A.on('view', () => { if (on()) syncCounter(); });
     A.on('doc:changed', (k) => { if (!on() || k === 'view') return; ensurePage(); thumbsDirty(); });
     A.on('canvas:tap', (pt) => { if (on()) AUD.tapSeek(pt); });
-    addEventListener('resize', () => { if (on()) { R.constrainNotebook(); syncCounter(); } });
+    /* rotating the iPad or opening the tutor keeps the page fitted if it was fitted before */
+    let lastFit = 0;
+    A.on('view', () => { if (on()) { const f = R.fitPageZoom(); if (Math.abs(D.doc.view.zoom - f) < f * 0.02) lastFit = 1; else lastFit = 0; } });
+    addEventListener('resize', () => {
+      if (!on()) return;
+      const cur = R.currentPage();
+      requestAnimationFrame(() => {
+        if (lastFit || D.doc.view.zoom > R.fitPageZoom()) D.doc.view.zoom = R.fitPageZoom();
+        R.constrainNotebook(); R.showPage(cur); syncCounter();
+      });
+    });
+    /* double-tap with a finger: back to a fitted, centred page */
+    let lastTap = 0;
+    A.on('canvas:tap', (pt) => {
+      if (!on()) return;
+      const now = performance.now();
+      if (now - lastTap < 320) { const cur = R.currentPage(); D.doc.view.zoom = R.fitPageZoom(); R.constrainNotebook(); R.showPage(cur, true); lastTap = 0; return; }
+      lastTap = now;
+    });
   };
   const ensurePage = A.debounce(() => { if (on()) { const n = D.doc.pages.length; D.ensureTrailingPage(); if (D.doc.pages.length !== n) R.render(); } }, 300);
   function teardown() { R.nbInsetL = 0; if (host) host.innerHTML = ''; Object.keys(els).forEach((k) => delete els[k]); }

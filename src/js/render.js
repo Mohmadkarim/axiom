@@ -91,7 +91,13 @@
     const top = R.notebookTop || 70, bot = 90;
     const L = R.nbInsetL || 0, Rr = R.w > 700 ? 64 : 0;
     const horiz = D.doc.page.scroll === 'horizontal';
-    if (!horiz && bw <= R.w - L - Rr - 24) v.tx = L + (R.w - L - Rr - bw) / 2 - bb[0] * v.zoom;
+    // centred on the screen like Notability; only nudged when the page would run under the side chrome
+    if (!horiz && bw <= R.w - L - Rr - 24) {
+      let x = (R.w - bw) / 2;
+      if (x < L + 12) x = L + 12;
+      if (x + bw > R.w - Rr - 12) x = Math.max(L + 12, R.w - Rr - 12 - bw);
+      v.tx = x - bb[0] * v.zoom;
+    }
     else v.tx = A.clamp(v.tx, R.w - Rr - 16 - bb[2] * v.zoom, L + 16 - bb[0] * v.zoom);
     if (bh <= R.h - top - bot) v.ty = top - bb[1] * v.zoom;
     else v.ty = A.clamp(v.ty, R.h - bot - bb[3] * v.zoom, top - bb[1] * v.zoom);
@@ -330,7 +336,7 @@
     const k = Math.hypot(o.m[0], o.m[1]);
     const hair = (o.dpr || A.dpr) / k;
     if (D.isNotebook(doc)) {
-      if (o.bg) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = o.desk || R.deskColor(o.dark); ctx.fillRect(0, 0, o.w, o.h); }
+      if (o.bg) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = o.desk || R.deskColor(R.isDarkTheme()); ctx.fillRect(0, 0, o.w, o.h); }
       ctx.setTransform(...o.m);
       const rects = D.pageRects(doc);
       rects.forEach((rc, i) => {
@@ -448,7 +454,7 @@
     if (!force && !R.replay && R.gesturing && R.lastMs > 14 && R.cacheValid && t0 - lastFull < 220) {
       const ctx = R.mctx;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = D.isNotebook() ? R.deskColor(R.darkActive()) : R.displayBg();
+      ctx.fillStyle = D.isNotebook() ? R.deskColor(R.isDarkTheme()) : R.displayBg();
       ctx.fillRect(0, 0, W, H);
       ctx.setTransform(...M.mul(m, M.inv(R.cacheM)));
       ctx.drawImage(R.cache, 0, 0);

@@ -1075,6 +1075,16 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
   .nb-tr .sb-sep, .nb-tr .ibtn[aria-label="Redo"] { display: none; }
 }
 .rd-index-status { margin: 10px 12px 14px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
+
+/* ---------- visual tools library: themed tiles ---------- */
+.vis-lib { width: min(520px, calc(100vw - 32px)); padding: 14px; }
+.vis-tile { background: var(--paper); color: var(--fg); border-color: var(--line); border-radius: 14px; padding: 10px 6px 8px; font-weight: 600; }
+.vis-tile img { width: 78px; height: 78px; }
+.vis-tile:hover { border-color: var(--accent); }
+:root[data-theme="dark"] .vis-tile img { filter: invert(.9) hue-rotate(180deg) saturate(1.2); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .vis-tile img { filter: invert(.9) hue-rotate(180deg) saturate(1.2); } }
+.vis-tabs button { height: 30px; padding: 0 11px; border-radius: 9px; background: transparent; border: 0; }
+.vis-tabs button.on { background: var(--panel-2); color: var(--fg); }
 </style>
 </head>
 <body>
@@ -1096,7 +1106,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
 </div>
 <div id="toasts" aria-live="polite"></div>
 
-<script>window.AXIOM_BUILD = 'mvmsyxrz';
+<script>window.AXIOM_BUILD = 'mvmt34ks';
 /* ---- core.js ---- */
 /* Axiom core: namespace, math, color, events, DOM helpers */
 'use strict';
@@ -3043,7 +3053,13 @@ A.fmtDate = (t) => {
     const top = R.notebookTop || 70, bot = 90;
     const L = R.nbInsetL || 0, Rr = R.w > 700 ? 64 : 0;
     const horiz = D.doc.page.scroll === 'horizontal';
-    if (!horiz && bw <= R.w - L - Rr - 24) v.tx = L + (R.w - L - Rr - bw) / 2 - bb[0] * v.zoom;
+    // centred on the screen like Notability; only nudged when the page would run under the side chrome
+    if (!horiz && bw <= R.w - L - Rr - 24) {
+      let x = (R.w - bw) / 2;
+      if (x < L + 12) x = L + 12;
+      if (x + bw > R.w - Rr - 12) x = Math.max(L + 12, R.w - Rr - 12 - bw);
+      v.tx = x - bb[0] * v.zoom;
+    }
     else v.tx = A.clamp(v.tx, R.w - Rr - 16 - bb[2] * v.zoom, L + 16 - bb[0] * v.zoom);
     if (bh <= R.h - top - bot) v.ty = top - bb[1] * v.zoom;
     else v.ty = A.clamp(v.ty, R.h - bot - bb[3] * v.zoom, top - bb[1] * v.zoom);
@@ -3282,7 +3298,7 @@ A.fmtDate = (t) => {
     const k = Math.hypot(o.m[0], o.m[1]);
     const hair = (o.dpr || A.dpr) / k;
     if (D.isNotebook(doc)) {
-      if (o.bg) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = o.desk || R.deskColor(o.dark); ctx.fillRect(0, 0, o.w, o.h); }
+      if (o.bg) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = o.desk || R.deskColor(R.isDarkTheme()); ctx.fillRect(0, 0, o.w, o.h); }
       ctx.setTransform(...o.m);
       const rects = D.pageRects(doc);
       rects.forEach((rc, i) => {
@@ -3400,7 +3416,7 @@ A.fmtDate = (t) => {
     if (!force && !R.replay && R.gesturing && R.lastMs > 14 && R.cacheValid && t0 - lastFull < 220) {
       const ctx = R.mctx;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = D.isNotebook() ? R.deskColor(R.darkActive()) : R.displayBg();
+      ctx.fillStyle = D.isNotebook() ? R.deskColor(R.isDarkTheme()) : R.displayBg();
       ctx.fillRect(0, 0, W, H);
       ctx.setTransform(...M.mul(m, M.inv(R.cacheM)));
       ctx.drawImage(R.cache, 0, 0);
@@ -9278,7 +9294,25 @@ A.fmtDate = (t) => {
     A.on('view', () => { if (on()) syncCounter(); });
     A.on('doc:changed', (k) => { if (!on() || k === 'view') return; ensurePage(); thumbsDirty(); });
     A.on('canvas:tap', (pt) => { if (on()) AUD.tapSeek(pt); });
-    addEventListener('resize', () => { if (on()) { R.constrainNotebook(); syncCounter(); } });
+    /* rotating the iPad or opening the tutor keeps the page fitted if it was fitted before */
+    let lastFit = 0;
+    A.on('view', () => { if (on()) { const f = R.fitPageZoom(); if (Math.abs(D.doc.view.zoom - f) < f * 0.02) lastFit = 1; else lastFit = 0; } });
+    addEventListener('resize', () => {
+      if (!on()) return;
+      const cur = R.currentPage();
+      requestAnimationFrame(() => {
+        if (lastFit || D.doc.view.zoom > R.fitPageZoom()) D.doc.view.zoom = R.fitPageZoom();
+        R.constrainNotebook(); R.showPage(cur); syncCounter();
+      });
+    });
+    /* double-tap with a finger: back to a fitted, centred page */
+    let lastTap = 0;
+    A.on('canvas:tap', (pt) => {
+      if (!on()) return;
+      const now = performance.now();
+      if (now - lastTap < 320) { const cur = R.currentPage(); D.doc.view.zoom = R.fitPageZoom(); R.constrainNotebook(); R.showPage(cur, true); lastTap = 0; return; }
+      lastTap = now;
+    });
   };
   const ensurePage = A.debounce(() => { if (on()) { const n = D.doc.pages.length; D.ensureTrailingPage(); if (D.doc.pages.length !== n) R.render(); } }, 300);
   function teardown() { R.nbInsetL = 0; if (host) host.innerHTML = ''; Object.keys(els).forEach((k) => delete els[k]); }
