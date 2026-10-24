@@ -716,6 +716,39 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
 #reader-view.rd-narrow .rd-zoom { display: none; }
 #reader-view.rd-narrow .rd-title { max-width: 150px; }
 .rd-bottom > span { white-space: nowrap; }
+
+/* ===== reader: handwriting, EPUB ===== */
+.rd-ink { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#reader-view[data-theme="night"] .rd-ink { filter: invert(.92) hue-rotate(180deg); }
+.rd-group-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.rd-inkbar { gap: 4px; padding: 4px 6px; animation: pop .16s ease; }
+.rd-ink-c { width: 30px; height: 30px; border-radius: 50%; background: var(--ink); box-shadow: inset 0 0 0 2px rgba(255,255,255,.65), 0 0 0 1px var(--line-strong); }
+.rd-ink-c.on { box-shadow: 0 0 0 2px var(--panel-solid), 0 0 0 4px var(--accent); }
+.rd-ink-w { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; }
+.rd-ink-w i { display: block; width: 18px; border-radius: 3px; background: var(--fg); min-height: 1px; }
+.rd-ink-w.on { background: var(--accent-soft); }
+.rd-inkbar .ibtn { width: 36px; height: 36px; }
+#reader-view[data-tool="write"] .rd-main, #reader-view[data-tool="highlight"] .rd-main { cursor: crosshair; }
+.rd-aa { font-family: var(--ff-mark); font-size: 17px; font-weight: 600; }
+.rd-aa.big { font-size: 24px; }
+.rd-epub-main { padding: calc(74px + env(safe-area-inset-top, 0px)) 0 calc(76px + env(safe-area-inset-bottom, 0px)); overflow: hidden; touch-action: manipulation; }
+.rd-epub-stage { position: relative; height: 100%; display: flex; align-items: stretch; justify-content: center; padding: 0 64px; }
+.rd-epub { flex: 1; max-width: 1180px; height: 100%; background: #fff; border-radius: 6px; box-shadow: 0 1px 2px rgba(10, 14, 24, .1), 0 22px 50px -24px rgba(10, 14, 24, .45); padding: 34px 40px; overflow: hidden; }
+#reader-view[data-theme="sepia"] .rd-epub { background: #f4ecd8; }
+#reader-view[data-theme="night"] .rd-epub { background: #16171a; }
+.rd-turn { position: absolute; top: 50%; margin-top: -26px; width: 44px; height: 52px; border-radius: 14px; display: grid; place-items: center; color: var(--muted); }
+.rd-turn:hover { background: var(--accent-soft); color: var(--accent); }
+.rd-turn.prev { left: 10px; } .rd-turn.prev .ic { transform: rotate(180deg); }
+.rd-turn.next { right: 10px; }
+#reader-view .rd-bottom .rd-page-n { min-width: 36px; }
+.msg-quote { margin: 0; max-width: 88%; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 8px; font-size: 13px; color: var(--fg); font-family: var(--ff-mark); line-height: 1.4; }
+.dv-epub-note { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 20px; text-align: center; }
+.g-ver { font-size: 11px; color: var(--faint); padding: 6px 10px 0; }
+@media (max-width: 760px) { .rd-epub-stage { padding: 0 8px; } .rd-turn { display: none; } .rd-epub { padding: 18px 16px; } }
+
+.rd-ink-c { background-clip: padding-box; }
+.rd-top { align-items: flex-start; }
+.rd-bottom { background: var(--panel-solid); }
 </style>
 </head>
 <body>
@@ -736,13 +769,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
 </div>
 <div id="toasts" aria-live="polite"></div>
 
-<script>window.AXIOM_BUILD = 'mvmgnltr';
+<script>window.AXIOM_BUILD = 'mvmh0ic8';
 /* ---- core.js ---- */
 /* Axiom core: namespace, math, color, events, DOM helpers */
 'use strict';
 const A = (window.A = {});
 
-A.VERSION = '0.1.0';
+A.VERSION = '0.4';
 A.uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-5);
 A.clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 A.lerp = (a, b, t) => a + (b - a) * t;
@@ -5978,6 +6011,13 @@ A.fmtDate = (t) => {
         ...g('Tool slot', 'Tap to choose. Tap the active slot or long-press for the brush menu.'),
         ...g('Size / Opac / Smth', 'Tap for a slider and presets, or drag up and down to adjust directly.'),
         ...g('Layer', 'Tap the active layer for options. Double-tap a layer to focus it. Long-press and drag to reorder.')),
+      h('h5', null, 'Books'),
+      h('div', { class: 'help-grid' },
+        ...g('Ask (Pencil)', 'Draw a box or a loop around any passage, then tap Ask, Explain, Hint, Highlight or Copy text.'),
+        ...g('Write', 'Handwrite on PDF pages with 4 pens, 3 widths, an eraser and undo. Your writing is included when you ask the tutor.'),
+        ...g('Citations', 'Tap a “p. 34 · lines 3–5” chip in an answer to jump there and see those lines highlighted.'),
+        ...g('EPUB', 'Swipe or tap the arrows to turn pages. Select text to ask about it. Aa changes the text size.'),
+        ...g('Apple Books', 'Share › Save to Files in Books, then Books › Add book or PDF in Axiom.')),
       h('h5', null, 'Keyboard'),
       h('div', { class: 'help-grid' },
         ...g('⌘Z / ⇧⌘Z', 'Undo / redo'), ...g('1 – 8', 'Choose a tool slot'), ...g('[ and ]', 'Brush size'),
@@ -6015,6 +6055,12 @@ A.fmtDate = (t) => {
     }
     return window.pdfjsLib;
   };
+  ST.epubLib = async () => {
+    if (window.ePub) return window.ePub;
+    try { if (!window.JSZip) await loadScript('vendor/jszip.min.js'); await loadScript('vendor/epub.min.js'); }
+    catch (e) { if (!window.JSZip) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'); await loadScript('https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js'); }
+    return window.ePub;
+  };
   ST.loadPdf = async (meta) => {
     if (pdfCache.has(meta.id)) return pdfCache.get(meta.id);
     const lib = await ST.pdfLib();
@@ -6041,12 +6087,13 @@ A.fmtDate = (t) => {
   ST.updateDoc = (id, patch) => { const d = ST.doc(id); if (d) { Object.assign(d, patch); A.saveSettings(); } };
   ST.importFile = async (file, subject) => {
     const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+    const isEpub = file.type === 'application/epub+zip' || /\.epub$/i.test(file.name);
     const isImg = file.type.startsWith('image/');
-    if (!isPdf && !isImg) { A.toast('Choose a PDF or an image'); return null; }
+    if (!isPdf && !isImg && !isEpub) { A.toast('Choose a PDF, an EPUB book or an image'); return null; }
     const id = A.uid();
     A.toast('Adding ' + file.name + '…', 1500);
     await A.store.saveFile('doc_' + id, file);
-    const meta = { id, name: file.name.replace(/\.(pdf|png|jpe?g|heic|webp)$/i, '').slice(0, 80) || 'Document', type: isPdf ? 'pdf' : 'image', mime: file.type || (isPdf ? 'application/pdf' : 'image/jpeg'), subject: subject ?? (D.doc && D.doc.subject) ?? null, size: file.size, added: Date.now(), lastPage: 1 };
+    const meta = { id, name: file.name.replace(/\.(pdf|epub|png|jpe?g|heic|webp)$/i, '').slice(0, 80) || 'Document', type: isPdf ? 'pdf' : isEpub ? 'epub' : 'image', kind: isEpub ? 'book' : undefined, mime: file.type || (isPdf ? 'application/pdf' : isEpub ? 'application/epub+zip' : 'image/jpeg'), subject: subject ?? (D.doc && D.doc.subject) ?? null, size: file.size, added: Date.now(), lastPage: 1 };
     S.documents = ST.docs().concat([meta]);
     A.saveSettings();
     A.emit('documents');
@@ -6067,6 +6114,20 @@ A.fmtDate = (t) => {
         const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
         await page.render({ canvasContext: ctx, viewport: vp }).promise;
         ST.updateDoc(meta.id, { cover: c.toDataURL('image/jpeg', 0.8), pages: pdf.numPages, kind: meta.kind || (pdf.numPages >= 30 ? 'book' : 'sheet') });
+      } else if (meta.type === 'epub') {
+        const ePub = await ST.epubLib();
+        const blob = await A.store.loadFile('doc_' + meta.id, 'application/epub+zip');
+        const book = ePub(await blob.arrayBuffer());
+        const md = await book.loaded.metadata.catch(() => null);
+        let cover = null;
+        try { const url = await book.coverUrl(); if (url) cover = await blobToJpeg(await (await fetch(url)).blob(), 360); } catch (e) { /* no cover image */ }
+        const patch = { kind: 'book', pages: null };
+        if (cover) patch.cover = cover;
+        if (md && md.title && /[_.-]|^\w+$/.test(meta.name)) patch.name = md.title.slice(0, 80);
+        if (md && md.creator) patch.author = String(md.creator).slice(0, 60);
+        ST.updateDoc(meta.id, patch);
+        Promise.resolve(book.ready).catch(() => {}).then(() => { try { book.destroy(); } catch (e) { /* ignore */ } });
+        if (!cover) { coverBusy.delete(meta.id); A.emit('cover', meta.id); return; }
       } else {
         const blob = await A.store.loadFile('doc_' + meta.id, meta.mime);
         ST.updateDoc(meta.id, { cover: await blobToJpeg(blob, 360), pages: 1, kind: meta.kind || 'sheet' });
@@ -6081,7 +6142,7 @@ A.fmtDate = (t) => {
     pdfCache.delete(id); views.delete(id);
     A.emit('documents');
   };
-  ST.pickFile = (accept = 'application/pdf,.pdf,image/*') => new Promise((res) => {
+  ST.pickFile = (accept = 'application/pdf,.pdf,application/epub+zip,.epub,image/*') => new Promise((res) => {
     const inp = h('input', { type: 'file', accept, style: { display: 'none' } });
     inp.addEventListener('change', () => { res(inp.files && inp.files[0]); inp.remove(); });
     document.body.append(inp); inp.click();
@@ -6219,6 +6280,10 @@ A.fmtDate = (t) => {
         ib('plus', 'Zoom in', () => this.setZoom(this.zoom * 1.25)),
         ib('spark', 'Ask the tutor about this page', () => this.askTutor()),
         ib('more', 'More', (e) => this.more(e.currentTarget)));
+      if (m.type === 'epub') {
+        this.inner.append(h('div', { class: 'dv-epub-note' }, h('p', { class: 'muted' }, 'EPUB books open in the reader, with the tutor beside the text.'), h('button', { class: 'btn primary', onclick: () => A.emit('read', m.id) }, 'Open in the reader')));
+        return;
+      }
       if (m.type === 'image') {
         const blob = await A.store.loadFile('doc_' + m.id, m.mime || 'image/jpeg');
         this.imgUrl = blob ? URL.createObjectURL(blob) : '';
@@ -6595,7 +6660,7 @@ A.fmtDate = (t) => {
     if (!row) return;
     row.innerHTML = '';
     AI.pending.forEach((a) => {
-      row.append(h('span', { class: 'att-chip' }, a.url ? h('img', { src: a.url, alt: '' }) : A.iconEl('pdf'), h('span', { class: 'att-l' }, a.label),
+      row.append(h('span', { class: 'att-chip' }, a.url ? h('img', { src: a.url, alt: '' }) : A.iconEl(a.kind === 'text' ? 'book' : 'pdf'), h('span', { class: 'att-l' }, a.label),
         h('button', { class: 'chip-x', 'aria-label': 'Remove ' + a.label, html: A.icon('close'), onclick: () => { AI.pending = AI.pending.filter((x) => x !== a); if (ctx.onRemoveAtt) ctx.onRemoveAtt(a); drawChips(); } })));
     });
     const btns = (ctx.attachButtons ? ctx.attachButtons() : []).concat([{ icon: 'import', label: 'Photo', fn: async () => {
@@ -6608,7 +6673,7 @@ A.fmtDate = (t) => {
   };
   const msgEl = (m) => {
     if (m.role === 'user') {
-      const atts = (m.att || []).map((a) => (a.url ? h('img', { class: 'msg-img' + (a.page ? ' linked' : ''), src: a.url, alt: a.label, title: a.label, dataset: { att: a.id } }) : h('span', { class: 'att-chip small' }, A.iconEl('pdf'), a.label)));
+      const atts = (m.att || []).map((a) => (a.url ? h('img', { class: 'msg-img' + (a.page ? ' linked' : ''), src: a.url, alt: a.label, title: a.label, dataset: { att: a.id } }) : a.kind === 'text' ? h('blockquote', { class: 'msg-quote' }, a.text.slice(0, 280) + (a.text.length > 280 ? '…' : '')) : h('span', { class: 'att-chip small' }, A.iconEl('pdf'), a.label)));
       return h('div', { class: 'msg user' }, atts.length ? h('div', { class: 'msg-atts' }, ...atts) : null, m.text ? h('div', { class: 'bubble' }, m.text) : null);
     }
     const body = h('div', { class: 'md' });
@@ -6671,6 +6736,8 @@ A.fmtDate = (t) => {
       if (a.kind === 'image' && a.url) {
         if (keepImages.has(a.id)) blocks.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: a.url.split(',')[1] } });
         else blocks.push({ type: 'text', text: `[Earlier image omitted: ${a.label}]` });
+      } else if (a.kind === 'text' && a.text) {
+        blocks.push({ type: 'text', text: `Selected passage:\n"""\n${a.text.slice(0, 6000)}\n"""` });
       } else if (a.kind === 'pdf') {
         const b64 = a.b64 || sessionPdf.get(a.id);
         if (b64) blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 }, title: a.label });
@@ -6705,7 +6772,7 @@ A.fmtDate = (t) => {
     att.forEach((a) => { a.id = a.id || A.uid(); if (a.kind === 'pdf' && a.b64) sessionPdf.set(a.id, a.b64); });
     AI.pending = [];
     const extra = ctx.contextText ? await ctx.contextText(att) : '';
-    const um = { role: 'user', text, att: att.map((a) => ({ id: a.id, kind: a.kind, label: a.label, url: a.url, page: a.page, rect: a.rect })), ctx: extra || undefined, t: Date.now() };
+    const um = { role: 'user', text, att: att.map((a) => ({ id: a.id, kind: a.kind, label: a.label, url: a.url, page: a.page, rect: a.rect, text: a.kind === 'text' ? a.text : undefined, cfi: a.cfi })), ctx: extra || undefined, t: Date.now() };
     c.msgs.push(um);
     if (c.title === 'New conversation') c.title = (text || att[0].label).slice(0, 48);
     const bm = { role: 'assistant', text: '', t: Date.now() };
@@ -6777,7 +6844,7 @@ A.fmtDate = (t) => {
   const RD = (A.RD = {});
   let host, st = null;
 
-  const ann0 = () => ({ highlights: [], chats: [], chatActive: null });
+  const ann0 = () => ({ highlights: [], chats: [], chatActive: null, ink: {} });
   const saveAnn = A.debounce(() => {
     if (!st) return;
     A.store.saveFile('ann_' + st.meta.id, new Blob([JSON.stringify(st.ann)], { type: 'application/json' })).catch(() => {});
@@ -6827,6 +6894,7 @@ A.fmtDate = (t) => {
   /* ---------- rendering ---------- */
   const themeFilter = { paper: '', sepia: 'sepia(.38) saturate(1.1) brightness(.97)', night: 'invert(.92) hue-rotate(180deg) contrast(.92)' };
   function layout(keep = true) {
+    if (st && st.rendition) { host.classList.toggle('rd-narrow', st.main.clientWidth < 760); clearTimeout(st._rz); st._rz = setTimeout(() => { try { st.rendition.resize(); } catch (e) { /* ignore */ } }, 60); return; }
     if (!st || !st.pages.length) return;
     const main = st.main;
     host.classList.toggle('rd-narrow', main.clientWidth < 760);
@@ -6838,6 +6906,7 @@ A.fmtDate = (t) => {
       p.el.style.width = Math.round(w) + 'px';
       p.el.style.height = Math.round(w * p.aspect) + 'px';
       if (p.canvas && Math.abs(p.w - w) > 2) { p.canvas.remove(); p.canvas = null; if (p.visible) renderPage(p); }
+      if (p.ink) drawInkPage(p);
     });
     if (frac != null) main.scrollTop = frac * main.scrollHeight;
   }
@@ -6860,7 +6929,8 @@ A.fmtDate = (t) => {
       if (!st || token !== st.token) return;
       if (p.canvas) p.canvas.remove();
       p.canvas = c; p.w = w;
-      p.el.insertBefore(c, p.ov);
+      p.el.insertBefore(c, p.ink || p.ov);
+      drawInkPage(p);
       st.pages.forEach((q) => { if (q.canvas && Math.abs(q.n - st.page) > 5) { q.canvas.remove(); q.canvas = null; } });
     } catch (e) { /* keep placeholder */ }
     p.busy = false;
@@ -6875,7 +6945,10 @@ A.fmtDate = (t) => {
     const fctx = full.getContext('2d'); fctx.fillStyle = '#fff'; fctx.fillRect(0, 0, full.width, full.height);
     await page.render({ canvasContext: fctx, viewport: vp }).promise;
     const c = h('canvas'); c.width = Math.max(1, Math.round(rw * scale)); c.height = Math.max(1, Math.round(rh * scale));
-    c.getContext('2d').drawImage(full, -r[0] * full.width, -r[1] * full.height);
+    const cctx = c.getContext('2d');
+    cctx.drawImage(full, -r[0] * full.width, -r[1] * full.height);
+    const ink = (st.ann.ink && st.ann.ink[n]) || [];
+    if (ink.length) drawStrokes(cctx, ink, full.width, full.height, -r[0] * full.width, -r[1] * full.height);
     return c.toDataURL('image/jpeg', 0.9);
   };
   RD.pageImage = async (n) => regionImage(n, [0, 0, 1, 1], 1600);
@@ -6917,6 +6990,48 @@ A.fmtDate = (t) => {
 
   /* ---------- selecting with the Pencil (box or lasso) ---------- */
   const pageAt = (x, y) => { for (const p of st.pages) { const r = p.el.getBoundingClientRect(); if (y >= r.top && y <= r.bottom && x >= r.left - 20 && x <= r.right + 20) return { p, r }; } return null; };
+  /* ---------- handwriting on pages (stored as page-relative vector strokes) ---------- */
+  const INK = { black: '#1b1d22', blue: '#1f4fbf', red: '#c43c35', green: '#1e8449' };
+  const inkOf = (n) => ((st.ann.ink = st.ann.ink || {})[n] = st.ann.ink[n] || []);
+  const strokePath = (s, W, H, ox = 0, oy = 0) => {
+    const pts = [];
+    for (let i = 0; i < s.pts.length; i += 3) pts.push(s.pts[i] * W + ox, s.pts[i + 1] * H + oy, 0.35 + 0.65 * s.pts[i + 2]);
+    const path = new Path2D();
+    A.G.buildVar(path, pts.length > 6 ? A.G.spline(pts, 1.2) : pts, Math.max(0.6, s.w * W), 0);
+    return path;
+  };
+  const drawStrokes = (ctx, strokes, W, H, ox = 0, oy = 0) => {
+    for (const s of strokes) { ctx.fillStyle = s.c; ctx.globalAlpha = s.o || 1; ctx.fill(strokePath(s, W, H, ox, oy)); }
+    ctx.globalAlpha = 1;
+  };
+  function drawInkPage(p, live) {
+    const strokes = (st.ann.ink && st.ann.ink[p.n]) || [];
+    if (!strokes.length && !live && !p.ink) return;
+    if (!p.ink) { p.ink = h('canvas', { class: 'rd-ink' }); p.el.insertBefore(p.ink, p.ov); }
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const W = p.el.clientWidth, H = p.el.clientHeight;
+    if (p.ink.width !== Math.round(W * dpr) || p.ink.height !== Math.round(H * dpr)) { p.ink.width = Math.round(W * dpr); p.ink.height = Math.round(H * dpr); }
+    const ctx = p.ink.getContext('2d');
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, p.ink.width, p.ink.height);
+    drawStrokes(ctx, live ? strokes.concat([live]) : strokes, p.ink.width, p.ink.height);
+  }
+  RD.inkUndo = () => {
+    const last = st.inkHist.pop();
+    if (!last) return A.toast('Nothing to undo');
+    const arr = inkOf(last.page);
+    if (last.type === 'add') arr.splice(arr.indexOf(last.stroke), 1); else arr.push(...last.strokes);
+    saveAnn(); drawInkPage(st.pages[last.page - 1]);
+  };
+  const eraseAt = (p, fx, fy) => {
+    const arr = inkOf(p.n), rr = 0.012, gone = [];
+    for (let i = arr.length - 1; i >= 0; i--) {
+      const s = arr[i];
+      for (let k = 0; k < s.pts.length; k += 3) if (Math.hypot(s.pts[k] - fx, (s.pts[k + 1] - fy) * p.aspect) < rr + s.w) { gone.push(arr.splice(i, 1)[0]); break; }
+    }
+    if (gone.length) { st.inkHist.push({ type: 'erase', page: p.n, strokes: gone }); drawInkPage(p); saveAnn(); }
+  };
+
   function bindSelect(main) {
     let cur = null;
     const fingerSelects = () => st.tool !== 'read' && !S.penSeen;
@@ -6925,7 +7040,7 @@ A.fmtDate = (t) => {
       if (stylus || fingerSelects()) e.preventDefault(); // keep the Pencil from scrolling
     }, { passive: false });
     main.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.rd-hl')) return;
+      if (e.target.closest('.rd-hl') && st.tool !== 'write') return;
       const selecting = e.pointerType === 'pen' || e.pointerType === 'mouse' || fingerSelects();
       if (!selecting || e.button > 0) return;
       if (e.pointerType === 'pen' && !S.penSeen) { S.penSeen = true; A.saveSettings(); }
@@ -6935,12 +7050,22 @@ A.fmtDate = (t) => {
       clearActions();
       const fx = (e.clientX - hit.r.left) / hit.r.width, fy = (e.clientY - hit.r.top) / hit.r.height;
       cur = { p: hit.p, r: hit.r, pts: [[fx, fy]], id: e.pointerId };
+      if (st.tool === 'write') {
+        if (st.inkTool === 'eraser') { cur.erase = true; eraseAt(hit.p, fx, fy); }
+        else cur.stroke = { id: A.uid(), c: INK[st.inkColor] || INK.black, w: st.inkWidth, pts: [fx, fy, e.pointerType === 'pen' ? Math.max(0.05, e.pressure) : 0.6] };
+      }
       try { main.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
     });
     main.addEventListener('pointermove', (e) => {
       if (!cur || e.pointerId !== cur.id) return;
       e.preventDefault();
       const list = (e.getCoalescedEvents && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
+      if (cur.erase) { for (const ev of list) eraseAt(cur.p, (ev.clientX - cur.r.left) / cur.r.width, (ev.clientY - cur.r.top) / cur.r.height); return; }
+      if (cur.stroke) {
+        for (const ev of list) cur.stroke.pts.push((ev.clientX - cur.r.left) / cur.r.width, (ev.clientY - cur.r.top) / cur.r.height, ev.pointerType === 'pen' ? Math.max(0.05, ev.pressure) : 0.6);
+        if (!cur.raf) cur.raf = requestAnimationFrame(() => { if (cur) { cur.raf = 0; drawInkPage(cur.p, cur.stroke); } });
+        return;
+      }
       for (const ev of list) cur.pts.push([A.clamp((ev.clientX - cur.r.left) / cur.r.width, 0, 1), A.clamp((ev.clientY - cur.r.top) / cur.r.height, 0, 1)]);
       const sh = shapeOf(cur.pts);
       st.focus = Object.assign({ page: cur.p.n }, sh);
@@ -6948,6 +7073,16 @@ A.fmtDate = (t) => {
     });
     const up = (e) => {
       if (!cur || e.pointerId !== cur.id) return;
+      if (cur.erase) { cur = null; return; }
+      if (cur.stroke) {
+        const s = cur.stroke, p = cur.p;
+        cur = null;
+        s.pts = A.G.simplify(s.pts, 0.0006, 0.04);
+        inkOf(p.n).push(s);
+        st.inkHist.push({ type: 'add', page: p.n, stroke: s });
+        drawInkPage(p); saveAnn();
+        return;
+      }
       const sh = shapeOf(cur.pts);
       const n = cur.p.n;
       cur = null;
@@ -7024,13 +7159,20 @@ A.fmtDate = (t) => {
     save: () => saveAnn(),
     subject: () => st.meta.subject,
     emptyTitle: () => 'Ask about this ' + (st.meta.kind === 'sheet' ? 'problem set' : 'book'),
-    emptyText: 'Draw a box or a loop around any passage with the Apple Pencil, then tap Ask. The tutor reads the page with you and highlights the lines it refers to.',
+    get emptyText() { return st && st.kind === 'epub' ? 'Select any passage, then tap Ask. The tutor reads the chapter with you.' : 'Draw a box or a loop around any passage with the Apple Pencil, then tap Ask. The tutor reads the page with you and highlights the lines it refers to.'; },
     tips: ['Explain the main idea of this page', 'What do I need to know before reading this section?', 'Give me a hint for the problem on this page', 'Quiz me on this chapter so far'],
     placeholder: () => 'Ask about this page or your selection…',
-    attachButtons: () => [{ icon: 'pdf', label: 'This page', fn: async () => A.AI.attach({ kind: 'image', label: `p. ${st.page}`, url: await RD.pageImage(st.page), page: st.page }) }],
+    attachButtons: () => (st.kind === 'epub' ? [] : [{ icon: 'pdf', label: 'This page', fn: async () => A.AI.attach({ kind: 'image', label: `p. ${st.page}`, url: await RD.pageImage(st.page), page: st.page }) }]),
     onRemoveAtt: (a) => { if (st.focus && a.page === st.focus.page) { st.focus = null; drawOverlays(a.page); } },
-    systemExtra: () => `The student is reading "${st.meta.name}" (${st.pdf ? st.pdf.numPages + ' pages' : ''}) in Axiom's reader. Regions they select are attached as images together with the text of the selected lines.`,
+    systemExtra: () => (st.kind === 'epub'
+      ? `The student is reading the EPUB book "${st.meta.name}" in Axiom's reader. The text of the chapter on screen is provided. When you refer to a passage, quote it briefly in a > blockquote; line citations are not available in EPUBs.`
+      : `The student is reading "${st.meta.name}" (${st.pdf ? st.pdf.numPages + ' pages' : ''}) in Axiom's reader. Regions they select are attached as images together with the text of the selected lines. Their own handwriting on the page may appear in those images.`),
     contextText: async (atts) => {
+      if (st.kind === 'epub') {
+        const chap = epubChapterText();
+        const where = st.loc && st.toc ? (st.toc.find((t) => st.loc.start.href && st.loc.start.href.split('#')[0].endsWith(t.href.split('#')[0])) || {}).label : '';
+        return `[Reader context: "${st.meta.name}"${where ? ', chapter: ' + where.trim() : ''}.]\n\nChapter text (may be truncated):\n${chap.slice(0, 9000)}`;
+      }
       const pages = new Set([st.page]);
       atts.forEach((a) => a.page && pages.add(a.page));
       const parts = [`[Reader context: "${st.meta.name}", the student is on page ${st.page} of ${st.pdf.numPages}.]`];
@@ -7048,6 +7190,7 @@ A.fmtDate = (t) => {
       return parts.join('\n\n');
     },
     onCite: async (p, a, b) => {
+      if (st.kind === 'epub') return;
       const lines = await RD.lines(p);
       const sel = lines.filter((l) => l.id >= a && l.id <= b);
       st.cites = [{ page: p, rects: sel.length ? sel.map((l) => [l.r[0] - 0.004, l.r[1] - 0.003, l.r[2] + 0.004, l.r[3] + 0.003]) : [], flash: true }];
@@ -7058,6 +7201,7 @@ A.fmtDate = (t) => {
     },
     onAttClick: (a) => { if (!a.page) return; st.focus = a.rect ? { page: a.page, rect: a.rect } : null; goto(a.page, a.rect ? a.rect[1] : 0); drawOverlays(a.page); },
     onAnswer: async (text) => {
+      if (st.kind === 'epub') return;
       const re = /\[\[p(\d+):L(\d+)(?:\s*[-–]\s*L?(\d+))?\]\]/g; let m; const by = new Map();
       while ((m = re.exec(text))) { const p = +m[1]; if (!by.has(p)) by.set(p, []); by.get(p).push([+m[2], +(m[3] || m[2])]); }
       const cites = [];
@@ -7097,7 +7241,7 @@ A.fmtDate = (t) => {
     const rail = st.rail;
     rail.innerHTML = '';
     const tabs = h('div', { class: 'seg rd-rail-tabs' });
-    [['pages', 'Pages'], ['toc', 'Contents'], ['hl', 'Highlights']].forEach(([id, l]) => tabs.append(h('button', { class: st.railTab === id ? 'on' : '', onclick: () => { st.railTab = id; renderRail(); } }, l)));
+    (st.kind === 'epub' ? [['toc', 'Contents'], ['hl', 'Highlights']] : [['pages', 'Pages'], ['toc', 'Contents'], ['hl', 'Highlights']]).forEach(([id, l]) => tabs.append(h('button', { class: st.railTab === id ? 'on' : '', onclick: () => { st.railTab = id; renderRail(); } }, l)));
     const body = h('div', { class: 'rd-rail-body' });
     rail.append(tabs, body);
     if (st.railTab === 'pages') {
@@ -7117,6 +7261,10 @@ A.fmtDate = (t) => {
         body.append(t); io.observe(t);
       });
       requestAnimationFrame(() => { const on = body.querySelector('.rd-th.on'); if (on) on.scrollIntoView({ block: 'center' }); });
+    } else if (st.railTab === 'toc' && st.kind === 'epub') {
+      if (!st.toc) { body.append(h('p', { class: 'muted small rd-pad' }, 'Loading contents…')); return; }
+      if (!st.toc.length) body.append(h('p', { class: 'muted small rd-pad' }, 'This book has no table of contents.'));
+      st.toc.forEach((t) => body.append(h('button', { class: 'rd-toc', style: { paddingLeft: 10 + t.depth * 14 + 'px' }, onclick: () => st.rendition.display(t.href) }, t.label.trim())));
     } else if (st.railTab === 'toc') {
       if (!st.outline) {
         body.append(h('p', { class: 'muted small rd-pad' }, 'Loading contents…'));
@@ -7138,9 +7286,9 @@ A.fmtDate = (t) => {
       });
       walk(st.outline, 0);
     } else {
-      const hls = st.ann.highlights.slice().sort((a, b) => a.page - b.page);
+      const hls = st.ann.highlights.slice().sort((a, b) => (a.page || 0) - (b.page || 0) || a.created - b.created);
       if (!hls.length) body.append(h('p', { class: 'muted small rd-pad' }, 'Switch to the highlighter in the top bar, or draw a box and tap Highlight. Your highlights collect here.'));
-      hls.forEach((hl) => body.append(h('button', { class: 'rd-hl-item', onclick: () => { goto(hl.page, hl.rect[1]); } }, h('i', { class: 'rd-sw ' + (hl.color || 'yellow') }), h('span', { class: 'grow' }, hl.text || 'Highlighted region'), h('span', { class: 'num muted small' }, 'p. ' + hl.page))));
+      hls.forEach((hl) => body.append(h('button', { class: 'rd-hl-item', onclick: () => { if (hl.cfi) st.rendition.display(hl.cfi); else goto(hl.page, hl.rect[1]); } }, h('i', { class: 'rd-sw ' + (hl.color || 'yellow') }), h('span', { class: 'grow' }, hl.text || 'Highlighted region'), hl.page ? h('span', { class: 'num muted small' }, 'p. ' + hl.page) : null)));
     }
   }
 
@@ -7198,21 +7346,139 @@ A.fmtDate = (t) => {
   }
   const applyWidth = () => host.style.setProperty('--rdw', Math.round(A.clamp(S.readerTutorW || innerWidth * 0.36, Math.min(320, innerWidth * 0.45), innerWidth * (innerWidth < 1000 ? 0.5 : 0.6))) + 'px');
 
+  /* ---------- EPUB (reflowable books, paginated like Apple Books) ---------- */
+  const EPUB_THEMES = {
+    paper: { body: { color: '#1b1d22', background: '#ffffff' } },
+    sepia: { body: { color: '#3b3021', background: '#f4ecd8' } },
+    night: { body: { color: '#d9dce2', background: '#16171a' } },
+  };
+  function applyEpubTheme() {
+    if (!st || !st.rendition) return;
+    st.rendition.themes.select(S.readerTheme || 'paper');
+    st.rendition.themes.fontSize(Math.round((S.epubFont || 1) * 108) + '%');
+  }
+  RD.applyEpubTheme = applyEpubTheme;
+  async function openEpub(meta, token, main, bottomParts) {
+    const ePub = await A.ST.epubLib();
+    const blob = await A.store.loadFile('doc_' + meta.id, 'application/epub+zip');
+    if (!blob) throw new Error('missing');
+    const book = ePub(await blob.arrayBuffer());
+    if (!st || st.token !== token) return;
+    st.book = book;
+    main.classList.add('rd-epub-main');
+    const stage = h('div', { class: 'rd-epub-stage' });
+    const view = h('div', { class: 'rd-epub' });
+    const prev = h('button', { class: 'rd-turn prev', 'aria-label': 'Previous page', html: A.icon('chev') });
+    const next = h('button', { class: 'rd-turn next', 'aria-label': 'Next page', html: A.icon('chev') });
+    stage.append(prev, view, next);
+    main.append(stage);
+    const rendition = book.renderTo(view, { width: '100%', height: '100%', flow: 'paginated', spread: 'auto', allowScriptedContent: false });
+    st.rendition = rendition;
+    Object.entries(EPUB_THEMES).forEach(([k, v]) => rendition.themes.register(k, Object.assign({}, v, {
+      'p, li, blockquote': { 'line-height': '1.6' }, body: Object.assign({}, v.body, { 'font-family': '"Iowan Old Style", "Palatino", Georgia, serif', padding: '0 8px !important' }),
+      '::selection': { background: 'rgba(80,140,255,.35)' },
+    })));
+    applyEpubTheme();
+    prev.addEventListener('click', () => rendition.prev());
+    next.addEventListener('click', () => rendition.next());
+    // swipe and tap zones inside the book's frames
+    rendition.hooks.content.register((contents) => {
+      const doc = contents.document;
+      let sx = 0, sy = 0, t0 = 0;
+      doc.addEventListener('touchstart', (e) => { const t = e.changedTouches[0]; sx = t.clientX; sy = t.clientY; t0 = Date.now(); }, { passive: true });
+      doc.addEventListener('touchend', (e) => {
+        const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+        if (Date.now() - t0 < 600 && Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && !doc.getSelection().toString()) (dx < 0 ? rendition.next() : rendition.prev());
+      }, { passive: true });
+      doc.addEventListener('keyup', (e) => { if (e.key === 'ArrowRight') rendition.next(); if (e.key === 'ArrowLeft') rendition.prev(); });
+    });
+    // highlights saved by CFI
+    const paintHl = (hl) => { try { rendition.annotations.highlight(hl.cfi, { id: hl.id }, () => {}, 'rd-epub-hl', { fill: { yellow: '#ffd60a', green: '#4bd27a', blue: '#4d9bff', pink: '#ff5fa8' }[hl.color || 'yellow'], 'fill-opacity': '0.35', 'mix-blend-mode': 'multiply' }); } catch (e) { /* stale cfi */ } };
+    st.paintHl = paintHl;
+    // selection → actions
+    rendition.on('selected', async (cfi, contents) => {
+      let text = '';
+      try { text = (await book.getRange(cfi)).toString(); } catch (e) { text = contents.window.getSelection().toString(); }
+      text = text.replace(/\s+/g, ' ').trim();
+      if (!text) return;
+      let rect = null;
+      try { const rr = contents.window.getSelection().getRangeAt(0).getBoundingClientRect(); const fr = contents.document.defaultView.frameElement.getBoundingClientRect(); rect = { left: fr.left + rr.left, top: fr.top + rr.top, right: fr.left + rr.right, bottom: fr.top + rr.bottom }; } catch (e) { /* position fallback */ }
+      showEpubActions(cfi, text, rect, contents);
+    });
+    const [lbl, total, scrub] = bottomParts;
+    scrub.min = 0; scrub.max = 1000; scrub.value = 0;
+    scrub.addEventListener('change', () => { if (st.locReady) rendition.display(book.locations.cfiFromPercentage(+scrub.value / 1000)); });
+    rendition.on('relocated', (loc) => {
+      if (!st) return;
+      st.loc = loc;
+      const pct = st.locReady ? book.locations.percentageFromCfi(loc.start.cfi) : (loc.start.percentage || 0);
+      lbl.textContent = Math.round(pct * 100) + '%';
+      if (st.locReady) scrub.value = Math.round(pct * 1000);
+      const item = st.toc && st.toc.find((t) => loc.start.href && loc.start.href.split('#')[0].endsWith(t.href.split('#')[0]));
+      total.textContent = item ? item.label.trim() : '';
+      clearTimeout(st._sv);
+      st._sv = setTimeout(() => { const d = A.ST.doc(meta.id); if (d) { d.cfi = loc.start.cfi; d.progress = pct; d.lastRead = Date.now(); A.saveSettings(); } }, 500);
+      clearActions();
+    });
+    book.loaded.navigation.then((nav) => { if (st) { st.toc = flattenToc(nav.toc || []); renderRail(); } }).catch(() => {});
+    book.loaded.metadata.then((md) => { if (md && md.title && st) host.querySelector('.rd-title-main').textContent = md.title; }).catch(() => {});
+    await rendition.display(meta.cfi || undefined);
+    (st.ann.highlights || []).filter((x) => x.cfi).forEach(paintHl);
+    book.ready.then(() => book.locations.generate(1400)).then(() => { if (!st) return; st.locReady = true; if (st.loc) rendition.reportLocation ? rendition.reportLocation() : null; }).catch(() => {});
+    const d = A.ST.doc(meta.id); if (d) { d.lastRead = Date.now(); A.saveSettings(); }
+  }
+  const flattenToc = (items, depth = 0, out = []) => { items.forEach((it) => { out.push({ label: it.label, href: it.href, depth }); if (it.subitems && it.subitems.length) flattenToc(it.subitems, depth + 1, out); }); return out; };
+  function showEpubActions(cfi, text, rect, contents) {
+    clearActions();
+    const hr = host.getBoundingClientRect();
+    const bar = h('div', { class: 'rd-actions', role: 'toolbar', 'aria-label': 'Selection' });
+    const b = (icon, label, fn, primary) => { const x = h('button', { class: primary ? 'primary' : '', onclick: fn }); x.innerHTML = A.icon(icon); x.append(label); bar.append(x); };
+    const att = { kind: 'text', label: '“' + text.slice(0, 32) + (text.length > 32 ? '…”' : '”'), text, cfi };
+    const done = () => { clearActions(); try { contents.window.getSelection().removeAllRanges(); } catch (e) { /* ignore */ } };
+    b('spark', 'Ask', () => { done(); toggleTutor(true); A.AI.ask('', { send: false, attachments: [att] }); }, true);
+    b('book', 'Explain', () => { done(); toggleTutor(true); A.AI.ask('Explain this passage rigorously.', { mode: 'explain', attachments: [att] }); });
+    b('help', 'Hint', () => { done(); toggleTutor(true); A.AI.ask('Give me a hint for this. Not the solution.', { mode: 'hint', attachments: [att] }); });
+    b('rename', 'Highlight', () => { const hl = { id: A.uid(), cfi, color: 'yellow', text, created: Date.now() }; st.ann.highlights.push(hl); st.paintHl(hl); saveAnn(); renderRail(); done(); A.toast('Highlighted'); });
+    b('copy', 'Copy', () => { copyText(text); done(); });
+    host.append(bar);
+    const bw = bar.offsetWidth, bh = bar.offsetHeight;
+    const x = rect ? (rect.left + rect.right) / 2 - bw / 2 - hr.left : hr.width / 2 - bw / 2;
+    let y = rect ? rect.top - bh - 12 - hr.top : 80;
+    if (y < 70 && rect) y = rect.bottom + 12 - hr.top;
+    bar.style.left = A.clamp(x, 8, hr.width - bw - 8) + 'px';
+    bar.style.top = A.clamp(y, 64, hr.height - bh - 60) + 'px';
+  }
+  const epubChapterText = () => {
+    try { const c = st.rendition.getContents()[0]; return (c && c.document.body.innerText || '').replace(/\n{3,}/g, '\n\n').trim(); } catch (e) { return ''; }
+  };
+
   /* ---------- open / close ---------- */
   RD.open = async (meta) => {
     if (st) RD.close(true);
     host.innerHTML = '';
     const token = Math.random();
-    st = { meta, pages: [], zoom: 1, fit: S.readerFit || 'width', tool: 'read', page: meta.lastPage || 1, ann: ann0(), cites: [], focus: null, railTab: 'pages', token };
+    const isEpub = meta.type === 'epub';
+    st = { meta, kind: isEpub ? 'epub' : 'pdf', pages: [], zoom: 1, fit: S.readerFit || 'width', tool: 'read', page: meta.lastPage || 1, ann: ann0(), cites: [], focus: null, railTab: isEpub ? 'toc' : 'pages', token, inkTool: 'pen', inkColor: 'black', inkWidth: 0.0026, inkHist: [] };
     const ib = (icon, title, fn, id) => { const b = h('button', { class: 'ibtn', title, 'aria-label': title, id, html: A.icon(icon) }); b.addEventListener('click', fn); return b; };
     const subj = meta.subject && A.SU.get(meta.subject);
     const toolSeg = h('div', { class: 'seg rd-tools' });
-    const setTool = (t) => { st.tool = t; [...toolSeg.children].forEach((b) => b.classList.toggle('on', b.dataset.t === t)); host.dataset.tool = t; };
-    [['read', 'Read', 'b-select'], ['highlight', 'Highlight', 'rename']].forEach(([t, l, ic]) => { const b = h('button', { dataset: { t }, title: t === 'read' ? 'Pencil draws a focus box to ask about' : 'Pencil highlights passages' }); b.innerHTML = A.icon(ic); b.append(l); b.addEventListener('click', () => setTool(t)); toolSeg.append(b); });
+    const inkBar = h('div', { class: 'rd-group panel rd-inkbar', hidden: true });
+    const setTool = (t) => { st.tool = t; [...toolSeg.children].forEach((b) => b.classList.toggle('on', b.dataset.t === t)); host.dataset.tool = t; inkBar.hidden = t !== 'write'; clearActions(); };
+    [['read', 'Ask', 'b-select', 'Pencil draws a box or loop to ask about'], ['highlight', 'Highlight', 'rename', 'Pencil highlights passages'], ['write', 'Write', 'b-pen', 'Write on the page with the Pencil']].forEach(([t, l, ic, tip]) => { const b = h('button', { dataset: { t }, title: tip }); b.innerHTML = A.icon(ic); b.append(l); b.addEventListener('click', () => setTool(t)); toolSeg.append(b); });
+    const drawInkBar = () => {
+      inkBar.innerHTML = '';
+      Object.entries(INK).forEach(([k, c]) => inkBar.append(h('button', { class: 'rd-ink-c' + (st.inkTool === 'pen' && st.inkColor === k ? ' on' : ''), style: { background: c }, 'aria-label': k + ' pen', onclick: () => { st.inkTool = 'pen'; st.inkColor = k; drawInkBar(); } })));
+      inkBar.append(h('div', { class: 'sb-sep' }));
+      [[0.0018, 'Fine'], [0.0026, 'Medium'], [0.0042, 'Bold']].forEach(([w, l]) => inkBar.append(h('button', { class: 'rd-ink-w' + (Math.abs(st.inkWidth - w) < 1e-6 ? ' on' : ''), title: l, 'aria-label': l + ' line', onclick: () => { st.inkWidth = w; st.inkTool = 'pen'; drawInkBar(); } }, h('i', { style: { height: Math.round(w * 900) + 'px' } }))));
+      inkBar.append(h('div', { class: 'sb-sep' }));
+      const er = ib('b-eraser', 'Eraser', () => { st.inkTool = st.inkTool === 'eraser' ? 'pen' : 'eraser'; drawInkBar(); }); er.classList.toggle('on', st.inkTool === 'eraser'); inkBar.append(er);
+      inkBar.append(ib('undo', 'Undo', () => RD.inkUndo()));
+    };
+    drawInkBar();
     const themeBtn = ib('eye', 'Reading theme', (e) => {
       const m = h('div', { class: 'menu' });
-      [['paper', 'Paper'], ['sepia', 'Sepia'], ['night', 'Night']].forEach(([id, l]) => m.append(h('button', { class: (S.readerTheme || 'paper') === id ? 'on' : '', onclick: () => { S.readerTheme = id; A.saveSettings(); host.dataset.theme = id; A.closePopovers(); } }, h('i', { class: 'rd-theme-dot ' + id }), l)));
-      m.append(h('hr'), h('button', { onclick: () => { st.fit = st.fit === 'width' ? 'page' : 'width'; S.readerFit = st.fit; A.saveSettings(); st.zoom = 1; layout(); A.closePopovers(); } }, A.iconEl('scale'), st.fit === 'width' ? 'Fit whole page' : 'Fit page width'));
+      [['paper', 'Paper'], ['sepia', 'Sepia'], ['night', 'Night']].forEach(([id, l]) => m.append(h('button', { class: (S.readerTheme || 'paper') === id ? 'on' : '', onclick: () => { S.readerTheme = id; A.saveSettings(); host.dataset.theme = id; applyEpubTheme(); A.closePopovers(); } }, h('i', { class: 'rd-theme-dot ' + id }), l)));
+      if (!isEpub) m.append(h('hr'), h('button', { onclick: () => { st.fit = st.fit === 'width' ? 'page' : 'width'; S.readerFit = st.fit; A.saveSettings(); st.zoom = 1; layout(); A.closePopovers(); } }, A.iconEl('scale'), st.fit === 'width' ? 'Fit whole page' : 'Fit page width'));
       A.popover(m, e.currentTarget, { side: 'down' });
     });
     const pageLbl = h('span', { class: 'num rd-page-n' }, String(st.page));
@@ -7224,13 +7490,13 @@ A.fmtDate = (t) => {
       h('div', { class: 'rd-group panel' },
         ib('chev', 'Back to library', () => { RD.close(); A.emit('go:gallery'); }, 'rd-back'),
         h('div', { class: 'rd-title' }, h('div', { class: 'rd-title-main' }, meta.name), h('div', { class: 'rd-title-sub' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, subj ? subj.name : (meta.kind === 'sheet' ? 'Problem set' : 'Book'))),
-        h('div', { class: 'sb-sep' }), ib('gallery', 'Pages, contents and highlights', () => toggleRail(), 'rd-btn-rail'), ib('search', 'Search', (e) => openSearch(e.currentTarget))),
-      h('div', { class: 'rd-group panel' }, toolSeg),
+        h('div', { class: 'sb-sep' }), ib('gallery', isEpub ? 'Contents and highlights' : 'Pages, contents and highlights', () => toggleRail(), 'rd-btn-rail'), isEpub ? null : ib('search', 'Search', (e) => openSearch(e.currentTarget))),
+      isEpub ? null : h('div', { class: 'rd-group-wrap' }, h('div', { class: 'rd-group panel' }, toolSeg), inkBar),
       h('div', { class: 'rd-group panel' },
-        (() => { const b = ib('minus', 'Zoom out', () => { st.zoom = A.clamp(st.zoom / 1.2, 0.5, 3); layout(); }); b.classList.add('rd-zoom'); return b; })(),
-        (() => { const b = ib('plus', 'Zoom in', () => { st.zoom = A.clamp(st.zoom * 1.2, 0.5, 3); layout(); }); b.classList.add('rd-zoom'); return b; })(),
+        (() => { const b = isEpub ? h('button', { class: 'ibtn rd-aa', title: 'Smaller text', 'aria-label': 'Smaller text', onclick: () => { S.epubFont = A.clamp((S.epubFont || 1) - 0.1, 0.7, 2); A.saveSettings(); applyEpubTheme(); } }, 'A') : ib('minus', 'Zoom out', () => { st.zoom = A.clamp(st.zoom / 1.2, 0.5, 3); layout(); }); b.classList.add('rd-zoom'); return b; })(),
+        (() => { const b = isEpub ? h('button', { class: 'ibtn rd-aa big', title: 'Larger text', 'aria-label': 'Larger text', onclick: () => { S.epubFont = A.clamp((S.epubFont || 1) + 0.1, 0.7, 2); A.saveSettings(); applyEpubTheme(); } }, 'A') : ib('plus', 'Zoom in', () => { st.zoom = A.clamp(st.zoom * 1.2, 0.5, 3); layout(); }); b.classList.add('rd-zoom'); return b; })(),
         themeBtn,
-        ib('rename', 'Work on this page on the canvas', () => { const m = A.ST.doc(meta.id); RD.close(); A.UI.studyDoc(m); }),
+        isEpub ? null : ib('rename', 'Work on this page on the canvas', () => { const m = A.ST.doc(meta.id); RD.close(); A.UI.studyDoc(m); }),
         h('div', { class: 'sb-sep' }),
         ib('spark', 'Tutor', () => toggleTutor(), 'rd-btn-tutor')));
     const main = h('main', { class: 'rd-main', tabindex: 0 });
@@ -7238,7 +7504,7 @@ A.fmtDate = (t) => {
     main.append(pagesWrap);
     const rail = h('aside', { class: 'rd-rail', hidden: true });
     const tutor = h('aside', { class: 'rd-tutor', hidden: true }, h('div', { class: 'rd-grip', title: 'Drag to resize' }), h('div', { class: 'rd-tutor-body' }));
-    const bottom = h('footer', { class: 'rd-bottom panel' }, h('span', { class: 'muted small' }, 'Page'), pageLbl, total, scrub);
+    const bottom = h('footer', { class: 'rd-bottom panel' }, h('span', { class: 'muted small' }, isEpub ? '' : 'Page'), pageLbl, total, scrub);
     host.append(top, rail, main, tutor, bottom);
     host.dataset.theme = S.readerTheme || 'paper';
     host.style.setProperty('--rd-filter', '');
@@ -7256,6 +7522,13 @@ A.fmtDate = (t) => {
     host.hidden = false;
     // content
     st.ann = await loadAnn(meta.id);
+    if (isEpub) {
+      try { await openEpub(meta, token, main, [pageLbl, total, scrub]); }
+      catch (e) { console.error(e); main.append(h('p', { class: 'muted rd-pad' }, 'This EPUB could not be opened. It may be protected by DRM (books bought in Apple Books usually are).')); }
+      if (st && S.readerRail) toggleRail(true);
+      if (st && S.readerTutor) toggleTutor(true);
+      return;
+    }
     if (meta.type === 'image') {
       pagesWrap.append(h('p', { class: 'muted rd-pad' }, 'Photos open on the canvas. Use “Work on this page on the canvas”.'));
       return;
@@ -7303,6 +7576,8 @@ A.fmtDate = (t) => {
   RD.close = (silent) => {
     if (!st) return;
     try { st.io && st.io.disconnect(); } catch (e) { /* ignore */ }
+    try { if (st.rendition) st.rendition.destroy(); } catch (e) { /* ignore */ }
+    if (st.book) { const bk = st.book; Promise.resolve(bk.ready).catch(() => {}).then(() => { try { bk.destroy(); } catch (e) { /* ignore */ } }); }
     saveAnn.flush && saveAnn.flush();
     const d = A.ST.doc(st.meta.id); if (d) { d.lastPage = st.page; d.lastRead = Date.now(); A.saveSettings(); }
     st = null;
@@ -7417,7 +7692,7 @@ A.fmtDate = (t) => {
         dotColor ? h('i', { class: 'dot', style: { background: dotColor } }) : A.iconEl(icon || 'gallery'), h('span', { class: 'grow' }, label), n != null ? h('span', { class: 'g-count num' }, String(n)) : null);
       return b;
     };
-    side.append(item('home', 'Home', null, null, 'spark'), item('all', 'Drawings', metas.length, null, 'gallery'), item('library', 'Library', docs.length, null, 'book'));
+    side.append(item('home', 'Home', null, null, 'spark'), item('all', 'Drawings', metas.length, null, 'gallery'), item('library', 'Books', docs.length, null, 'book'));
     side.append(h('div', { class: 'g-side-h' }, h('span', null, 'Courses'), h('button', { class: 'ibtn', title: 'Add a course', 'aria-label': 'Add a course', html: A.icon('plus'), onclick: async () => { const n = await A.dialog({ title: 'New course', input: '', okText: 'Add' }); if (n && A.SU.add(n)) render(); } })));
     A.SU.list().forEach((s) => {
       const b = item(s.id, s.name, count((m) => m.subject === s.id) + docs.filter((d) => d.subject === s.id).length, s.color);
@@ -7428,12 +7703,12 @@ A.fmtDate = (t) => {
     if (!A.SU.list().length) side.append(h('button', { class: 'g-nav ghost', onclick: async () => { await A.SU.openSetup(); render(); } }, A.iconEl('plus'), 'Add your courses'));
     const none = count((m) => !m.subject);
     if (A.SU.list().length && none) side.append(item('none', 'No course', none, 'var(--line-strong)'));
-    side.append(h('div', { class: 'grow' }), h('button', { class: 'g-nav ghost', onclick: () => A.UI.openSettings() }, A.iconEl('settings'), 'Settings'));
+    side.append(h('div', { class: 'grow' }), h('button', { class: 'g-nav ghost', onclick: () => A.UI.openSettings() }, A.iconEl('settings'), 'Settings'), h('div', { class: 'g-ver num' }, `Axiom ${A.VERSION} · build ${window.AXIOM_BUILD || 'dev'}`));
 
     const main = h('main', { class: 'g-main' });
     host.append(h('div', { class: 'g-wrap g-layout' }, side, main));
     const newBtn = () => h('button', { class: 'btn primary', onclick: newDrawing }, A.iconEl('plus'), 'New drawing');
-    const addDocBtn = () => h('button', { class: 'btn', onclick: importDocs }, A.iconEl('import'), 'Add PDF or photo');
+    const addDocBtn = () => h('button', { class: 'btn', onclick: importDocs }, A.iconEl('import'), 'Add book or PDF');
     const sorters = { updated: (a, b) => b.updated - a.updated, created: (a, b) => b.created - a.created, name: (a, b) => a.name.localeCompare(b.name) };
     const section = (title, actions, content) => h('section', { class: 'g-sec' }, h('div', { class: 'g-sec-h' }, h('h2', null, title), actions || null), content);
     docs.filter((d) => !d.cover).slice(0, 6).forEach((d) => A.ST.makeCover(d));
@@ -7445,7 +7720,7 @@ A.fmtDate = (t) => {
         h('div', null, h('p', { class: 'home-date' }, new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })),
           h('h1', { class: 'home-greet' }, greet + '.'),
           h('p', { class: 'home-sub' }, metas.length || docs.length ? 'Pick up where you left off.' : 'Start a drawing, or add a book or problem set to your library.')),
-        h('div', { class: 'g-actions' }, addDocBtn(), newBtn())));
+        h('div', { class: 'g-actions' }, h('button', { class: 'btn', onclick: () => go('library') }, A.iconEl('book'), 'Books'), addDocBtn(), newBtn())));
       const lastDraw = metas.slice().sort(sorters.updated)[0];
       const lastBook = docs.filter((d) => d.lastRead).sort((a, b) => b.lastRead - a.lastRead)[0];
       if (lastDraw || lastBook) {
@@ -7457,7 +7732,7 @@ A.fmtDate = (t) => {
       const recent = metas.slice().sort(sorters.updated).slice(0, 4);
       if (recent.length) { const g = h('div', { class: 'g-grid' }); recent.forEach((m) => g.append(card(m))); main.append(section('Recent drawings', h('button', { class: 'link-btn', onclick: () => go('all') }, 'See all'), g)); }
       const shelfDocs = docs.slice().sort((a, b) => (b.lastRead || b.added) - (a.lastRead || a.added)).slice(0, 8);
-      main.append(section('Library', h('button', { class: 'link-btn', onclick: () => go('library') }, shelfDocs.length ? 'See all' : ''), shelfDocs.length ? shelf(shelfDocs) : emptyLibrary()));
+      main.append(section('Books', h('button', { class: 'link-btn', onclick: () => go('library') }, shelfDocs.length ? 'Open Books' : ''), shelfDocs.length ? shelf(shelfDocs) : emptyLibrary()));
       if (A.SU.list().length) {
         const cg = h('div', { class: 'course-grid' });
         A.SU.list().forEach((s) => cg.append(h('button', { class: 'course-tile', style: { '--c': s.color }, onclick: () => go(s.id) },
@@ -7469,9 +7744,9 @@ A.fmtDate = (t) => {
     }
 
     if (filter === 'library') {
-      main.append(h('header', { class: 'page-hero' }, h('div', null, h('h1', { class: 'page-title' }, 'Library'), h('p', { class: 'home-sub' }, 'Books, problem sets and notes. Open one to read with the tutor beside you.')), h('div', { class: 'g-actions' }, addDocBtn())));
+      main.append(h('header', { class: 'page-hero' }, h('div', null, h('h1', { class: 'page-title' }, 'Books'), h('p', { class: 'home-sub' }, 'Textbooks, problem sets and notes (PDF or EPUB). Open one to read with the tutor beside you.')), h('div', { class: 'g-actions' }, addDocBtn())));
       if (!docs.length) { main.append(emptyLibrary()); return; }
-      const reading = docs.filter((d) => d.lastRead && (d.lastPage || 1) > 1).sort((a, b) => b.lastRead - a.lastRead);
+      const reading = docs.filter((d) => d.lastRead && ((d.lastPage || 1) > 1 || d.progress > 0.01)).sort((a, b) => b.lastRead - a.lastRead);
       if (reading.length) main.append(section('Continue reading', null, shelf(reading.slice(0, 8))));
       const books = docs.filter((d) => (d.kind || 'book') === 'book').sort((a, b) => a.name.localeCompare(b.name));
       const sheets = docs.filter((d) => d.kind === 'sheet').sort((a, b) => b.added - a.added);
@@ -7511,8 +7786,8 @@ A.fmtDate = (t) => {
   const emptyLibrary = () => h('div', { class: 'lib-empty' },
     h('div', { class: 'lib-empty-art', html: A.icon('book') }),
     h('h3', null, 'Your reading room'),
-    h('p', null, 'Add textbooks, problem sets, solutions and lecture notes as PDFs. Read them full screen, draw a box around any passage with the Pencil, and ask the tutor about exactly that part.'),
-    h('button', { class: 'btn primary', onclick: importDocs }, A.iconEl('import'), 'Add PDF or photo'));
+    h('p', null, 'Add textbooks (PDF or EPUB), problem sets, solutions and lecture notes. Read them full screen, circle any passage with the Pencil, and ask the tutor about exactly that part. From Apple Books: Share › Save to Files, then add it here.'),
+    h('button', { class: 'btn primary', onclick: importDocs }, A.iconEl('import'), 'Add book or PDF'));
 
   function subjectMenu(anchor, id) {
     const s = A.SU.get(id);
@@ -7586,7 +7861,7 @@ A.fmtDate = (t) => {
 
   /* ---------- library: covers, shelves ---------- */
   const fmtSize = (n) => (n > 1e6 ? (n / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1e3)) + ' KB');
-  const progressOf = (d) => (d.pages > 1 ? Math.min(1, (d.lastPage || 1) / d.pages) : 0);
+  const progressOf = (d) => (d.type === 'epub' ? d.progress || 0 : d.pages > 1 ? Math.min(1, (d.lastPage || 1) / d.pages) : 0);
   function cover(d) {
     const subj = d.subject && A.SU.get(d.subject);
     const c = h('span', { class: 'cover' + (d.kind === 'sheet' ? ' sheet' : ''), style: { '--c': subj ? subj.color : '#5b6b86' } });
@@ -7603,7 +7878,7 @@ A.fmtDate = (t) => {
       h('button', { class: 'book-open', onclick: () => A.emit('read', d.id), 'aria-label': 'Read ' + d.name }, cover(d)),
       h('div', { class: 'book-meta' },
         h('div', { class: 'grow' }, h('div', { class: 'book-title' }, d.name),
-          h('div', { class: 'book-sub' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, d.pages ? (d.lastRead && (d.lastPage || 1) > 1 ? `Page ${d.lastPage} of ${d.pages}` : `${d.pages} page${d.pages === 1 ? '' : 's'}`) : fmtSize(d.size || 0))),
+          h('div', { class: 'book-sub' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, d.type === 'epub' ? (d.progress ? `${Math.round(d.progress * 100)}% read` : (d.author || 'EPUB')) : d.pages ? (d.lastRead && (d.lastPage || 1) > 1 ? `Page ${d.lastPage} of ${d.pages}` : `${d.pages} page${d.pages === 1 ? '' : 's'}`) : fmtSize(d.size || 0))),
         more),
       p > 0 && d.lastRead ? h('div', { class: 'book-progress' }, h('span', { style: { width: Math.round(p * 100) + '%' } })) : null);
     return el;
@@ -7613,7 +7888,7 @@ A.fmtDate = (t) => {
     const p = progressOf(d);
     return h('button', { class: 'cont-card cont-book', onclick: () => A.emit('read', d.id) }, cover(d),
       h('div', { class: 'cont-info' }, h('span', { class: 'cont-kicker' }, 'Reading'), h('span', { class: 'cont-title' }, d.name),
-        h('span', { class: 'cont-sub num' }, d.pages ? `Page ${d.lastPage || 1} of ${d.pages} · ${Math.round(p * 100)}%` : ''),
+        h('span', { class: 'cont-sub num' }, d.type === 'epub' ? `${Math.round(p * 100)}% read` : d.pages ? `Page ${d.lastPage || 1} of ${d.pages} · ${Math.round(p * 100)}%` : ''),
         h('span', { class: 'book-progress wide' }, h('span', { style: { width: Math.round(p * 100) + '%' } })),
         h('span', { class: 'cont-cta' }, 'Continue reading', A.iconEl('chev'))));
   }
