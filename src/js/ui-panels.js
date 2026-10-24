@@ -649,13 +649,13 @@
         h('h5', null, 'Tutor'),
         row('Anthropic API key', S.aiKey ? 'Connected (stored only on this device)' : 'Not connected. Open the study panel to connect.', S.aiKey ? h('button', { class: 'btn', onclick: () => { S.aiKey = ''; A.saveSettings(); rebuild(); A.toast('API key removed'); } }, 'Remove key') : h('span')),
         row('Default model', null, sel('aiModel', A.AI.models.map((m) => [m.id, m.name]))),
-        h('h5', null, 'This drawing'),
+        ...(D.doc ? [h('h5', null, 'This drawing'),
         row('Course', null, (() => { const b = h('button', { class: 'btn' }, A.SU.name(D.doc.subject) || 'None'); b.addEventListener('click', () => A.SU.pickMenu(b, D.doc.subject, (sid) => { D.doc.subject = sid; D.changed('meta'); rebuild(); })); return b; })()),
         row('Paper', null, (() => {
           const r = h('div', { class: 'bg-row' });
           Object.entries(D.papers).forEach(([k, c]) => r.append(h('button', { class: D.doc.paper.bg === c ? 'on' : '', style: { background: c }, 'aria-label': k, onclick: () => { D.doc.paper.bg = c; D.changed('paper'); R.render(); rebuild(); } })));
           return r;
-        })()),
+        })())] : []),
         h('p', { class: 'small muted', style: { marginTop: '16px' } }, `Axiom ${A.VERSION}${A.store.usingMemory ? ' · storage unavailable, drawings last until you close the app' : ' · saved on this device'}`));
     };
     rebuild();

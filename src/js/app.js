@@ -27,6 +27,8 @@
     if (D.doc) { autosave.cancel(); await save(); }
     A.IN.cancelAll();
     D.doc = null;
+    if (A.RD.isOpen()) A.RD.close();
+    A.$('#reader-view').hidden = true;
     canvasView().hidden = true;
     gallery().hidden = false;
     updateChrome();
@@ -35,6 +37,8 @@
   async function openDoc(id) {
     const raw = await A.store.loadDoc(id);
     if (!raw) { A.toast('That drawing could not be found'); return showGallery(); }
+    if (A.RD.isOpen()) A.RD.close();
+    A.$('#reader-view').hidden = true;
     const doc = D.normalize(raw);
     D.doc = doc;
     D.resetHistory();
@@ -55,6 +59,16 @@
     R.renderNow(true);
   }
   A.on('go:gallery', showGallery);
+  A.on('read', async (id) => {
+    const meta = A.ST.doc(id);
+    if (!meta) return A.toast('That document could not be found');
+    A.closePopovers();
+    if (D.doc) { autosave.cancel(); await save(); A.IN.cancelAll(); D.doc = null; }
+    canvasView().hidden = true;
+    gallery().hidden = true;
+    updateChrome();
+    A.RD.open(meta);
+  });
   A.on('app:background', () => { if (D.doc) autosave.flush(); });
   A.on('open', openDoc);
 
@@ -135,6 +149,8 @@
     UI.mountSelection(A.$('#selmenu'), A.$('#selpopup'));
     UI.mountGallery(A.$('#gallery-view'));
     A.ST.mount(A.$('#studypanel'));
+    A.RD.mount(A.$('#reader-view'));
+    if (!S.homeSeen) { S.homeSeen = true; S.galleryFilter = 'home'; A.saveSettings(); }
     A.$('#restore-ui').innerHTML = A.icon('eye');
     A.$('#restore-ui').addEventListener('click', () => A.emit('cmd', 'toggleUI'));
     A.on('selmenu:show', () => {});

@@ -104,6 +104,18 @@ axiom/
 - **Visual tools:** about 60 editable vector diagrams across Math, Topology & geometry, Optics, Mechanics, Circuits, Waves & thermo, Chemistry and CS, ordered by the student's majors.
 - **My visuals:** save any selection to a course's visual library and reuse it.
 
+## 4d. Reading room (built)
+- **Library:** Home (greeting, Continue reading/drawing, recent drawings, library shelf, course tiles), Library (Continue reading, Books, Problem sets & notes) with page-1 covers and progress, and course pages that combine drawings and books.
+- **Reader:**
+  - continuous pages that render on demand, with zoom and pinch, fit width or fit page
+  - Paper, Sepia and Night themes, a page scrubber
+  - a rail with page thumbnails, the PDF's contents and highlights
+  - search across the whole book's text
+- **Ask with the Pencil:** drawing a box or a loop selects a passage, then Ask, Explain, Hint, Highlight or Copy text. The tutor gets a high-resolution crop, the selected lines' text and the page's text as numbered lines.
+- **Citations:** the tutor cites lines as [[pN:La-Lb]], rendered as tappable chips that scroll the reader and highlight those lines. Cited lines are also marked when an answer arrives.
+- **Per book:** highlights (4 colors) and tutor conversations are saved for each book. "Work on this page on the canvas" opens the document beside a drawing.
+- **Next:** EPUB support, handwriting directly on PDF pages, and spoken explanations.
+
 ## 5. Stage 2 roadmap: STEM study features (Notability and beyond)
 1. **PDF workspace:** a page view with a thumbnail rail and annotation directly on top. The split view beside your work is done; see 4c.
 2. **Math typesetting:** LaTeX blocks (KaTeX) and handwriting-to-LaTeX conversion.

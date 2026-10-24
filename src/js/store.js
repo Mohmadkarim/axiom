@@ -142,7 +142,7 @@
     aiKey: '',
     aiModel: 'claude-opus-5-5',
     panelW: 0,
-    galleryFilter: 'all',
+    galleryFilter: 'home',
     darkCanvas: true,
     penSeen: false,
   });

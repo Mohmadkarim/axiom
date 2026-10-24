@@ -56,7 +56,30 @@
     S.documents = ST.docs().concat([meta]);
     A.saveSettings();
     A.emit('documents');
+    ST.makeCover(meta).catch(() => {});
     return meta;
+  };
+  /* cover image (page 1) + book/problem-set guess from the page count */
+  const coverBusy = new Set();
+  ST.makeCover = async (meta) => {
+    if (meta.cover || coverBusy.has(meta.id)) return;
+    coverBusy.add(meta.id);
+    try {
+      if (meta.type === 'pdf') {
+        const pdf = await ST.loadPdf(meta);
+        const page = await pdf.getPage(1);
+        const vp1 = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: 360 / vp1.width });
+        const c = h('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+        const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+        await page.render({ canvasContext: ctx, viewport: vp }).promise;
+        ST.updateDoc(meta.id, { cover: c.toDataURL('image/jpeg', 0.8), pages: pdf.numPages, kind: meta.kind || (pdf.numPages >= 30 ? 'book' : 'sheet') });
+      } else {
+        const blob = await A.store.loadFile('doc_' + meta.id, meta.mime);
+        ST.updateDoc(meta.id, { cover: await blobToJpeg(blob, 360), pages: 1, kind: meta.kind || 'sheet' });
+      }
+      A.emit('cover', meta.id);
+    } catch (e) { /* leave the placeholder cover */ }
+    coverBusy.delete(meta.id);
   };
   ST.deleteDoc = async (id) => {
     S.documents = ST.docs().filter((d) => d.id !== id); A.saveSettings();
@@ -141,7 +164,7 @@
     // body
     if (view && view.detach) view.detach();
     bodyEl.innerHTML = '';
-    if (doc.studyActive === 'ai') { view = null; A.AI.mount(bodyEl); }
+    if (doc.studyActive === 'ai') { view = null; A.AI.mount(bodyEl, A.AI.canvasCtx); }
     else {
       const meta = ST.doc(doc.studyActive);
       let v = views.get(meta.id);
