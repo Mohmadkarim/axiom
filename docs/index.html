@@ -7,7 +7,7 @@
 <meta name="description" content="An infinite canvas for scientists and mathematicians">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Axiom">
 <meta name="theme-color" content="#eef0f3">
 <link rel="manifest" href="manifest.webmanifest">
@@ -80,8 +80,6 @@ input, select, textarea { font: inherit; color: inherit; -webkit-user-select: te
 .row.between { justify-content: space-between; }
 .grow { flex: 1; min-width: 0; }
 #app { position: fixed; inset: 0; }
-/* Home Screen app under the clock: iPadOS reports a shorter viewport, so size by the full screen */
-.standalone #app { inset: auto; top: 0; left: 0; right: 0; height: calc(100% + env(safe-area-inset-top, 0px)); }
 .standalone, .standalone body { background: var(--bg); }
 
 /* ---------- buttons & fields ---------- */
@@ -407,7 +405,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
 </div>
 <div id="toasts" aria-live="polite"></div>
 
-<script>window.AXIOM_BUILD = 'mvme58je';
+<script>window.AXIOM_BUILD = 'mvmecuhk';
 /* ---- core.js ---- */
 /* Axiom core: namespace, math, color, events, DOM helpers */
 'use strict';
@@ -4791,6 +4789,7 @@ A.fmtDate = (t) => {
     if (t === 'system') delete document.documentElement.dataset.theme;
     else document.documentElement.dataset.theme = t;
     if (A.R && A.R.themeChanged) A.R.themeChanged();
+    A.emit('theme');
   };
   UI.openSettings = () => {
     const back = h('div', { class: 'modal-back' });
@@ -5099,6 +5098,7 @@ A.fmtDate = (t) => {
     D.doc = null;
     canvasView().hidden = true;
     gallery().hidden = false;
+    updateChrome();
     await UI.renderGallery();
   }
   async function openDoc(id) {
@@ -5177,31 +5177,24 @@ A.fmtDate = (t) => {
     return doc;
   }
 
-  /* ---------- Home Screen app: fill the real screen ----------
-     Under the clock (black-translucent) iPadOS reports a viewport that is short by the status-bar
-     height, leaving an empty strip at the bottom. Size the app from the physical screen instead. */
-  function fitStandalone() {
-    const root = document.documentElement, app = A.$('#app');
-    if (!root.classList.contains('standalone') || !app) return;
-    const land = innerWidth > innerHeight;
-    const big = Math.max(screen.width, screen.height), small = Math.min(screen.width, screen.height);
-    const fullW = land ? big : small, fullH = land ? small : big;
-    // only when the app owns the whole screen (not Split View / Stage Manager windows)
-    if (Math.abs(innerWidth - fullW) <= 4 && innerHeight < fullH) app.style.height = fullH + 'px';
-    else app.style.height = '';
-    if (D.doc && R.main) { R.resize(); R.render(); }
+  /* ---------- status-bar color: blend the clock strip into the canvas / gallery ---------- */
+  function updateChrome() {
+    let m = document.querySelector('meta[name="theme-color"]');
+    if (!m) { m = document.createElement('meta'); m.name = 'theme-color'; document.head.append(m); }
+    const onCanvas = D.doc && !canvasView().hidden;
+    const c = onCanvas ? R.displayBg() : (getComputedStyle(document.body).backgroundColor || '#eef0f3');
+    m.setAttribute('content', c);
   }
-  addEventListener('resize', () => setTimeout(fitStandalone, 50));
-  addEventListener('orientationchange', () => setTimeout(fitStandalone, 300));
+  A.on('doc:open', () => setTimeout(updateChrome, 0));
+  A.on('doc:changed', (k) => { if (k === 'paper' || k === 'all') updateChrome(); });
+  A.on('theme', () => setTimeout(updateChrome, 0));
 
   /* ---------- boot ---------- */
   async function boot() {
     try { if (navigator.standalone || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches) document.documentElement.classList.add('standalone'); } catch (e) { /* ignore */ }
     UI.applyTheme();
-    fitStandalone();
     if (matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => UI.applyTheme());
     R.init(A.$('#main'), A.$('#overlay'));
-    fitStandalone();
     A.IN.init(A.$('#overlay'));
     UI.mountStatus(A.$('#statusbar'));
     UI.mountTools(A.$('#tools'));

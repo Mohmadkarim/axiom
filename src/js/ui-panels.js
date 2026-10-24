@@ -588,6 +588,7 @@
     if (t === 'system') delete document.documentElement.dataset.theme;
     else document.documentElement.dataset.theme = t;
     if (A.R && A.R.themeChanged) A.R.themeChanged();
+    A.emit('theme');
   };
   UI.openSettings = () => {
     const back = h('div', { class: 'modal-back' });

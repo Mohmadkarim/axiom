@@ -29,6 +29,7 @@
     D.doc = null;
     canvasView().hidden = true;
     gallery().hidden = false;
+    updateChrome();
     await UI.renderGallery();
   }
   async function openDoc(id) {
@@ -107,31 +108,24 @@
     return doc;
   }
 
-  /* ---------- Home Screen app: fill the real screen ----------
-     Under the clock (black-translucent) iPadOS reports a viewport that is short by the status-bar
-     height, leaving an empty strip at the bottom. Size the app from the physical screen instead. */
-  function fitStandalone() {
-    const root = document.documentElement, app = A.$('#app');
-    if (!root.classList.contains('standalone') || !app) return;
-    const land = innerWidth > innerHeight;
-    const big = Math.max(screen.width, screen.height), small = Math.min(screen.width, screen.height);
-    const fullW = land ? big : small, fullH = land ? small : big;
-    // only when the app owns the whole screen (not Split View / Stage Manager windows)
-    if (Math.abs(innerWidth - fullW) <= 4 && innerHeight < fullH) app.style.height = fullH + 'px';
-    else app.style.height = '';
-    if (D.doc && R.main) { R.resize(); R.render(); }
+  /* ---------- status-bar color: blend the clock strip into the canvas / gallery ---------- */
+  function updateChrome() {
+    let m = document.querySelector('meta[name="theme-color"]');
+    if (!m) { m = document.createElement('meta'); m.name = 'theme-color'; document.head.append(m); }
+    const onCanvas = D.doc && !canvasView().hidden;
+    const c = onCanvas ? R.displayBg() : (getComputedStyle(document.body).backgroundColor || '#eef0f3');
+    m.setAttribute('content', c);
   }
-  addEventListener('resize', () => setTimeout(fitStandalone, 50));
-  addEventListener('orientationchange', () => setTimeout(fitStandalone, 300));
+  A.on('doc:open', () => setTimeout(updateChrome, 0));
+  A.on('doc:changed', (k) => { if (k === 'paper' || k === 'all') updateChrome(); });
+  A.on('theme', () => setTimeout(updateChrome, 0));
 
   /* ---------- boot ---------- */
   async function boot() {
     try { if (navigator.standalone || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches) document.documentElement.classList.add('standalone'); } catch (e) { /* ignore */ }
     UI.applyTheme();
-    fitStandalone();
     if (matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => UI.applyTheme());
     R.init(A.$('#main'), A.$('#overlay'));
-    fitStandalone();
     A.IN.init(A.$('#overlay'));
     UI.mountStatus(A.$('#statusbar'));
     UI.mountTools(A.$('#tools'));
