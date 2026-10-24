@@ -180,15 +180,14 @@
       this.pm = this.pm == null ? m : this.pm + (m - this.pm) * (this.hasPressure ? 0.55 : 0.3);
       m = this.pm;
       this.raw.push(wx, wy, m);
+      // keep the real pen positions (no lagging filter): smoothing happens symmetrically in finalPts,
+      // so the ink stays exactly under the Pencil and the stroke never drifts off the path
       const n = this.pts.length;
       if (!n || this.guide) { this.pts.push(wx, wy, m); }
       else {
-        const sm = A.clamp(this.slot.smoothing, 0, 0.97);
-        const k = 1 - sm * 0.86;
         const lx = this.pts[n - 3], ly = this.pts[n - 2];
-        const x = lx + (wx - lx) * k, y = ly + (wy - ly) * k;
-        if (hyp(x - lx, y - ly) * this.zoom > 0.4) this.pts.push(x, y, m);
-        else this.pts[n - 1] = Math.max(this.pts[n - 1], m * 0.5 + this.pts[n - 1] * 0.5);
+        if (hyp(wx - lx, wy - ly) * this.zoom > 0.6) this.pts.push(wx, wy, m);
+        else { this.pts[n - 3] = wx; this.pts[n - 2] = wy; this.pts[n - 1] = Math.max(this.pts[n - 1], m); }
       }
       this.lastS = s;
     }
@@ -227,13 +226,7 @@
     /* turn live points into final points (snap/align/straight/shape) */
     finalPts(live = false) {
       const doc = D.doc;
-      let pts = this.pts.slice();
-      if (!live && this.raw.length >= 3) {
-        const L = this.raw.length;
-        const lx = this.raw[L - 3], ly = this.raw[L - 2];
-        const n = pts.length;
-        if (hyp(pts[n - 3] - lx, pts[n - 2] - ly) > 0.2 / this.zoom) pts.push(lx, ly, pts[n - 1]);
-      }
+      let pts = this.guide ? this.pts.slice() : IN.smoothStroke(this.pts, this.slot.smoothing);
       if (live && this.predicted) pts = pts.concat(this.predicted);
       let sharp = false, closed = false;
       if (this.shape) {
@@ -314,6 +307,7 @@
       D.addItems([item], layer);
       D.commit();
       R.appendItem(item, layer);
+      R.renderOverlayNow();
       if (D.doc.precision.measure && G.count(pts) >= 2 && !this.cat.mask) {
         IN.lastMeasure = { item, until: performance.now() + 2200 };
         setTimeout(() => R.renderOverlay(), 2300);
@@ -743,6 +737,27 @@
     cancel() { if (this.begun) D.cancel(); }
   }
 
+  /* zero-lag smoothing (Taubin λ|μ): removes jitter without pulling the line inward or behind the pen;
+     the first and last points stay exactly where the Pencil touched */
+  IN.smoothStroke = (src, strength) => {
+    const n = src.length / 3;
+    if (n < 4 || strength <= 0.01) return src.slice();
+    let a = src.slice(), b = src.slice();
+    const passes = Math.round(1 + strength * 5);
+    for (let it = 0; it < passes; it++) {
+      for (const f of [0.5, -0.53]) {
+        for (let i = 1; i < n - 1; i++) {
+          const j = i * 3;
+          b[j] = a[j] + f * ((a[j - 3] + a[j + 3]) / 2 - a[j]);
+          b[j + 1] = a[j + 1] + f * ((a[j - 2] + a[j + 4]) / 2 - a[j + 1]);
+        }
+        const t = a; a = b; b = t;
+        b[0] = a[0]; b[1] = a[1]; b[(n - 1) * 3] = a[(n - 1) * 3]; b[(n - 1) * 3 + 1] = a[(n - 1) * 3 + 1];
+      }
+    }
+    return a;
+  };
+
   /* ---- momentum: a flick keeps the page gliding and eases out, like native scrolling ---- */
   const Glide = {
     raf: 0, samples: [],
@@ -936,8 +951,21 @@
     return null;
   }
 
+  /* self-calibration: WebKit's own pen-down and the native sample of the same touch should agree; if the web view is ever
+     scaled or inset (Stage Manager, split view), learn the offset so ink stays exactly under the Pencil tip */
+  const penCal = { x: 0, y: 0, web: null, nat: null, n: 0 };
+  const calPair = () => {
+    const w = penCal.web, n = penCal.nat;
+    if (!w || !n || Math.abs(w.t - n.t) > 150) return;
+    const dx = w.x - n.x, dy = w.y - n.y;
+    penCal.web = penCal.nat = null;
+    if (Math.hypot(dx, dy) > 80) return;
+    const k = penCal.n < 3 ? 0.6 : 0.25;
+    penCal.x += (dx - penCal.x) * k; penCal.y += (dy - penCal.y) * k; penCal.n++;
+  };
+  IN.penCal = penCal;
   function onDown(e) {
-    if (IN.nativePen && e.pointerType === 'pen' && !e.__native) return;
+    if (IN.nativePen && e.pointerType === 'pen' && !e.__native) { penCal.web = { x: e.clientX, y: e.clientY, t: performance.now() }; calPair(); return; }
     if (e.button > 0 && e.pointerType === 'mouse' && e.button !== 1 && e.button !== 2) return;
     e.preventDefault();
     if (Glide.raf) { Glide.stop(); R.gesturing = false; }
@@ -1055,7 +1083,7 @@
   IN.nativePen = !!(window.AXIOM_NATIVE && window.AXIOM_NATIVE.pen);
   const nativeEv = (s, type) => ({
     __native: true, type, pointerId: 7777, pointerType: 'pen', button: 0, buttons: type === 'pointerup' || type === 'pointercancel' ? 0 : 1,
-    clientX: s[0], clientY: s[1], pressure: Math.max(0.01, s[2]), altitudeAngle: s[3], azimuthAngle: s[4], tiltX: 0, tiltY: 0, timeStamp: s[5],
+    clientX: s[0] + (Math.abs(penCal.x) > 1 ? penCal.x : 0), clientY: s[1] + (Math.abs(penCal.y) > 1 ? penCal.y : 0), pressure: Math.max(0.01, s[2]), altitudeAngle: s[3], azimuthAngle: s[4], tiltX: 0, tiltY: 0, timeStamp: s[5],
     preventDefault() {},
   });
   window.__axiomPen = (phase, samples, predicted) => {
@@ -1063,6 +1091,7 @@
     const last = samples[samples.length - 1];
     const withLists = (ev, list, pred) => { ev.getCoalescedEvents = () => list.map((s) => nativeEv(s, 'pointermove')); ev.getPredictedEvents = () => (pred || []).map((s) => nativeEv(s, 'pointermove')); return ev; };
     if (phase === 'b') {
+      penCal.nat = { x: samples[0][0], y: samples[0][1], t: performance.now() }; calPair();
       onDown(nativeEv(samples[0], 'pointerdown'));
       if (samples.length > 1) onMove(withLists(nativeEv(last, 'pointermove'), samples.slice(1), []));
     } else if (phase === 'm') {

@@ -153,10 +153,11 @@
     const doc = D.doc;
     if (!doc.studyTabs) doc.studyTabs = [];
     doc.studyTabs = doc.studyTabs.filter((id) => ST.doc(id));
-    if (!doc.studyActive || (doc.studyActive !== 'ai' && !ST.doc(doc.studyActive))) doc.studyActive = 'ai';
+    if (doc.studyActive === 'graph' && !doc.graphTab) doc.studyActive = 'ai';
+    if (!doc.studyActive || (doc.studyActive !== 'ai' && doc.studyActive !== 'graph' && !ST.doc(doc.studyActive))) doc.studyActive = 'ai';
     return doc;
   };
-  ST.activeDoc = () => { if (!D.doc) return null; const d = tabState(); return d.studyActive !== 'ai' ? ST.doc(d.studyActive) : (d.studyTabs.length ? ST.doc(d.lastDocTab) || ST.doc(d.studyTabs[d.studyTabs.length - 1]) : null); };
+  ST.activeDoc = () => { if (!D.doc) return null; const d = tabState(); return ST.doc(d.studyActive) || (d.studyTabs.length ? ST.doc(d.lastDocTab) || ST.doc(d.studyTabs[d.studyTabs.length - 1]) : null); };
   ST.openDoc = (id, page) => {
     if (page) {
       ST.updateDoc(id, { lastPage: page });
@@ -170,8 +171,70 @@
     if (!ST.isOpen()) ST.toggle(true); else renderTabs();
   };
   ST.showTutor = () => { const doc = tabState(); doc.studyActive = 'ai'; if (!ST.isOpen()) ST.toggle(true); else renderTabs(); };
+  /* ---------- Desmos: one live calculator, kept alive (moving an iframe reloads it, so it only shows and hides) ---------- */
+  const GRAPH_KINDS = [['calculator', 'Graph'], ['geometry', 'Geometry'], ['3d', '3D'], ['scientific', 'Scientific']];
+  let graphEl = null, graphFrame = null, graphKind = null;
+  const setGraphKind = (kind) => {
+    if (kind === graphKind && graphFrame) return;
+    graphKind = kind; S.graphKind = kind; A.saveSettings();
+    const fresh = h('iframe', { class: 'gr-frame', title: 'Desmos', src: 'https://www.desmos.com/' + kind, allow: 'clipboard-write' });
+    if (graphFrame) graphFrame.replaceWith(fresh); else graphEl.querySelector('.gr-stage').append(fresh);
+    graphFrame = fresh;
+    graphEl.querySelectorAll('.gr-kinds button').forEach((b) => b.classList.toggle('on', b.dataset.k === kind));
+  };
+  ST.graphSnapshot = async () => {
+    if (!graphFrame) return null;
+    if (!A.native) { A.toast('Putting graphs on the page works in the iPad app. Here, use Desmos’ share button → Export image.', 4200); return null; }
+    const r = graphFrame.getBoundingClientRect();
+    try {
+      const b64 = await A.native.post({ op: 'snapshot', x: r.left, y: r.top, w: r.width, h: r.height });
+      return b64 ? 'data:image/png;base64,' + b64 : null;
+    } catch (e) { A.toast('Couldn’t capture the graph'); return null; }
+  };
+  const insertGraph = async () => {
+    const url = await ST.graphSnapshot();
+    if (!url) return;
+    const im = new Image();
+    im.onload = () => {
+      const w = im.naturalWidth / 2, hh = im.naturalHeight / 2; // the snapshot is at screen scale ×2
+      if (D.isNotebook()) {
+        const rc = D.pageRect(D.doc, R.currentPage()), pw = rc[2] - rc[0], width = Math.min(w, pw * 0.7);
+        const [cx, cy] = R.toWorld(R.w / 2, R.h / 2);
+        A.UI.placeImage(url, w, hh, { width, at: [A.clamp(cx - width / 2, rc[0] + 10, rc[2] - width - 10), cy - (hh * width / w) / 2] });
+      } else A.UI.placeImage(url, w, hh, { width: Math.min(w, (R.w * 0.5) / D.doc.view.zoom) });
+      A.toast('Graph added', 1400);
+    };
+    im.src = url;
+  };
+  const askGraph = async () => {
+    const url = await ST.graphSnapshot();
+    if (!url) return;
+    A.AI.attach({ kind: 'image', label: 'Desmos graph', url });
+    ST.showTutor();
+  };
+  function ensureGraph() {
+    if (graphEl) return;
+    const kinds = h('div', { class: 'seg mini gr-kinds' });
+    GRAPH_KINDS.forEach(([k, label]) => kinds.append(h('button', { 'data-k': k, onclick: () => setGraphKind(k) }, label)));
+    const ib = (icon, title, fn) => h('button', { class: 'ibtn', title, 'aria-label': title, html: A.icon(icon), onclick: fn });
+    graphEl = h('div', { class: 'sp-graph', hidden: true },
+      h('div', { class: 'gr-bar' }, kinds, h('div', { class: 'grow' }), ib('spark', 'Ask the tutor about this graph', askGraph), h('button', { class: 'gr-insert', onclick: insertGraph }, A.iconEl('image'), h('span', {}, 'Insert'))),
+      h('div', { class: 'gr-stage' }, h('div', { class: 'gr-offline' }, 'Desmos needs an internet connection.')));
+    host.append(graphEl);
+    setGraphKind(S.graphKind || 'calculator');
+  }
+  ST.openGraph = (kind) => {
+    if (!D.doc) return;
+    const doc = tabState();
+    doc.graphTab = true; doc.studyActive = 'graph';
+    ensureGraph();
+    if (kind) setGraphKind(kind);
+    D.changed('meta');
+    if (!ST.isOpen()) ST.toggle(true); else renderTabs();
+  };
   const closeTab = (id) => {
     const doc = tabState();
+    if (id === 'graph') { doc.graphTab = false; if (doc.studyActive === 'graph') doc.studyActive = doc.studyTabs[doc.studyTabs.length - 1] || 'ai'; D.changed('meta'); renderTabs(); return; }
     doc.studyTabs = doc.studyTabs.filter((x) => x !== id);
     views.delete(id);
     if (doc.studyActive === id) doc.studyActive = doc.studyTabs[doc.studyTabs.length - 1] || 'ai';
@@ -190,6 +253,7 @@
       tabsEl.append(t);
     };
     tab('ai', 'Tutor', 'spark', false);
+    if (doc.graphTab) tab('graph', 'Desmos', 'graph', true);
     doc.studyTabs.forEach((id) => { const m = ST.doc(id); tab(id, m.name, m.type === 'pdf' ? 'pdf' : 'image', true); });
     const plus = h('button', { class: 'ibtn sp-plus', title: 'Open a document', 'aria-label': 'Open a document', html: A.icon('plus') });
     plus.addEventListener('click', () => openMenu(plus));
@@ -197,7 +261,12 @@
     // body
     if (view && view.detach) view.detach();
     bodyEl.innerHTML = '';
-    if (doc.studyActive === 'ai') { view = null; A.AI.mount(bodyEl, A.AI.canvasCtx); }
+    const graphOn = doc.studyActive === 'graph';
+    if (graphOn) ensureGraph();
+    if (graphEl) graphEl.hidden = !graphOn;
+    bodyEl.hidden = graphOn;
+    if (graphOn) view = null;
+    else if (doc.studyActive === 'ai') { view = null; A.AI.mount(bodyEl, A.AI.canvasCtx); }
     else {
       const meta = ST.doc(doc.studyActive);
       let v = views.get(meta.id);
@@ -211,6 +280,7 @@
   function openMenu(anchor) {
     const box = h('div', { class: 'menu doc-menu' });
     const it = (icon, label, fn) => { const b = h('button', { onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); box.append(b); };
+    it('graph', 'Desmos calculator', () => ST.openGraph());
     it('pdf', 'Import PDF or photo…', async () => { const f = await ST.pickFile(); if (!f) return; const m = await ST.importFile(f); if (m) ST.openDoc(m.id); });
     const subj = D.doc.subject;
     const docs = ST.docs().slice().sort((a, b) => (b.subject === subj) - (a.subject === subj) || b.added - a.added);

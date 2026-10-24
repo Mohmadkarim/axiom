@@ -510,10 +510,8 @@
     R.cacheValid = false;
   };
 
-  R.renderOverlay = () => {
-    if (overlayQueued) return;
-    overlayQueued = true;
-    requestAnimationFrame(() => {
+  R.renderOverlayNow = () => { overlayQueued = true; paintOverlay(); };
+  const paintOverlay = () => {
       overlayQueued = false;
       const ctx = R.octx;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -528,7 +526,11 @@
         ctx.restore();
       }
       B.dark = prevDark; B.lift = prevLift;
-    });
+  };
+  R.renderOverlay = () => {
+    if (overlayQueued) return;
+    overlayQueued = true;
+    requestAnimationFrame(() => { if (overlayQueued) paintOverlay(); });
   };
 
   /* ---------- offscreen rendering for export / thumbnails ---------- */

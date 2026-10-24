@@ -32,6 +32,7 @@
         const box = h('div', { class: 'menu' });
         const it = (icon, label, fn) => { const x = h('button', { onclick: () => { A.closePopovers(); fn(); } }); x.innerHTML = A.icon(icon); x.append(label); box.append(x); };
         it('import', 'Import', () => importMenu(b));
+        it('graph', 'Desmos calculator', () => A.ST.openGraph());
         it('artboard', 'Add artboard', () => UI.artboardMenu(b));
         it('hide', 'Hide interface', () => A.emit('cmd', 'toggleUI'));
         box.append(h('hr'));

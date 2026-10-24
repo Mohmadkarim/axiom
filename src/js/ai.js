@@ -148,7 +148,7 @@
     emptyText: 'Ask about a concept, a page of your PDF, or your own handwritten solution. Add your canvas, a selection or the current page with the buttons below, so you never need screenshots.',
     attachButtons: () => {
       if (D.isNotebook()) {
-        const b = [{ icon: 'template', label: 'This page', fn: () => AI.attach(AI.shotPage(R.currentPage())) }, { icon: 'pages', label: 'All pages', fn: () => AI.shotPages().forEach(AI.attach) }];
+        const b = [{ icon: 'template', label: 'This page', fn: () => AI.attach(AI.shotPage(R.currentPage())) }];
         if (R.sel.size) b.push({ icon: 'selectall', label: 'Selection', fn: () => AI.attach(AI.shotSelection()) });
         return b;
       }
@@ -200,6 +200,115 @@
     els.ta.value = text || '';
     if (opts.send !== false && text) send(); else els.ta.focus();
   };
+
+  /* ---------- context scope: what the tutor keeps in mind besides what is on screen ---------- */
+  const scopeOf = () => { const st = ctx.store(); return (st.scope = st.scope || { src: 'here', books: [], web: false }); };
+  const here = () => {
+    if (ctx.kind === 'reader') { const id = ctx.docId && ctx.docId(); const m = id && A.ST.doc(id); return { kind: 'book', id, folder: m && m.folder, subject: ctx.subject(), name: m ? m.title || m.name : '' }; }
+    return { kind: D.isNotebook() ? 'notebook' : 'canvas', id: D.doc.id, folder: D.doc.folder || null, subject: D.doc.subject || null, name: D.doc.name };
+  };
+  const folderName = (id) => { const f = (S.folders || []).find((x) => x.id === id); return f ? f.name : ''; };
+  const scopeChoices = () => {
+    const cur = here(), out = [{ src: 'here', label: 'On screen', hint: cur.kind === 'canvas' ? 'What you attach · fastest' : 'The page you’re on · fastest' }];
+    if (cur.kind === 'book') out.push({ src: 'book', label: 'Whole book', hint: 'Every chapter’s definitions and results' });
+    if (cur.kind === 'notebook') out.push({ src: 'notebook', label: 'Whole notebook', hint: 'Every written page' });
+    if (cur.folder) out.push({ src: 'folder', label: 'Folder · ' + folderName(cur.folder), hint: 'Its books and notes' });
+    if (cur.subject && A.SU.name(cur.subject)) out.push({ src: 'course', label: 'Course · ' + A.SU.name(cur.subject), hint: 'All books and notes in the course' });
+    out.push({ src: 'pick', label: 'Choose books…', hint: 'Any books from your library' });
+    return out;
+  };
+  const scopeLabel = () => { const sc = scopeOf(); const c = scopeChoices().find((x) => x.src === sc.src) || { label: 'On screen' }; return sc.src === 'pick' ? (sc.books.length === 1 ? (A.ST.doc(sc.books[0]) || {}).name || '1 book' : sc.books.length + ' books') : c.label.replace(/^(Folder|Course) · /, ''); };
+  const scopeCache = new Map();
+  A.on('doc:open', () => scopeCache.clear());
+  /* gather the scope: text (outlines, definitions, results) goes in the cached system prompt; note pages go as images */
+  const gatherScope = async () => {
+    const sc = scopeOf(), cur = here();
+    if (sc.src === 'here') return { text: '', images: [], tokens: 0 };
+    const key = JSON.stringify([sc.src, sc.books, cur.id]);
+    if (scopeCache.has(key)) return scopeCache.get(key);
+    let books = [], notes = [];
+    const metas = sc.src === 'folder' || sc.src === 'course' ? await A.store.listMeta() : [];
+    if (sc.src === 'book') books = [cur.id];
+    if (sc.src === 'pick') books = sc.books.slice();
+    if (sc.src === 'folder') { books = A.ST.docs().filter((d) => d.folder === cur.folder).map((d) => d.id); notes = metas.filter((m) => m.folder === cur.folder); }
+    if (sc.src === 'course') { books = A.ST.docs().filter((d) => d.subject === cur.subject).map((d) => d.id); notes = metas.filter((m) => m.subject === cur.subject); }
+    if (sc.src === 'notebook') notes = [{ id: cur.id, kind: 'notebook', name: cur.name }];
+    if (cur.kind === 'book' && sc.src !== 'book') books = books.filter((id) => id !== cur.id); // the open book already comes with the page context
+    const budget = sc.src === 'book' ? 90000 : Math.max(14000, Math.floor(140000 / Math.max(1, books.length)));
+    const parts = [];
+    for (const id of books.slice(0, 12)) { const d = await A.RD.bookDigest(id, budget); parts.push(d.text); }
+    const images = [];
+    const MAXIMG = 16;
+    for (const m of notes) {
+      if (images.length >= MAXIMG) break;
+      const doc = cur.kind !== 'book' && m.id === D.doc.id ? D.doc : await A.store.loadDoc(m.id).catch(() => null);
+      if (!doc) continue;
+      const shot = (bb, label) => { try { const w = bb[2] - bb[0], hh = bb[3] - bb[1]; const k = Math.min(2, 760 / Math.max(w, hh)); images.push({ kind: 'image', label, url: R.renderRegion(doc, bb, k, { bg: true, grid: false }).toDataURL('image/jpeg', 0.8) }); } catch (e) { /* skip */ } };
+      if (doc.kind === 'notebook') {
+        D.pageRects(doc).forEach((rc, i) => { if (images.length < MAXIMG && doc.layers.some((l) => l.items.some((it) => G.bbHit(it.bb, rc)))) shot(rc, `${doc.name} · page ${i + 1}`); });
+      } else {
+        let bb = null;
+        doc.layers.forEach((l) => l.items.forEach((it) => { bb = bb ? [Math.min(bb[0], it.bb[0]), Math.min(bb[1], it.bb[1]), Math.max(bb[2], it.bb[2]), Math.max(bb[3], it.bb[3])] : it.bb.slice(); }));
+        if (bb) shot([bb[0] - 20, bb[1] - 20, bb[2] + 20, bb[3] + 20], `${doc.name} (canvas)`);
+      }
+    }
+    const scopeName = scopeChoices().find((x) => x.src === sc.src);
+    const text = parts.length || images.length ? [
+      `The student asked you to keep this wider context in mind (${scopeName ? scopeName.label : 'chosen books'}). Use it to connect the question to what they have read and written; cite page numbers when you rely on it.`,
+      ...parts,
+      images.length ? `Their handwritten notes are attached as ${images.length} page image${images.length > 1 ? 's' : ''} (${images.map((i) => i.label).join('; ')}).` : '',
+    ].filter(Boolean).join('\n\n') : '';
+    const res = { text, images, tokens: Math.round(text.length / 3.6 + images.length * 900) };
+    scopeCache.set(key, res);
+    return res;
+  };
+  const estimate = (src) => {
+    const cur = here();
+    const nb = (n) => n * 900, bk = (n, per) => n * per;
+    if (src === 'here') return '';
+    if (src === 'book') return '≈ 25k tokens';
+    if (src === 'notebook') return '≈ ' + Math.max(1, Math.round(nb(Math.min(16, AI.notePages().length)) / 1000)) + 'k tokens';
+    if (src === 'folder' || src === 'course') {
+      const n = A.ST.docs().filter((d) => (src === 'folder' ? d.folder === cur.folder : d.subject === cur.subject)).length;
+      return '≈ ' + Math.max(1, Math.round((bk(Math.min(n, 12), Math.min(25000, 40000 / Math.max(1, n))) + nb(8)) / 1000)) + 'k+ tokens';
+    }
+    return '';
+  };
+  function scopeMenu(anchor) {
+    const sc = scopeOf();
+    const box = h('div', { class: 'menu scope-menu' });
+    box.append(h('div', { class: 'sub' }, 'The tutor keeps in mind'));
+    scopeChoices().forEach((c) => {
+      const b = h('button', { class: sc.src === c.src ? 'on' : '', onclick: () => {
+        if (c.src === 'pick') { pickBooks(anchor); return; }
+        A.closePopovers(); sc.src = c.src; ctx.save(); drawChips();
+      } }, h('span', { class: 'sc-l' }, h('b', null, c.label), h('i', null, [c.hint, estimate(c.src)].filter(Boolean).join(' · '))), sc.src === c.src ? A.iconEl('check') : '');
+      box.append(b);
+    });
+    if (S.aiMode !== 'app') {
+      box.append(h('hr'));
+      const web = h('button', { class: 'sc-web' + (sc.web ? ' on' : ''), onclick: () => { sc.web = !sc.web; ctx.save(); web.classList.toggle('on', sc.web); web.querySelector('.sw').classList.toggle('on', sc.web); drawChips(); } },
+        A.iconEl('globe'), h('span', { class: 'sc-l' }, h('b', null, 'Search the web'), h('i', null, 'For sources, data and anything beyond your books')), h('span', { class: 'sw' + (sc.web ? ' on' : '') }));
+      box.append(web);
+    }
+    A.popover(box, anchor, { side: 'up' });
+  }
+  function pickBooks(anchor) {
+    const sc = scopeOf();
+    const chosen = new Set(sc.src === 'pick' ? sc.books : []);
+    const box = h('div', { class: 'menu scope-menu' });
+    box.append(h('div', { class: 'sub' }, 'Choose books'));
+    const list = h('div', { class: 'sc-books' });
+    A.ST.docs().filter((d) => d.type !== 'image').sort((a, b) => (b.lastRead || b.added) - (a.lastRead || a.added)).forEach((d) => {
+      const b = h('button', { class: chosen.has(d.id) ? 'on' : '', onclick: () => { if (chosen.has(d.id)) chosen.delete(d.id); else chosen.add(d.id); b.classList.toggle('on'); b.querySelector('.ck').classList.toggle('on'); } },
+        h('span', { class: 'ck' + (chosen.has(d.id) ? ' on' : ''), html: A.icon('check') }), h('span', { class: 'grow' }, d.title || d.name));
+      list.append(b);
+    });
+    if (!list.children.length) list.append(h('p', { class: 'muted small', style: { padding: '8px 12px' } }, 'Add books in the Books section first.'));
+    box.append(list, h('div', { class: 'sc-done' }, h('button', { class: 'btn primary', onclick: () => { A.closePopovers(); sc.books = [...chosen]; sc.src = sc.books.length ? 'pick' : 'here'; ctx.save(); drawChips(); } }, 'Done')));
+    A.closePopovers();
+    A.popover(box, anchor, { side: 'up' });
+  }
 
   /* ---------- UI ---------- */
   let els = {};
@@ -280,6 +389,10 @@
       AI.attach({ kind: 'image', label: f.name.slice(0, 24), url: await shrink(url, 1600) });
     } }]);
     btns.forEach((b) => row.append(h('button', { class: 'att-add', onclick: b.fn }, A.iconEl(b.icon), b.label)));
+    const sc = scopeOf();
+    const pill = h('button', { class: 'scope-pill' + (sc.src !== 'here' || sc.web ? ' on' : ''), title: 'What the tutor keeps in mind' }, A.iconEl('layers'), h('span', null, scopeLabel()), sc.web ? h('span', { class: 'sc-webtag' }, A.iconEl('globe'), 'Web') : '', A.iconEl('chevdown'));
+    pill.addEventListener('click', () => scopeMenu(pill));
+    row.prepend(pill);
   };
   const msgEl = (m) => {
     if (m.role === 'user') {
@@ -334,7 +447,7 @@
       MODE_TEXT[mode] ? MODE_TEXT[mode].replace(/\[\[p\d+[^\]]*\]\]/g, '') : '',
       att.some((a) => a.kind === 'image') ? `The attached image${att.filter((a) => a.kind === 'image').length > 1 ? 's are' : ' is'} from my notes or textbook (${att.filter((a) => a.kind === 'image').map((a) => a.label).join(', ')}).` : '',
       ...att.filter((a) => a.kind === 'text' && a.text).map((a) => `Selected passage:\n"""\n${a.text.slice(0, 3000)}\n"""`),
-      extra ? 'Context from the page:\n' + String(extra).replace(/L\d+: /g, '').slice(0, 3500) : '',
+      extra ? 'Context from the page:\n' + String(extra).replace(/L\d+: /g, '').slice(0, 16000) : '',
       '',
       text || 'Please help me with this.',
     ];
@@ -415,13 +528,15 @@
     att.forEach((a) => { a.id = a.id || A.uid(); if (a.kind === 'pdf' && a.b64) sessionPdf.set(a.id, a.b64); });
     AI.pending = [];
     const extra = ctx.contextText ? await ctx.contextText(att) : '';
+    const sc = scopeOf();
+    const wide = sc.src !== 'here' ? await gatherScope() : { text: '', images: [] };
     const um = { role: 'user', text, att: att.map((a) => ({ id: a.id, kind: a.kind, label: a.label, url: a.url, page: a.page, rect: a.rect, text: a.kind === 'text' ? a.text : undefined, cfi: a.cfi })), ctx: extra || undefined, t: Date.now() };
     c.msgs.push(um);
     if (c.title === 'New conversation') c.title = (text || att[0].label).slice(0, 48);
     if (S.aiMode === 'app') {
       c.msgs.push({ role: 'assistant', text: '_Sent to your AI app. The answer and the conversation are saved there. The question was also copied, in case the app only takes the pictures._', t: Date.now() });
       ctx.save(); draw();
-      AI.handoff(text, att, extra);
+      AI.handoff(text, att.concat(wide.images), [extra, wide.text].filter(Boolean).join('\n\n'));
       return;
     }
     const bm = { role: 'assistant', text: '', t: Date.now() };
@@ -437,24 +552,38 @@
       const client = new Anthropic({ apiKey: S.aiKey, dangerouslyAllowBrowser: true });
       const modelId = S.aiModel || 'claude-opus-5-5';
       const effort = (AI.modes.find((m) => m.id === mode) || {}).effort || 'medium';
+      let messages = buildMessages(c.msgs.slice(0, -1)); // without the empty reply placeholder
+      if (wide.images.length) {
+        // wider-scope note pages ride on this request only (they are not saved into the conversation)
+        const last = messages[messages.length - 1];
+        last.content = wide.images.map((im) => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: im.url.split(',')[1] } })).concat(last.content);
+      }
+      const system = [{ type: 'text', text: systemPrompt() + (sc.web ? '\nYou can search the web. Use it when the question needs sources, data, recent results or material beyond the student\'s books; link the sources you rely on in Markdown.' : '') }];
+      if (wide.text) system.push({ type: 'text', text: wide.text });
       const params = {
         model: modelId,
         max_tokens: 64000,
-        system: systemPrompt(),
-        messages: buildMessages(c.msgs.slice(0, -1)), // without the empty reply placeholder
+        system,
         output_config: { effort },
         cache_control: { type: 'ephemeral' },
       };
+      if (sc.web) params.tools = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 5 }];
       if (modelId !== 'claude-haiku-5-5') { params.betas = ['server-side-fallback-2026-07-01']; params.fallbacks = 'default'; }
       abortCtl = new AbortController();
-      const stream = client.beta.messages.stream(params, { signal: abortCtl.signal });
-      for await (const ev of stream) {
-        if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta') {
-          bm.text += ev.delta.text;
-          if (!raf) raf = requestAnimationFrame(paint);
+      let final = null;
+      for (let round = 0; round < 4; round++) {
+        const stream = client.beta.messages.stream(Object.assign({}, params, { messages }), { signal: abortCtl.signal });
+        for await (const ev of stream) {
+          if (ev.type === 'content_block_start' && ev.content_block && ev.content_block.type === 'server_tool_use' && !bm.text) body.innerHTML = '<span class="thinking">Searching the web<i>.</i><i>.</i><i>.</i></span>';
+          if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta') {
+            bm.text += ev.delta.text;
+            if (!raf) raf = requestAnimationFrame(paint);
+          }
         }
+        final = await stream.finalMessage();
+        if (final.stop_reason !== 'pause_turn') break;
+        messages = messages.concat([{ role: 'assistant', content: final.content }]); // a long search turn: let the server resume it
       }
-      const final = await stream.finalMessage();
       if (final.stop_reason === 'refusal') bm.text += (bm.text ? '\n\n' : '') + '_The tutor declined to answer this request._';
       if (final.stop_reason === 'max_tokens') bm.text += '\n\n_(The answer was cut off. Ask the tutor to continue.)_';
       if (!bm.text.trim()) bm.text = '_No answer was returned. Try again._';

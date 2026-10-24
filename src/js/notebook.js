@@ -229,6 +229,7 @@
       it('addpage', 'New page', () => { const cur = R.currentPage(); D.insertPage(cur + 1, { template: D.pageTemplate(D.doc, cur) }); R.showPage(cur + 1, true); });
       it('shapes', 'Diagram', () => A.V.open(anchor));
       it('book', 'Book page beside…', () => bookBesideMenu(anchor));
+      it('graph', 'Desmos calculator', () => A.ST.openGraph());
       box.append(h('hr'));
       it('laser', 'Laser pointer', () => A.UI.setSlot(7));
       it('tape', 'Tape', () => A.UI.setSlot(8));

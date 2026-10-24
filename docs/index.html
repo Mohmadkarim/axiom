@@ -1348,6 +1348,45 @@ h5, .g-sec-h h2, .sub, .nb-fly-h, .pp-h, .bk-up-h { font-size: 11px !important; 
 .set-row .t { font-weight: 600; font-size: 14px; }
 .set-row input[type=range] { width: 200px !important; accent-color: var(--accent); }
 @keyframes sheetIn { from { transform: translateY(18px) scale(.985); } to { transform: none; } }
+
+/* ===== Desmos tab ===== */
+.sp-graph { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--bg); container-type: inline-size; }
+.sp-graph[hidden] { display: none; }
+.sp-body[hidden] { display: none; }
+.gr-bar { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--line); min-width: 0; }
+.gr-kinds { min-width: 0; overflow-x: auto; scrollbar-width: none; flex-shrink: 1; }
+.gr-kinds::-webkit-scrollbar { display: none; }
+.gr-insert { height: 32px; padding: 0 12px 0 9px; border-radius: var(--r-s); background: var(--accent); color: #fff; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.gr-insert svg { width: 17px; height: 17px; }
+.gr-stage { position: relative; flex: 1; min-height: 0; background: #fff; }
+.gr-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #fff; }
+.gr-offline { position: absolute; inset: 0; display: grid; place-items: center; color: #8a8f99; font-size: 13px; }
+@container (max-width: 380px) { .gr-insert span { display: none; } .gr-insert { padding: 0 8px; } }
+
+/* ===== tutor context scope ===== */
+.scope-pill { height: 28px; padding: 0 8px 0 7px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--label); background: rgba(120,128,145,.12); flex-shrink: 0; max-width: 220px; }
+.scope-pill > span:not(.sc-webtag) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.scope-pill svg { width: 15px; height: 15px; flex-shrink: 0; }
+.scope-pill > svg:last-child { width: 12px; height: 12px; opacity: .6; }
+.scope-pill.on { color: var(--accent); background: var(--accent-soft); }
+.sc-webtag { display: inline-flex; align-items: center; gap: 3px; padding-left: 6px; margin-left: 1px; border-left: 1px solid currentColor; border-left-color: color-mix(in srgb, currentColor 30%, transparent); }
+.sc-webtag svg { width: 13px; height: 13px; }
+.scope-menu { width: 300px; max-width: calc(100vw - 32px); }
+.scope-menu > button, .sc-books > button { display: flex; align-items: center; gap: 10px; text-align: left; }
+.scope-menu .sc-l { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.scope-menu .sc-l b { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scope-menu .sc-l i { font-style: normal; font-size: 12px; color: var(--muted); }
+.scope-menu > button.on svg { color: var(--accent); }
+.scope-menu .sw { width: 36px; height: 22px; border-radius: 11px; background: rgba(120,128,145,.3); position: relative; flex-shrink: 0; transition: background .2s var(--ease); }
+.scope-menu .sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .2s var(--ease); }
+.scope-menu .sw.on { background: var(--accent); }
+.scope-menu .sw.on::after { transform: translateX(14px); }
+.sc-books { max-height: 320px; overflow-y: auto; }
+.sc-books .ck { width: 20px; height: 20px; border-radius: 6px; box-shadow: inset 0 0 0 1.5px var(--line-strong); display: grid; place-items: center; flex-shrink: 0; }
+.sc-books .ck svg { width: 14px; height: 14px; opacity: 0; }
+.sc-books .ck.on { background: var(--accent); box-shadow: none; color: #fff; }
+.sc-books .ck.on svg { opacity: 1; }
+.sc-done { display: flex; justify-content: flex-end; padding: 8px 8px 4px; border-top: 1px solid var(--line); margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -1369,7 +1408,7 @@ h5, .g-sec-h h2, .sub, .nb-fly-h, .pp-h, .bk-up-h { font-size: 11px !important; 
 </div>
 <div id="toasts" aria-live="polite"></div>
 
-<script>window.AXIOM_BUILD = 'mvmvgclk';
+<script>window.AXIOM_BUILD = 'mvmwsfxf';
 /* ---- core.js ---- */
 /* Axiom core: namespace, math, color, events, DOM helpers */
 'use strict';
@@ -1679,6 +1718,7 @@ A.fmtDate = (t) => {
     minus: '<path d="M5 12h14"/>',
     close: '<path d="M6 6l12 12M18 6 6 18"/>',
     check: '<path d="m5 12.5 4.5 4.5L19 7"/>',
+    globe: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5c2.4 2.4 3.6 5.2 3.6 8.5s-1.2 6.1-3.6 8.5c-2.4-2.4-3.6-5.2-3.6-8.5S9.6 5.9 12 3.5Z"/>',
     eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/>',
     eyeoff: '<path d="M3 3l18 18"/><path d="M10.6 5.6A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a16 16 0 0 1-2.6 3.4M6.6 6.6C3.9 8.3 2.5 12 2.5 12S6 18.5 12 18.5a9 9 0 0 0 4.4-1.1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
     lock: '<rect x="5" y="11" width="14" height="9.5" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
@@ -1722,6 +1762,7 @@ A.fmtDate = (t) => {
     bar: '<rect x="8" y="3" width="8" height="18" rx="3"/><path d="M10.5 7h3M10.5 11h3M10.5 15h3"/>',
     spark: '<path d="M12 3.5c.6 3.6 2.4 5.6 6 6.4-3.6.8-5.4 2.8-6 6.4-.6-3.6-2.4-5.6-6-6.4 3.6-.8 5.4-2.8 6-6.4Z"/><path d="M18.5 15.5c.25 1.5 1 2.3 2.5 2.6-1.5.3-2.25 1.1-2.5 2.6-.25-1.5-1-2.3-2.5-2.6 1.5-.3 2.25-1.1 2.5-2.6Z"/>',
     chevup: '<path d="m6 15 6-6 6 6"/>',
+    graph: '<path d="M4 3.5v16.5h16.5"/><path d="M7 16.5c1.8-5.5 3.6-7.6 5.6-4.9 2 2.7 3.9 1.1 6.1-6.1"/>',
     send: '<path d="M12 19V5"/><path d="m6 11 6-6 6 6"/>',
     book: '<path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5v-13Z"/><path d="M20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5v-13Z"/>',
     shapes: '<circle cx="7.5" cy="7.5" r="4"/><path d="M14 4h6v6h-6z"/><path d="m7.5 13.5 4.5 7.5H3l4.5-7.5Z"/><path d="M14 17.5a3.5 3.5 0 0 0 7 0c0-1.2-.5-2-1.2-2.6"/>',
@@ -2155,7 +2196,18 @@ A.fmtDate = (t) => {
   };
 
   /* Variable-width stroke as a nonzero union of circles and (consistently wound) tangent quads */
-  G.buildVar = (sink, pts, size, taper = 0) => {
+  G.buildVar = (sink, src, size, taper = 0) => {
+    // drop sub-pixel jitter first: dense 240 Hz samples make hair-thin quads whose winding WebKit can cancel (hollow, doubled-looking ink)
+    const minD = Math.max(0.4, size * 0.12), sn = G.count(src);
+    let pts = src;
+    if (sn > 2) {
+      pts = [src[0], src[1], src[2]];
+      for (let i = 1; i < sn; i++) {
+        const j = i * 3, k = pts.length - 3;
+        if (i === sn - 1 || hyp(src[j] - pts[k], src[j + 1] - pts[k + 1]) >= minD) pts.push(src[j], src[j + 1], src[j + 2]);
+        else pts[k + 2] = Math.max(pts[k + 2], src[j + 2]);
+      }
+    }
     const n = G.count(pts);
     if (!n) return;
     const r = new Float32Array(n);
@@ -3756,10 +3808,8 @@ A.fmtDate = (t) => {
     R.cacheValid = false;
   };
 
-  R.renderOverlay = () => {
-    if (overlayQueued) return;
-    overlayQueued = true;
-    requestAnimationFrame(() => {
+  R.renderOverlayNow = () => { overlayQueued = true; paintOverlay(); };
+  const paintOverlay = () => {
       overlayQueued = false;
       const ctx = R.octx;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -3774,7 +3824,11 @@ A.fmtDate = (t) => {
         ctx.restore();
       }
       B.dark = prevDark; B.lift = prevLift;
-    });
+  };
+  R.renderOverlay = () => {
+    if (overlayQueued) return;
+    overlayQueued = true;
+    requestAnimationFrame(() => { if (overlayQueued) paintOverlay(); });
   };
 
   /* ---------- offscreen rendering for export / thumbnails ---------- */
@@ -4274,15 +4328,14 @@ A.fmtDate = (t) => {
       this.pm = this.pm == null ? m : this.pm + (m - this.pm) * (this.hasPressure ? 0.55 : 0.3);
       m = this.pm;
       this.raw.push(wx, wy, m);
+      // keep the real pen positions (no lagging filter): smoothing happens symmetrically in finalPts,
+      // so the ink stays exactly under the Pencil and the stroke never drifts off the path
       const n = this.pts.length;
       if (!n || this.guide) { this.pts.push(wx, wy, m); }
       else {
-        const sm = A.clamp(this.slot.smoothing, 0, 0.97);
-        const k = 1 - sm * 0.86;
         const lx = this.pts[n - 3], ly = this.pts[n - 2];
-        const x = lx + (wx - lx) * k, y = ly + (wy - ly) * k;
-        if (hyp(x - lx, y - ly) * this.zoom > 0.4) this.pts.push(x, y, m);
-        else this.pts[n - 1] = Math.max(this.pts[n - 1], m * 0.5 + this.pts[n - 1] * 0.5);
+        if (hyp(wx - lx, wy - ly) * this.zoom > 0.6) this.pts.push(wx, wy, m);
+        else { this.pts[n - 3] = wx; this.pts[n - 2] = wy; this.pts[n - 1] = Math.max(this.pts[n - 1], m); }
       }
       this.lastS = s;
     }
@@ -4321,13 +4374,7 @@ A.fmtDate = (t) => {
     /* turn live points into final points (snap/align/straight/shape) */
     finalPts(live = false) {
       const doc = D.doc;
-      let pts = this.pts.slice();
-      if (!live && this.raw.length >= 3) {
-        const L = this.raw.length;
-        const lx = this.raw[L - 3], ly = this.raw[L - 2];
-        const n = pts.length;
-        if (hyp(pts[n - 3] - lx, pts[n - 2] - ly) > 0.2 / this.zoom) pts.push(lx, ly, pts[n - 1]);
-      }
+      let pts = this.guide ? this.pts.slice() : IN.smoothStroke(this.pts, this.slot.smoothing);
       if (live && this.predicted) pts = pts.concat(this.predicted);
       let sharp = false, closed = false;
       if (this.shape) {
@@ -4408,6 +4455,7 @@ A.fmtDate = (t) => {
       D.addItems([item], layer);
       D.commit();
       R.appendItem(item, layer);
+      R.renderOverlayNow();
       if (D.doc.precision.measure && G.count(pts) >= 2 && !this.cat.mask) {
         IN.lastMeasure = { item, until: performance.now() + 2200 };
         setTimeout(() => R.renderOverlay(), 2300);
@@ -4837,6 +4885,27 @@ A.fmtDate = (t) => {
     cancel() { if (this.begun) D.cancel(); }
   }
 
+  /* zero-lag smoothing (Taubin λ|μ): removes jitter without pulling the line inward or behind the pen;
+     the first and last points stay exactly where the Pencil touched */
+  IN.smoothStroke = (src, strength) => {
+    const n = src.length / 3;
+    if (n < 4 || strength <= 0.01) return src.slice();
+    let a = src.slice(), b = src.slice();
+    const passes = Math.round(1 + strength * 5);
+    for (let it = 0; it < passes; it++) {
+      for (const f of [0.5, -0.53]) {
+        for (let i = 1; i < n - 1; i++) {
+          const j = i * 3;
+          b[j] = a[j] + f * ((a[j - 3] + a[j + 3]) / 2 - a[j]);
+          b[j + 1] = a[j + 1] + f * ((a[j - 2] + a[j + 4]) / 2 - a[j + 1]);
+        }
+        const t = a; a = b; b = t;
+        b[0] = a[0]; b[1] = a[1]; b[(n - 1) * 3] = a[(n - 1) * 3]; b[(n - 1) * 3 + 1] = a[(n - 1) * 3 + 1];
+      }
+    }
+    return a;
+  };
+
   /* ---- momentum: a flick keeps the page gliding and eases out, like native scrolling ---- */
   const Glide = {
     raf: 0, samples: [],
@@ -5030,8 +5099,21 @@ A.fmtDate = (t) => {
     return null;
   }
 
+  /* self-calibration: WebKit's own pen-down and the native sample of the same touch should agree; if the web view is ever
+     scaled or inset (Stage Manager, split view), learn the offset so ink stays exactly under the Pencil tip */
+  const penCal = { x: 0, y: 0, web: null, nat: null, n: 0 };
+  const calPair = () => {
+    const w = penCal.web, n = penCal.nat;
+    if (!w || !n || Math.abs(w.t - n.t) > 150) return;
+    const dx = w.x - n.x, dy = w.y - n.y;
+    penCal.web = penCal.nat = null;
+    if (Math.hypot(dx, dy) > 80) return;
+    const k = penCal.n < 3 ? 0.6 : 0.25;
+    penCal.x += (dx - penCal.x) * k; penCal.y += (dy - penCal.y) * k; penCal.n++;
+  };
+  IN.penCal = penCal;
   function onDown(e) {
-    if (IN.nativePen && e.pointerType === 'pen' && !e.__native) return;
+    if (IN.nativePen && e.pointerType === 'pen' && !e.__native) { penCal.web = { x: e.clientX, y: e.clientY, t: performance.now() }; calPair(); return; }
     if (e.button > 0 && e.pointerType === 'mouse' && e.button !== 1 && e.button !== 2) return;
     e.preventDefault();
     if (Glide.raf) { Glide.stop(); R.gesturing = false; }
@@ -5149,7 +5231,7 @@ A.fmtDate = (t) => {
   IN.nativePen = !!(window.AXIOM_NATIVE && window.AXIOM_NATIVE.pen);
   const nativeEv = (s, type) => ({
     __native: true, type, pointerId: 7777, pointerType: 'pen', button: 0, buttons: type === 'pointerup' || type === 'pointercancel' ? 0 : 1,
-    clientX: s[0], clientY: s[1], pressure: Math.max(0.01, s[2]), altitudeAngle: s[3], azimuthAngle: s[4], tiltX: 0, tiltY: 0, timeStamp: s[5],
+    clientX: s[0] + (Math.abs(penCal.x) > 1 ? penCal.x : 0), clientY: s[1] + (Math.abs(penCal.y) > 1 ? penCal.y : 0), pressure: Math.max(0.01, s[2]), altitudeAngle: s[3], azimuthAngle: s[4], tiltX: 0, tiltY: 0, timeStamp: s[5],
     preventDefault() {},
   });
   window.__axiomPen = (phase, samples, predicted) => {
@@ -5157,6 +5239,7 @@ A.fmtDate = (t) => {
     const last = samples[samples.length - 1];
     const withLists = (ev, list, pred) => { ev.getCoalescedEvents = () => list.map((s) => nativeEv(s, 'pointermove')); ev.getPredictedEvents = () => (pred || []).map((s) => nativeEv(s, 'pointermove')); return ev; };
     if (phase === 'b') {
+      penCal.nat = { x: samples[0][0], y: samples[0][1], t: performance.now() }; calPair();
       onDown(nativeEv(samples[0], 'pointerdown'));
       if (samples.length > 1) onMove(withLists(nativeEv(last, 'pointermove'), samples.slice(1), []));
     } else if (phase === 'm') {
@@ -6723,6 +6806,7 @@ A.fmtDate = (t) => {
         const box = h('div', { class: 'menu' });
         const it = (icon, label, fn) => { const x = h('button', { onclick: () => { A.closePopovers(); fn(); } }); x.innerHTML = A.icon(icon); x.append(label); box.append(x); };
         it('import', 'Import', () => importMenu(b));
+        it('graph', 'Desmos calculator', () => A.ST.openGraph());
         it('artboard', 'Add artboard', () => UI.artboardMenu(b));
         it('hide', 'Hide interface', () => A.emit('cmd', 'toggleUI'));
         box.append(h('hr'));
@@ -7733,10 +7817,11 @@ A.fmtDate = (t) => {
     const doc = D.doc;
     if (!doc.studyTabs) doc.studyTabs = [];
     doc.studyTabs = doc.studyTabs.filter((id) => ST.doc(id));
-    if (!doc.studyActive || (doc.studyActive !== 'ai' && !ST.doc(doc.studyActive))) doc.studyActive = 'ai';
+    if (doc.studyActive === 'graph' && !doc.graphTab) doc.studyActive = 'ai';
+    if (!doc.studyActive || (doc.studyActive !== 'ai' && doc.studyActive !== 'graph' && !ST.doc(doc.studyActive))) doc.studyActive = 'ai';
     return doc;
   };
-  ST.activeDoc = () => { if (!D.doc) return null; const d = tabState(); return d.studyActive !== 'ai' ? ST.doc(d.studyActive) : (d.studyTabs.length ? ST.doc(d.lastDocTab) || ST.doc(d.studyTabs[d.studyTabs.length - 1]) : null); };
+  ST.activeDoc = () => { if (!D.doc) return null; const d = tabState(); return ST.doc(d.studyActive) || (d.studyTabs.length ? ST.doc(d.lastDocTab) || ST.doc(d.studyTabs[d.studyTabs.length - 1]) : null); };
   ST.openDoc = (id, page) => {
     if (page) {
       ST.updateDoc(id, { lastPage: page });
@@ -7750,8 +7835,70 @@ A.fmtDate = (t) => {
     if (!ST.isOpen()) ST.toggle(true); else renderTabs();
   };
   ST.showTutor = () => { const doc = tabState(); doc.studyActive = 'ai'; if (!ST.isOpen()) ST.toggle(true); else renderTabs(); };
+  /* ---------- Desmos: one live calculator, kept alive (moving an iframe reloads it, so it only shows and hides) ---------- */
+  const GRAPH_KINDS = [['calculator', 'Graph'], ['geometry', 'Geometry'], ['3d', '3D'], ['scientific', 'Scientific']];
+  let graphEl = null, graphFrame = null, graphKind = null;
+  const setGraphKind = (kind) => {
+    if (kind === graphKind && graphFrame) return;
+    graphKind = kind; S.graphKind = kind; A.saveSettings();
+    const fresh = h('iframe', { class: 'gr-frame', title: 'Desmos', src: 'https://www.desmos.com/' + kind, allow: 'clipboard-write' });
+    if (graphFrame) graphFrame.replaceWith(fresh); else graphEl.querySelector('.gr-stage').append(fresh);
+    graphFrame = fresh;
+    graphEl.querySelectorAll('.gr-kinds button').forEach((b) => b.classList.toggle('on', b.dataset.k === kind));
+  };
+  ST.graphSnapshot = async () => {
+    if (!graphFrame) return null;
+    if (!A.native) { A.toast('Putting graphs on the page works in the iPad app. Here, use Desmos’ share button → Export image.', 4200); return null; }
+    const r = graphFrame.getBoundingClientRect();
+    try {
+      const b64 = await A.native.post({ op: 'snapshot', x: r.left, y: r.top, w: r.width, h: r.height });
+      return b64 ? 'data:image/png;base64,' + b64 : null;
+    } catch (e) { A.toast('Couldn’t capture the graph'); return null; }
+  };
+  const insertGraph = async () => {
+    const url = await ST.graphSnapshot();
+    if (!url) return;
+    const im = new Image();
+    im.onload = () => {
+      const w = im.naturalWidth / 2, hh = im.naturalHeight / 2; // the snapshot is at screen scale ×2
+      if (D.isNotebook()) {
+        const rc = D.pageRect(D.doc, R.currentPage()), pw = rc[2] - rc[0], width = Math.min(w, pw * 0.7);
+        const [cx, cy] = R.toWorld(R.w / 2, R.h / 2);
+        A.UI.placeImage(url, w, hh, { width, at: [A.clamp(cx - width / 2, rc[0] + 10, rc[2] - width - 10), cy - (hh * width / w) / 2] });
+      } else A.UI.placeImage(url, w, hh, { width: Math.min(w, (R.w * 0.5) / D.doc.view.zoom) });
+      A.toast('Graph added', 1400);
+    };
+    im.src = url;
+  };
+  const askGraph = async () => {
+    const url = await ST.graphSnapshot();
+    if (!url) return;
+    A.AI.attach({ kind: 'image', label: 'Desmos graph', url });
+    ST.showTutor();
+  };
+  function ensureGraph() {
+    if (graphEl) return;
+    const kinds = h('div', { class: 'seg mini gr-kinds' });
+    GRAPH_KINDS.forEach(([k, label]) => kinds.append(h('button', { 'data-k': k, onclick: () => setGraphKind(k) }, label)));
+    const ib = (icon, title, fn) => h('button', { class: 'ibtn', title, 'aria-label': title, html: A.icon(icon), onclick: fn });
+    graphEl = h('div', { class: 'sp-graph', hidden: true },
+      h('div', { class: 'gr-bar' }, kinds, h('div', { class: 'grow' }), ib('spark', 'Ask the tutor about this graph', askGraph), h('button', { class: 'gr-insert', onclick: insertGraph }, A.iconEl('image'), h('span', {}, 'Insert'))),
+      h('div', { class: 'gr-stage' }, h('div', { class: 'gr-offline' }, 'Desmos needs an internet connection.')));
+    host.append(graphEl);
+    setGraphKind(S.graphKind || 'calculator');
+  }
+  ST.openGraph = (kind) => {
+    if (!D.doc) return;
+    const doc = tabState();
+    doc.graphTab = true; doc.studyActive = 'graph';
+    ensureGraph();
+    if (kind) setGraphKind(kind);
+    D.changed('meta');
+    if (!ST.isOpen()) ST.toggle(true); else renderTabs();
+  };
   const closeTab = (id) => {
     const doc = tabState();
+    if (id === 'graph') { doc.graphTab = false; if (doc.studyActive === 'graph') doc.studyActive = doc.studyTabs[doc.studyTabs.length - 1] || 'ai'; D.changed('meta'); renderTabs(); return; }
     doc.studyTabs = doc.studyTabs.filter((x) => x !== id);
     views.delete(id);
     if (doc.studyActive === id) doc.studyActive = doc.studyTabs[doc.studyTabs.length - 1] || 'ai';
@@ -7770,6 +7917,7 @@ A.fmtDate = (t) => {
       tabsEl.append(t);
     };
     tab('ai', 'Tutor', 'spark', false);
+    if (doc.graphTab) tab('graph', 'Desmos', 'graph', true);
     doc.studyTabs.forEach((id) => { const m = ST.doc(id); tab(id, m.name, m.type === 'pdf' ? 'pdf' : 'image', true); });
     const plus = h('button', { class: 'ibtn sp-plus', title: 'Open a document', 'aria-label': 'Open a document', html: A.icon('plus') });
     plus.addEventListener('click', () => openMenu(plus));
@@ -7777,7 +7925,12 @@ A.fmtDate = (t) => {
     // body
     if (view && view.detach) view.detach();
     bodyEl.innerHTML = '';
-    if (doc.studyActive === 'ai') { view = null; A.AI.mount(bodyEl, A.AI.canvasCtx); }
+    const graphOn = doc.studyActive === 'graph';
+    if (graphOn) ensureGraph();
+    if (graphEl) graphEl.hidden = !graphOn;
+    bodyEl.hidden = graphOn;
+    if (graphOn) view = null;
+    else if (doc.studyActive === 'ai') { view = null; A.AI.mount(bodyEl, A.AI.canvasCtx); }
     else {
       const meta = ST.doc(doc.studyActive);
       let v = views.get(meta.id);
@@ -7791,6 +7944,7 @@ A.fmtDate = (t) => {
   function openMenu(anchor) {
     const box = h('div', { class: 'menu doc-menu' });
     const it = (icon, label, fn) => { const b = h('button', { onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); box.append(b); };
+    it('graph', 'Desmos calculator', () => ST.openGraph());
     it('pdf', 'Import PDF or photo…', async () => { const f = await ST.pickFile(); if (!f) return; const m = await ST.importFile(f); if (m) ST.openDoc(m.id); });
     const subj = D.doc.subject;
     const docs = ST.docs().slice().sort((a, b) => (b.subject === subj) - (a.subject === subj) || b.added - a.added);
@@ -8168,7 +8322,7 @@ A.fmtDate = (t) => {
     emptyText: 'Ask about a concept, a page of your PDF, or your own handwritten solution. Add your canvas, a selection or the current page with the buttons below, so you never need screenshots.',
     attachButtons: () => {
       if (D.isNotebook()) {
-        const b = [{ icon: 'template', label: 'This page', fn: () => AI.attach(AI.shotPage(R.currentPage())) }, { icon: 'pages', label: 'All pages', fn: () => AI.shotPages().forEach(AI.attach) }];
+        const b = [{ icon: 'template', label: 'This page', fn: () => AI.attach(AI.shotPage(R.currentPage())) }];
         if (R.sel.size) b.push({ icon: 'selectall', label: 'Selection', fn: () => AI.attach(AI.shotSelection()) });
         return b;
       }
@@ -8220,6 +8374,115 @@ A.fmtDate = (t) => {
     els.ta.value = text || '';
     if (opts.send !== false && text) send(); else els.ta.focus();
   };
+
+  /* ---------- context scope: what the tutor keeps in mind besides what is on screen ---------- */
+  const scopeOf = () => { const st = ctx.store(); return (st.scope = st.scope || { src: 'here', books: [], web: false }); };
+  const here = () => {
+    if (ctx.kind === 'reader') { const id = ctx.docId && ctx.docId(); const m = id && A.ST.doc(id); return { kind: 'book', id, folder: m && m.folder, subject: ctx.subject(), name: m ? m.title || m.name : '' }; }
+    return { kind: D.isNotebook() ? 'notebook' : 'canvas', id: D.doc.id, folder: D.doc.folder || null, subject: D.doc.subject || null, name: D.doc.name };
+  };
+  const folderName = (id) => { const f = (S.folders || []).find((x) => x.id === id); return f ? f.name : ''; };
+  const scopeChoices = () => {
+    const cur = here(), out = [{ src: 'here', label: 'On screen', hint: cur.kind === 'canvas' ? 'What you attach · fastest' : 'The page you’re on · fastest' }];
+    if (cur.kind === 'book') out.push({ src: 'book', label: 'Whole book', hint: 'Every chapter’s definitions and results' });
+    if (cur.kind === 'notebook') out.push({ src: 'notebook', label: 'Whole notebook', hint: 'Every written page' });
+    if (cur.folder) out.push({ src: 'folder', label: 'Folder · ' + folderName(cur.folder), hint: 'Its books and notes' });
+    if (cur.subject && A.SU.name(cur.subject)) out.push({ src: 'course', label: 'Course · ' + A.SU.name(cur.subject), hint: 'All books and notes in the course' });
+    out.push({ src: 'pick', label: 'Choose books…', hint: 'Any books from your library' });
+    return out;
+  };
+  const scopeLabel = () => { const sc = scopeOf(); const c = scopeChoices().find((x) => x.src === sc.src) || { label: 'On screen' }; return sc.src === 'pick' ? (sc.books.length === 1 ? (A.ST.doc(sc.books[0]) || {}).name || '1 book' : sc.books.length + ' books') : c.label.replace(/^(Folder|Course) · /, ''); };
+  const scopeCache = new Map();
+  A.on('doc:open', () => scopeCache.clear());
+  /* gather the scope: text (outlines, definitions, results) goes in the cached system prompt; note pages go as images */
+  const gatherScope = async () => {
+    const sc = scopeOf(), cur = here();
+    if (sc.src === 'here') return { text: '', images: [], tokens: 0 };
+    const key = JSON.stringify([sc.src, sc.books, cur.id]);
+    if (scopeCache.has(key)) return scopeCache.get(key);
+    let books = [], notes = [];
+    const metas = sc.src === 'folder' || sc.src === 'course' ? await A.store.listMeta() : [];
+    if (sc.src === 'book') books = [cur.id];
+    if (sc.src === 'pick') books = sc.books.slice();
+    if (sc.src === 'folder') { books = A.ST.docs().filter((d) => d.folder === cur.folder).map((d) => d.id); notes = metas.filter((m) => m.folder === cur.folder); }
+    if (sc.src === 'course') { books = A.ST.docs().filter((d) => d.subject === cur.subject).map((d) => d.id); notes = metas.filter((m) => m.subject === cur.subject); }
+    if (sc.src === 'notebook') notes = [{ id: cur.id, kind: 'notebook', name: cur.name }];
+    if (cur.kind === 'book' && sc.src !== 'book') books = books.filter((id) => id !== cur.id); // the open book already comes with the page context
+    const budget = sc.src === 'book' ? 90000 : Math.max(14000, Math.floor(140000 / Math.max(1, books.length)));
+    const parts = [];
+    for (const id of books.slice(0, 12)) { const d = await A.RD.bookDigest(id, budget); parts.push(d.text); }
+    const images = [];
+    const MAXIMG = 16;
+    for (const m of notes) {
+      if (images.length >= MAXIMG) break;
+      const doc = cur.kind !== 'book' && m.id === D.doc.id ? D.doc : await A.store.loadDoc(m.id).catch(() => null);
+      if (!doc) continue;
+      const shot = (bb, label) => { try { const w = bb[2] - bb[0], hh = bb[3] - bb[1]; const k = Math.min(2, 760 / Math.max(w, hh)); images.push({ kind: 'image', label, url: R.renderRegion(doc, bb, k, { bg: true, grid: false }).toDataURL('image/jpeg', 0.8) }); } catch (e) { /* skip */ } };
+      if (doc.kind === 'notebook') {
+        D.pageRects(doc).forEach((rc, i) => { if (images.length < MAXIMG && doc.layers.some((l) => l.items.some((it) => G.bbHit(it.bb, rc)))) shot(rc, `${doc.name} · page ${i + 1}`); });
+      } else {
+        let bb = null;
+        doc.layers.forEach((l) => l.items.forEach((it) => { bb = bb ? [Math.min(bb[0], it.bb[0]), Math.min(bb[1], it.bb[1]), Math.max(bb[2], it.bb[2]), Math.max(bb[3], it.bb[3])] : it.bb.slice(); }));
+        if (bb) shot([bb[0] - 20, bb[1] - 20, bb[2] + 20, bb[3] + 20], `${doc.name} (canvas)`);
+      }
+    }
+    const scopeName = scopeChoices().find((x) => x.src === sc.src);
+    const text = parts.length || images.length ? [
+      `The student asked you to keep this wider context in mind (${scopeName ? scopeName.label : 'chosen books'}). Use it to connect the question to what they have read and written; cite page numbers when you rely on it.`,
+      ...parts,
+      images.length ? `Their handwritten notes are attached as ${images.length} page image${images.length > 1 ? 's' : ''} (${images.map((i) => i.label).join('; ')}).` : '',
+    ].filter(Boolean).join('\n\n') : '';
+    const res = { text, images, tokens: Math.round(text.length / 3.6 + images.length * 900) };
+    scopeCache.set(key, res);
+    return res;
+  };
+  const estimate = (src) => {
+    const cur = here();
+    const nb = (n) => n * 900, bk = (n, per) => n * per;
+    if (src === 'here') return '';
+    if (src === 'book') return '≈ 25k tokens';
+    if (src === 'notebook') return '≈ ' + Math.max(1, Math.round(nb(Math.min(16, AI.notePages().length)) / 1000)) + 'k tokens';
+    if (src === 'folder' || src === 'course') {
+      const n = A.ST.docs().filter((d) => (src === 'folder' ? d.folder === cur.folder : d.subject === cur.subject)).length;
+      return '≈ ' + Math.max(1, Math.round((bk(Math.min(n, 12), Math.min(25000, 40000 / Math.max(1, n))) + nb(8)) / 1000)) + 'k+ tokens';
+    }
+    return '';
+  };
+  function scopeMenu(anchor) {
+    const sc = scopeOf();
+    const box = h('div', { class: 'menu scope-menu' });
+    box.append(h('div', { class: 'sub' }, 'The tutor keeps in mind'));
+    scopeChoices().forEach((c) => {
+      const b = h('button', { class: sc.src === c.src ? 'on' : '', onclick: () => {
+        if (c.src === 'pick') { pickBooks(anchor); return; }
+        A.closePopovers(); sc.src = c.src; ctx.save(); drawChips();
+      } }, h('span', { class: 'sc-l' }, h('b', null, c.label), h('i', null, [c.hint, estimate(c.src)].filter(Boolean).join(' · '))), sc.src === c.src ? A.iconEl('check') : '');
+      box.append(b);
+    });
+    if (S.aiMode !== 'app') {
+      box.append(h('hr'));
+      const web = h('button', { class: 'sc-web' + (sc.web ? ' on' : ''), onclick: () => { sc.web = !sc.web; ctx.save(); web.classList.toggle('on', sc.web); web.querySelector('.sw').classList.toggle('on', sc.web); drawChips(); } },
+        A.iconEl('globe'), h('span', { class: 'sc-l' }, h('b', null, 'Search the web'), h('i', null, 'For sources, data and anything beyond your books')), h('span', { class: 'sw' + (sc.web ? ' on' : '') }));
+      box.append(web);
+    }
+    A.popover(box, anchor, { side: 'up' });
+  }
+  function pickBooks(anchor) {
+    const sc = scopeOf();
+    const chosen = new Set(sc.src === 'pick' ? sc.books : []);
+    const box = h('div', { class: 'menu scope-menu' });
+    box.append(h('div', { class: 'sub' }, 'Choose books'));
+    const list = h('div', { class: 'sc-books' });
+    A.ST.docs().filter((d) => d.type !== 'image').sort((a, b) => (b.lastRead || b.added) - (a.lastRead || a.added)).forEach((d) => {
+      const b = h('button', { class: chosen.has(d.id) ? 'on' : '', onclick: () => { if (chosen.has(d.id)) chosen.delete(d.id); else chosen.add(d.id); b.classList.toggle('on'); b.querySelector('.ck').classList.toggle('on'); } },
+        h('span', { class: 'ck' + (chosen.has(d.id) ? ' on' : ''), html: A.icon('check') }), h('span', { class: 'grow' }, d.title || d.name));
+      list.append(b);
+    });
+    if (!list.children.length) list.append(h('p', { class: 'muted small', style: { padding: '8px 12px' } }, 'Add books in the Books section first.'));
+    box.append(list, h('div', { class: 'sc-done' }, h('button', { class: 'btn primary', onclick: () => { A.closePopovers(); sc.books = [...chosen]; sc.src = sc.books.length ? 'pick' : 'here'; ctx.save(); drawChips(); } }, 'Done')));
+    A.closePopovers();
+    A.popover(box, anchor, { side: 'up' });
+  }
 
   /* ---------- UI ---------- */
   let els = {};
@@ -8300,6 +8563,10 @@ A.fmtDate = (t) => {
       AI.attach({ kind: 'image', label: f.name.slice(0, 24), url: await shrink(url, 1600) });
     } }]);
     btns.forEach((b) => row.append(h('button', { class: 'att-add', onclick: b.fn }, A.iconEl(b.icon), b.label)));
+    const sc = scopeOf();
+    const pill = h('button', { class: 'scope-pill' + (sc.src !== 'here' || sc.web ? ' on' : ''), title: 'What the tutor keeps in mind' }, A.iconEl('layers'), h('span', null, scopeLabel()), sc.web ? h('span', { class: 'sc-webtag' }, A.iconEl('globe'), 'Web') : '', A.iconEl('chevdown'));
+    pill.addEventListener('click', () => scopeMenu(pill));
+    row.prepend(pill);
   };
   const msgEl = (m) => {
     if (m.role === 'user') {
@@ -8354,7 +8621,7 @@ A.fmtDate = (t) => {
       MODE_TEXT[mode] ? MODE_TEXT[mode].replace(/\[\[p\d+[^\]]*\]\]/g, '') : '',
       att.some((a) => a.kind === 'image') ? `The attached image${att.filter((a) => a.kind === 'image').length > 1 ? 's are' : ' is'} from my notes or textbook (${att.filter((a) => a.kind === 'image').map((a) => a.label).join(', ')}).` : '',
       ...att.filter((a) => a.kind === 'text' && a.text).map((a) => `Selected passage:\n"""\n${a.text.slice(0, 3000)}\n"""`),
-      extra ? 'Context from the page:\n' + String(extra).replace(/L\d+: /g, '').slice(0, 3500) : '',
+      extra ? 'Context from the page:\n' + String(extra).replace(/L\d+: /g, '').slice(0, 16000) : '',
       '',
       text || 'Please help me with this.',
     ];
@@ -8435,13 +8702,15 @@ A.fmtDate = (t) => {
     att.forEach((a) => { a.id = a.id || A.uid(); if (a.kind === 'pdf' && a.b64) sessionPdf.set(a.id, a.b64); });
     AI.pending = [];
     const extra = ctx.contextText ? await ctx.contextText(att) : '';
+    const sc = scopeOf();
+    const wide = sc.src !== 'here' ? await gatherScope() : { text: '', images: [] };
     const um = { role: 'user', text, att: att.map((a) => ({ id: a.id, kind: a.kind, label: a.label, url: a.url, page: a.page, rect: a.rect, text: a.kind === 'text' ? a.text : undefined, cfi: a.cfi })), ctx: extra || undefined, t: Date.now() };
     c.msgs.push(um);
     if (c.title === 'New conversation') c.title = (text || att[0].label).slice(0, 48);
     if (S.aiMode === 'app') {
       c.msgs.push({ role: 'assistant', text: '_Sent to your AI app. The answer and the conversation are saved there. The question was also copied, in case the app only takes the pictures._', t: Date.now() });
       ctx.save(); draw();
-      AI.handoff(text, att, extra);
+      AI.handoff(text, att.concat(wide.images), [extra, wide.text].filter(Boolean).join('\n\n'));
       return;
     }
     const bm = { role: 'assistant', text: '', t: Date.now() };
@@ -8457,24 +8726,38 @@ A.fmtDate = (t) => {
       const client = new Anthropic({ apiKey: S.aiKey, dangerouslyAllowBrowser: true });
       const modelId = S.aiModel || 'claude-opus-5-5';
       const effort = (AI.modes.find((m) => m.id === mode) || {}).effort || 'medium';
+      let messages = buildMessages(c.msgs.slice(0, -1)); // without the empty reply placeholder
+      if (wide.images.length) {
+        // wider-scope note pages ride on this request only (they are not saved into the conversation)
+        const last = messages[messages.length - 1];
+        last.content = wide.images.map((im) => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: im.url.split(',')[1] } })).concat(last.content);
+      }
+      const system = [{ type: 'text', text: systemPrompt() + (sc.web ? '\nYou can search the web. Use it when the question needs sources, data, recent results or material beyond the student\'s books; link the sources you rely on in Markdown.' : '') }];
+      if (wide.text) system.push({ type: 'text', text: wide.text });
       const params = {
         model: modelId,
         max_tokens: 64000,
-        system: systemPrompt(),
-        messages: buildMessages(c.msgs.slice(0, -1)), // without the empty reply placeholder
+        system,
         output_config: { effort },
         cache_control: { type: 'ephemeral' },
       };
+      if (sc.web) params.tools = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 5 }];
       if (modelId !== 'claude-haiku-5-5') { params.betas = ['server-side-fallback-2026-07-01']; params.fallbacks = 'default'; }
       abortCtl = new AbortController();
-      const stream = client.beta.messages.stream(params, { signal: abortCtl.signal });
-      for await (const ev of stream) {
-        if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta') {
-          bm.text += ev.delta.text;
-          if (!raf) raf = requestAnimationFrame(paint);
+      let final = null;
+      for (let round = 0; round < 4; round++) {
+        const stream = client.beta.messages.stream(Object.assign({}, params, { messages }), { signal: abortCtl.signal });
+        for await (const ev of stream) {
+          if (ev.type === 'content_block_start' && ev.content_block && ev.content_block.type === 'server_tool_use' && !bm.text) body.innerHTML = '<span class="thinking">Searching the web<i>.</i><i>.</i><i>.</i></span>';
+          if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta') {
+            bm.text += ev.delta.text;
+            if (!raf) raf = requestAnimationFrame(paint);
+          }
         }
+        final = await stream.finalMessage();
+        if (final.stop_reason !== 'pause_turn') break;
+        messages = messages.concat([{ role: 'assistant', content: final.content }]); // a long search turn: let the server resume it
       }
-      const final = await stream.finalMessage();
       if (final.stop_reason === 'refusal') bm.text += (bm.text ? '\n\n' : '') + '_The tutor declined to answer this request._';
       if (final.stop_reason === 'max_tokens') bm.text += '\n\n_(The answer was cut off. Ask the tutor to continue.)_';
       if (!bm.text.trim()) bm.text = '_No answer was returned. Try again._';
@@ -8713,6 +8996,26 @@ A.fmtDate = (t) => {
     return out.join('\n\n');
   };
 
+  /* a whole-book digest from the cached index, for tutor scopes (works without the book being open) */
+  RD.bookDigest = async (docId, budget = 60000) => {
+    const meta = A.ST.doc(docId);
+    const name = meta ? meta.title || meta.name : 'Book';
+    let idx = RD.index && RD.index.id === docId ? RD.index : null;
+    if (!idx) { try { const b = await A.store.loadFile('idx_' + docId, 'application/json'); if (b) idx = JSON.parse(await b.text()); } catch (e) { /* none */ } }
+    if (!idx || !idx.done) return { name, text: `Book "${name}": not read yet (open it once in Axiom so it can be indexed).`, ready: false };
+    const out = [`Book "${name}" (${idx.pages} pages${idx.done < idx.pages ? `, ${idx.done} indexed so far` : ''}).`];
+    const heads = idx.heads || [];
+    if (heads.length) out.push('Outline:\n' + heads.filter((x) => x.level <= 1).map((x) => `${x.level ? '  ' : ''}${x.title} (p. ${x.page})${x.gist ? ' — ' + x.gist.slice(0, 120) : ''}`).join('\n').slice(0, budget * 0.3));
+    let left = budget - out.join('\n').length;
+    const res = (idx.results || []).filter((r) => KEEP_KINDS.has(r.kind));
+    // named results first in full, then equations and prose definitions as space allows
+    const rank = (r) => (r.kind === 'Equation' || r.kind === 'Claim' ? 2 : r.kind === 'Term' ? 1 : 0);
+    const chosen = [];
+    for (const tier of [0, 1, 2]) for (const r of res) { if (rank(r) !== tier || left <= 0) continue; const t = `- ${resultLabel(r)} (p. ${r.page}): ${r.text.slice(0, tier ? 220 : 600)}`; chosen.push([r.page, t]); left -= t.length; }
+    if (chosen.length) out.push('Definitions and results:\n' + chosen.sort((a, b) => a[0] - b[0]).map((x) => x[1]).join('\n'));
+    return { name, text: out.join('\n\n'), ready: true };
+  };
+
   /* ---------- where am I: book, chapter, section, printed page (sent to the tutor automatically) ---------- */
   RD.bookInfo = async () => {
     if (!st || !st.pdf) return {};
@@ -8879,7 +9182,8 @@ A.fmtDate = (t) => {
   const inkOf = (n) => ((st.ann.ink = st.ann.ink || {})[n] = st.ann.ink[n] || []);
   const strokePath = (s, W, H, ox = 0, oy = 0) => {
     const pts = [];
-    for (let i = 0; i < s.pts.length; i += 3) pts.push(s.pts[i] * W + ox, s.pts[i + 1] * H + oy, 0.35 + 0.65 * s.pts[i + 2]);
+    const src = A.IN && A.IN.smoothStroke ? A.IN.smoothStroke(s.pts, 0.45) : s.pts;
+    for (let i = 0; i < src.length; i += 3) pts.push(src[i] * W + ox, src[i + 1] * H + oy, 0.35 + 0.65 * src[i + 2]);
     const path = new Path2D();
     A.G.buildVar(path, pts.length > 6 ? A.G.spline(pts, 1.2) : pts, Math.max(0.6, s.w * W), 0);
     return path;
@@ -8946,7 +9250,13 @@ A.fmtDate = (t) => {
       const list = (e.getCoalescedEvents && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
       if (cur.erase) { for (const ev of list) eraseAt(cur.p, (ev.clientX - cur.r.left) / cur.r.width, (ev.clientY - cur.r.top) / cur.r.height); return; }
       if (cur.stroke) {
-        for (const ev of list) cur.stroke.pts.push((ev.clientX - cur.r.left) / cur.r.width, (ev.clientY - cur.r.top) / cur.r.height, ev.pointerType === 'pen' ? Math.max(0.05, ev.pressure) : 0.6);
+        const sp = cur.stroke.pts;
+        for (const ev of list) {
+          const fx = (ev.clientX - cur.r.left) / cur.r.width, fy = (ev.clientY - cur.r.top) / cur.r.height, m = ev.pointerType === 'pen' ? Math.max(0.05, ev.pressure) : 0.6, k = sp.length - 3;
+          // keep samples at least ~0.6 px apart; closer ones just move the last point (no jitter, no lag)
+          if (Math.hypot((fx - sp[k]) * cur.r.width, (fy - sp[k + 1]) * cur.r.height) > 0.6) sp.push(fx, fy, m);
+          else { sp[k] = fx; sp[k + 1] = fy; sp[k + 2] = Math.max(sp[k + 2], m); }
+        }
         if (!cur.raf) cur.raf = requestAnimationFrame(() => { if (cur) { cur.raf = 0; drawInkPage(cur.p, cur.stroke); } });
         return;
       }
@@ -9063,6 +9373,7 @@ A.fmtDate = (t) => {
   /* ---------- tutor context for the reader ---------- */
   const readerCtx = {
     kind: 'reader',
+    docId: () => st.meta.id,
     store: () => st.ann,
     chats: () => st.ann.chats,
     save: () => saveAnn(),
@@ -9962,6 +10273,7 @@ A.fmtDate = (t) => {
       it('addpage', 'New page', () => { const cur = R.currentPage(); D.insertPage(cur + 1, { template: D.pageTemplate(D.doc, cur) }); R.showPage(cur + 1, true); });
       it('shapes', 'Diagram', () => A.V.open(anchor));
       it('book', 'Book page beside…', () => bookBesideMenu(anchor));
+      it('graph', 'Desmos calculator', () => A.ST.openGraph());
       box.append(h('hr'));
       it('laser', 'Laser pointer', () => A.UI.setSlot(7));
       it('tape', 'Tape', () => A.UI.setSlot(8));

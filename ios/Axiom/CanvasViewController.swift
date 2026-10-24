@@ -164,6 +164,19 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
             UIApplication.shared.isIdleTimerDisabled = body["on"] as? Bool ?? false
             replyHandler(true, nil)
             return
+        case "snapshot":
+            // a picture of part of the page, including embedded sites (Desmos) that the page itself cannot read
+            let cfg = WKSnapshotConfiguration()
+            cfg.rect = CGRect(x: body["x"] as? Double ?? 0, y: body["y"] as? Double ?? 0,
+                              width: body["w"] as? Double ?? 100, height: body["h"] as? Double ?? 100)
+            cfg.afterScreenUpdates = true
+            webView.takeSnapshot(with: cfg) { image, error in
+                guard let image, let data = image.pngData() else {
+                    replyHandler(nil, error?.localizedDescription ?? "Snapshot failed"); return
+                }
+                replyHandler(data.base64EncodedString(), nil)
+            }
+            return
         case "audioStart":
             audio.start(id: body["id"] as? String ?? "") { ok, err in replyHandler(ok, err) }
             return

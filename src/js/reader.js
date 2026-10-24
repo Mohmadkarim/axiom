@@ -208,6 +208,26 @@
     return out.join('\n\n');
   };
 
+  /* a whole-book digest from the cached index, for tutor scopes (works without the book being open) */
+  RD.bookDigest = async (docId, budget = 60000) => {
+    const meta = A.ST.doc(docId);
+    const name = meta ? meta.title || meta.name : 'Book';
+    let idx = RD.index && RD.index.id === docId ? RD.index : null;
+    if (!idx) { try { const b = await A.store.loadFile('idx_' + docId, 'application/json'); if (b) idx = JSON.parse(await b.text()); } catch (e) { /* none */ } }
+    if (!idx || !idx.done) return { name, text: `Book "${name}": not read yet (open it once in Axiom so it can be indexed).`, ready: false };
+    const out = [`Book "${name}" (${idx.pages} pages${idx.done < idx.pages ? `, ${idx.done} indexed so far` : ''}).`];
+    const heads = idx.heads || [];
+    if (heads.length) out.push('Outline:\n' + heads.filter((x) => x.level <= 1).map((x) => `${x.level ? '  ' : ''}${x.title} (p. ${x.page})${x.gist ? ' — ' + x.gist.slice(0, 120) : ''}`).join('\n').slice(0, budget * 0.3));
+    let left = budget - out.join('\n').length;
+    const res = (idx.results || []).filter((r) => KEEP_KINDS.has(r.kind));
+    // named results first in full, then equations and prose definitions as space allows
+    const rank = (r) => (r.kind === 'Equation' || r.kind === 'Claim' ? 2 : r.kind === 'Term' ? 1 : 0);
+    const chosen = [];
+    for (const tier of [0, 1, 2]) for (const r of res) { if (rank(r) !== tier || left <= 0) continue; const t = `- ${resultLabel(r)} (p. ${r.page}): ${r.text.slice(0, tier ? 220 : 600)}`; chosen.push([r.page, t]); left -= t.length; }
+    if (chosen.length) out.push('Definitions and results:\n' + chosen.sort((a, b) => a[0] - b[0]).map((x) => x[1]).join('\n'));
+    return { name, text: out.join('\n\n'), ready: true };
+  };
+
   /* ---------- where am I: book, chapter, section, printed page (sent to the tutor automatically) ---------- */
   RD.bookInfo = async () => {
     if (!st || !st.pdf) return {};
@@ -374,7 +394,8 @@
   const inkOf = (n) => ((st.ann.ink = st.ann.ink || {})[n] = st.ann.ink[n] || []);
   const strokePath = (s, W, H, ox = 0, oy = 0) => {
     const pts = [];
-    for (let i = 0; i < s.pts.length; i += 3) pts.push(s.pts[i] * W + ox, s.pts[i + 1] * H + oy, 0.35 + 0.65 * s.pts[i + 2]);
+    const src = A.IN && A.IN.smoothStroke ? A.IN.smoothStroke(s.pts, 0.45) : s.pts;
+    for (let i = 0; i < src.length; i += 3) pts.push(src[i] * W + ox, src[i + 1] * H + oy, 0.35 + 0.65 * src[i + 2]);
     const path = new Path2D();
     A.G.buildVar(path, pts.length > 6 ? A.G.spline(pts, 1.2) : pts, Math.max(0.6, s.w * W), 0);
     return path;
@@ -441,7 +462,13 @@
       const list = (e.getCoalescedEvents && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
       if (cur.erase) { for (const ev of list) eraseAt(cur.p, (ev.clientX - cur.r.left) / cur.r.width, (ev.clientY - cur.r.top) / cur.r.height); return; }
       if (cur.stroke) {
-        for (const ev of list) cur.stroke.pts.push((ev.clientX - cur.r.left) / cur.r.width, (ev.clientY - cur.r.top) / cur.r.height, ev.pointerType === 'pen' ? Math.max(0.05, ev.pressure) : 0.6);
+        const sp = cur.stroke.pts;
+        for (const ev of list) {
+          const fx = (ev.clientX - cur.r.left) / cur.r.width, fy = (ev.clientY - cur.r.top) / cur.r.height, m = ev.pointerType === 'pen' ? Math.max(0.05, ev.pressure) : 0.6, k = sp.length - 3;
+          // keep samples at least ~0.6 px apart; closer ones just move the last point (no jitter, no lag)
+          if (Math.hypot((fx - sp[k]) * cur.r.width, (fy - sp[k + 1]) * cur.r.height) > 0.6) sp.push(fx, fy, m);
+          else { sp[k] = fx; sp[k + 1] = fy; sp[k + 2] = Math.max(sp[k + 2], m); }
+        }
         if (!cur.raf) cur.raf = requestAnimationFrame(() => { if (cur) { cur.raf = 0; drawInkPage(cur.p, cur.stroke); } });
         return;
       }
@@ -558,6 +585,7 @@
   /* ---------- tutor context for the reader ---------- */
   const readerCtx = {
     kind: 'reader',
+    docId: () => st.meta.id,
     store: () => st.ann,
     chats: () => st.ann.chats,
     save: () => saveAnn(),

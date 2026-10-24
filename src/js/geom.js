@@ -132,7 +132,18 @@
   };
 
   /* Variable-width stroke as a nonzero union of circles and (consistently wound) tangent quads */
-  G.buildVar = (sink, pts, size, taper = 0) => {
+  G.buildVar = (sink, src, size, taper = 0) => {
+    // drop sub-pixel jitter first: dense 240 Hz samples make hair-thin quads whose winding WebKit can cancel (hollow, doubled-looking ink)
+    const minD = Math.max(0.4, size * 0.12), sn = G.count(src);
+    let pts = src;
+    if (sn > 2) {
+      pts = [src[0], src[1], src[2]];
+      for (let i = 1; i < sn; i++) {
+        const j = i * 3, k = pts.length - 3;
+        if (i === sn - 1 || hyp(src[j] - pts[k], src[j + 1] - pts[k + 1]) >= minD) pts.push(src[j], src[j + 1], src[j + 2]);
+        else pts[k + 2] = Math.max(pts[k + 2], src[j + 2]);
+      }
+    }
     const n = G.count(pts);
     if (!n) return;
     const r = new Float32Array(n);
