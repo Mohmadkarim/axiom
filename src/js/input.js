@@ -1,0 +1,944 @@
+/* Axiom input: pointer routing, Apple Pencil, gestures, and tool actions */
+'use strict';
+(() => {
+  const G = A.G, B = A.B, D = A.D, R = A.R, M = A.M, GU = A.GU;
+  const IN = (A.IN = {});
+  const hyp = Math.hypot;
+
+  const pointers = new Map();
+  let action = null;
+  let penSeen = false;
+  let touchSession = null;
+  let spaceDown = false;
+  let lastCenterTap = 0;
+  IN.hover = null;
+  IN.eyedrop = false;
+  IN.selMode = 'lasso';      // lasso | picker
+  IN.selPartial = false;
+  IN.selLayerOnly = false;
+  IN.scaleMode = 'scale';    // scale | stretch | off
+  IN.allowSelRotate = true;
+
+  /* ---------- selection model ---------- */
+  const SEL = (A.SEL = {
+    get ids() { return R.sel; },
+    set(ids) {
+      R.sel = new Set(ids);
+      R.fadeOthers = R.sel.size > 0;
+      SEL.box = SEL.computeBox();
+      R.render();
+      A.emit('selection');
+    },
+    clear() { if (!R.sel.size) return; SEL.set([]); },
+    items() {
+      const out = [];
+      for (const l of D.doc.layers) for (const it of l.items) if (R.sel.has(it.id)) out.push({ it, layer: l });
+      return out;
+    },
+    computeBox() {
+      let bb = null;
+      for (const { it } of SEL.items()) bb = G.bbUnion(bb, it.t === 'i' ? B.imageBB(it) : G.bbox(it.pts, it.t === 's' ? Math.min(it.w * (it.mm || 1) / 2, 40) : 0));
+      return bb;
+    },
+    box: null,
+  });
+  A.on('selection:clear', () => { R.sel = new Set(); R.fadeOthers = false; SEL.box = null; R.selPreview = null; A.emit('selection'); });
+
+  /* corners of the (possibly previewed) selection box in screen space */
+  SEL.screenCorners = () => {
+    const bb = SEL.box;
+    if (!bb) return null;
+    const pad = 8 / D.doc.view.zoom;
+    const T = R.selPreview || M.id();
+    return [[bb[0] - pad, bb[1] - pad], [bb[2] + pad, bb[1] - pad], [bb[2] + pad, bb[3] + pad], [bb[0] - pad, bb[3] + pad]]
+      .map(([x, y]) => M.apply(T, x, y)).map(([x, y]) => R.toScreen(x, y));
+  };
+  SEL.hit = (sx, sy) => {
+    const c = SEL.screenCorners();
+    if (!c) return null;
+    for (let i = 0; i < 4; i++) if (hyp(c[i][0] - sx, c[i][1] - sy) < 24) return { kind: 'corner', i };
+    const top = [(c[0][0] + c[1][0]) / 2, (c[0][1] + c[1][1]) / 2];
+    const ctr = [(c[0][0] + c[2][0]) / 2, (c[0][1] + c[2][1]) / 2];
+    const dx = top[0] - ctr[0], dy = top[1] - ctr[1], L = hyp(dx, dy) || 1;
+    const rh = [top[0] + (dx / L) * 30, top[1] + (dy / L) * 30];
+    if (IN.allowSelRotate && hyp(rh[0] - sx, rh[1] - sy) < 22) return { kind: 'rotate', rh };
+    if (G.pointInPoly(sx, sy, c.flat())) return { kind: 'move' };
+    return null;
+  };
+
+  /* ---------- helpers ---------- */
+  const rectOf = () => R.overlay.getBoundingClientRect();
+  const sampleOf = (e, rect) => {
+    let tilt = 0;
+    if (e.pointerType === 'pen') {
+      if (typeof e.altitudeAngle === 'number' && e.altitudeAngle > 0) tilt = 1 - e.altitudeAngle / (Math.PI / 2);
+      else if (e.tiltX || e.tiltY) {
+        const tx = Math.tan(A.rad(e.tiltX || 0)), ty = Math.tan(A.rad(e.tiltY || 0));
+        tilt = Math.atan(Math.sqrt(tx * tx + ty * ty)) / (Math.PI / 2);
+      }
+    }
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top, p: e.pressure, tilt, t: e.timeStamp || performance.now(), type: e.pointerType };
+  };
+  const samplesOf = (e, rect) => {
+    const list = (e.getCoalescedEvents && e.getCoalescedEvents()) || [];
+    return (list.length ? list : [e]).map((ev) => sampleOf(ev, rect));
+  };
+  const targetLayers = (activeOnly) => D.doc.layers.filter((l) => l.visible && !l.locked && (!activeOnly || l.id === D.doc.activeLayerId));
+  const pickItem = (wx, wy, tolW) => {
+    const L = D.doc.layers;
+    for (let li = L.length - 1; li >= 0; li--) {
+      const l = L[li];
+      if (!l.visible || l.locked || (IN.selLayerOnly && l.id !== D.doc.activeLayerId)) continue;
+      for (let i = l.items.length - 1; i >= 0; i--) {
+        const it = l.items[i];
+        if (it.t === 'i' ? B.imageHit(it, wx, wy) : (!B.catalog[it.b].mask && G.strokeHitCircle(it, wx, wy, tolW))) return it;
+      }
+    }
+    return null;
+  };
+  IN.pickItem = pickItem;
+
+  /* ================= actions ================= */
+
+  /* ---- drawing ---- */
+  class DrawAction {
+    constructor(rec, s, opts) {
+      this.rec = rec; this.opts = opts;
+      this.slot = Object.assign({}, B.slot());
+      this.cat = B.catalog[this.slot.b];
+      this.zoom = D.doc.view.zoom;
+      this.guide = GU.active();
+      this.pts = [];
+      this.raw = [];
+      this.hasPressure = s.type === 'pen';
+      this.lastS = null;
+      this.pm = null;
+      this.vel = 0;
+      this.shape = null;
+      this.hold = { x: s.x, y: s.y, t: s.t };
+      this.lengthScreen = 0;
+      if (this.guide) this.gctx = GU.begin(this.guide, ...R.toWorld(s.x, s.y));
+      this.add(s);
+      this.armHold();
+      IN.liveDraw = this;
+    }
+    armHold() {
+      clearTimeout(this.holdTimer);
+      this.holdTimer = setTimeout(() => this.onHold(), A.settings.holdTime || 500);
+    }
+    onHold() {
+      if (this.done || this.shape) return;
+      if (this.lengthScreen < 5 && A.settings.tapHoldSelect && this.rec.type !== 'touch') {
+        // Concepts-style tap+hold: switch to lasso selection
+        this.done = true;
+        IN.liveDraw = null;
+        action = new LassoAction(this.rec, this.lastS, { temp: true });
+        action.owner = this.rec.id;
+        R.renderOverlay();
+        return;
+      }
+      if (!D.doc.precision.recog || this.guide || this.cat.mask) return;
+      const r = G.recognize(this.pts);
+      if (r) {
+        this.shape = r;
+        const [hx, hy] = R.toWorld(this.lastS.x, this.lastS.y);
+        this.shapeHold = [hx, hy];
+        if (r.kind === 'line' || r.kind === 'arc' || r.kind === 'polyline') this.shapePivot = [r.pts[0], r.pts[1]];
+        else { const bb = G.bbox(r.pts); this.shapePivot = [(bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2]; }
+        this.shapeM = M.id();
+        R.renderOverlay();
+      }
+    }
+    pressureOf(s) {
+      if (this.hasPressure && s.p > 0) return s.p;
+      // simulate pressure from velocity (finger/mouse)
+      if (this.lastS) {
+        const dt = Math.max(1, s.t - this.lastS.t), v = hyp(s.x - this.lastS.x, s.y - this.lastS.y) / dt;
+        this.vel = this.vel * 0.7 + v * 0.3;
+      }
+      return A.clamp(1.1 - this.vel * 0.42, 0.32, 1);
+    }
+    add(s) {
+      if (this.lastS) this.lengthScreen += hyp(s.x - this.lastS.x, s.y - this.lastS.y);
+      let [wx, wy] = R.toWorld(s.x, s.y);
+      if (this.guide) [wx, wy] = GU.project(this.guide, wx, wy, this.gctx);
+      const p = this.pressureOf(s);
+      let m = B.widthMul(this.slot.b, p, s.tilt, this.hasPressure);
+      this.pm = this.pm == null ? m : this.pm + (m - this.pm) * (this.hasPressure ? 0.55 : 0.3);
+      m = this.pm;
+      this.raw.push(wx, wy, m);
+      const n = this.pts.length;
+      if (!n || this.guide) { this.pts.push(wx, wy, m); }
+      else {
+        const sm = A.clamp(this.slot.smoothing, 0, 0.97);
+        const k = 1 - sm * 0.86;
+        const lx = this.pts[n - 3], ly = this.pts[n - 2];
+        const x = lx + (wx - lx) * k, y = ly + (wy - ly) * k;
+        if (hyp(x - lx, y - ly) * this.zoom > 0.4) this.pts.push(x, y, m);
+        else this.pts[n - 1] = Math.max(this.pts[n - 1], m * 0.5 + this.pts[n - 1] * 0.5);
+      }
+      this.lastS = s;
+    }
+    move(e, rect) {
+      const ss = samplesOf(e, rect);
+      if (this.shape) {
+        const s = ss[ss.length - 1];
+        const [x, y] = R.toWorld(s.x, s.y);
+        const [px, py] = this.shapePivot, [hx, hy] = this.shapeHold;
+        const a0 = Math.atan2(hy - py, hx - px), a1 = Math.atan2(y - py, x - px);
+        const d0 = hyp(hx - px, hy - py) || 1, d1 = hyp(x - px, y - py);
+        const sc = d1 / d0;
+        if (hyp(x - hx, y - hy) * this.zoom > 3) this.shapeM = M.about(M.mul(M.rotate(a1 - a0), M.scale(sc)), px, py);
+        this.lastS = s;
+        R.renderOverlay();
+        return;
+      }
+      for (const s of ss) this.add(s);
+      const s = ss[ss.length - 1];
+      if (hyp(s.x - this.hold.x, s.y - this.hold.y) > 4) { this.hold = { x: s.x, y: s.y, t: s.t }; this.armHold(); }
+      // predicted samples for lower perceived latency
+      this.predicted = null;
+      if (e.getPredictedEvents) {
+        const pe = e.getPredictedEvents();
+        if (pe && pe.length) {
+          const last = pe[pe.length - 1];
+          let [wx, wy] = R.toWorld(last.clientX - rect.left, last.clientY - rect.top);
+          if (this.guide) [wx, wy] = GU.project(this.guide, wx, wy, this.gctx);
+          this.predicted = [wx, wy, this.pm];
+        }
+      }
+      R.renderOverlay();
+    }
+    /* turn live points into final points (snap/align/straight/shape) */
+    finalPts(live = false) {
+      const doc = D.doc;
+      let pts = this.pts.slice();
+      if (!live && this.raw.length >= 3) {
+        const L = this.raw.length;
+        const lx = this.raw[L - 3], ly = this.raw[L - 2];
+        const n = pts.length;
+        if (hyp(pts[n - 3] - lx, pts[n - 2] - ly) > 0.2 / this.zoom) pts.push(lx, ly, pts[n - 1]);
+      }
+      if (live && this.predicted) pts = pts.concat(this.predicted);
+      let sharp = false, closed = false;
+      if (this.shape) {
+        const T = this.shapeM;
+        const sp = this.shape.pts.slice();
+        for (let i = 0; i < sp.length; i += 3) { const [x, y] = M.apply(T, sp[i], sp[i + 1]); sp[i] = x; sp[i + 1] = y; }
+        return { pts: sp, sharp: !!this.shape.sharp, closed: this.shape.closed };
+      }
+      const np = G.count(pts);
+      const avgm = () => { let s = 0; for (let i = 2; i < pts.length; i += 3) s += pts[i]; return s / Math.max(1, np); };
+      const g = doc.paper.grid;
+      if (!this.guide && np >= 2 && doc.precision.snap && doc.precision.grid && g.type !== 'none') {
+        const m = avgm();
+        let a = [pts[0], pts[1]], b = [pts[pts.length - 3], pts[pts.length - 2]];
+        if (doc.precision.snapMode === 'grid') {
+          const sp = g.type === 'graph' || g.type === 'eng' ? g.spacing / Math.max(1, g.divisions) * (this.zoom * g.spacing / Math.max(1, g.divisions) < 10 ? Math.max(1, g.divisions) : 1) : g.spacing;
+          a = G.snapLattice(g.type, sp, a[0], a[1]); b = G.snapLattice(g.type, sp, b[0], b[1]);
+        } else {
+          const ang = G.alignDir(g.type, Math.atan2(b[1] - a[1], b[0] - a[0]));
+          const L = (b[0] - a[0]) * Math.cos(ang) + (b[1] - a[1]) * Math.sin(ang);
+          b = [a[0] + Math.cos(ang) * L, a[1] + Math.sin(ang) * L];
+        }
+        pts = [a[0], a[1], m, b[0], b[1], m];
+        sharp = true;
+      } else if (!this.guide && this.slot.smoothing >= 0.97 && np >= 2) {
+        const m = avgm();
+        pts = [pts[0], pts[1], m, pts[pts.length - 3], pts[pts.length - 2], m];
+        sharp = true;
+      } else if (!live && !this.guide && np > 2) {
+        if (this.slot.smoothing > 0.12) pts = G.chaikin(pts, 1);
+        pts = G.simplify(pts, 0.22 / this.zoom, 0.035);
+      }
+      // connect endpoints to nearby stroke ends
+      if (!live && doc.precision.snap && doc.precision.connect && G.count(pts) >= 2) {
+        const tol = 14 / this.zoom;
+        const ends = [];
+        for (const it of D.active().items) if (it.t === 's' && !B.catalog[it.b].mask && it.pts.length >= 6) {
+          ends.push([it.pts[0], it.pts[1]], [it.pts[it.pts.length - 3], it.pts[it.pts.length - 2]]);
+        }
+        const fix = (i) => {
+          let best = null, bd = tol;
+          for (const e of ends) { const d = hyp(e[0] - pts[i], e[1] - pts[i + 1]); if (d < bd) { bd = d; best = e; } }
+          if (best) { pts[i] = best[0]; pts[i + 1] = best[1]; }
+        };
+        fix(0); fix(pts.length - 3);
+      }
+      return { pts, sharp, closed };
+    }
+    liveItem() {
+      const { pts, sharp, closed } = this.finalPts(true);
+      const cat = this.cat;
+      if (cat.mask) {
+        return { t: 's', b: cat.soft ? 'airbrush' : 'pen', c: D.doc.paper.bg, w: this.slot.size, o: 0.92, pts, sharp, closed };
+      }
+      return { t: 's', b: this.slot.b, c: this.slot.color, w: this.slot.size, o: this.slot.opacity, pts, sharp, closed };
+    }
+    up(e, rect) {
+      if (this.done) return;
+      this.done = true;
+      clearTimeout(this.holdTimer);
+      IN.liveDraw = null;
+      if (e && !this.shape) for (const s of samplesOf(e, rect)) this.add(s);
+      const { pts, sharp, closed } = this.finalPts(false);
+      R.renderOverlay();
+      if (this.cat.kind === 'fill' && G.count(pts) < 3) return;
+      const layer = D.targetLayerFor(this.slot.b);
+      if (layer.locked) { A.toast('This layer is locked'); return; }
+      if (!layer.visible) { A.toast('This layer is hidden'); }
+      const extra = {};
+      if (sharp) extra.sharp = true;
+      if (closed) extra.closed = true;
+      const item = D.makeStroke(this.slot.b, this.slot.color, this.slot.size, this.slot.opacity, pts, extra);
+      D.begin();
+      D.addItems([item], layer);
+      D.commit();
+      R.appendItem(item, layer);
+      if (D.doc.precision.measure && G.count(pts) >= 2 && !this.cat.mask) {
+        IN.lastMeasure = { item, until: performance.now() + 2200 };
+        setTimeout(() => R.renderOverlay(), 2300);
+      }
+      A.emit('layers:thumbs');
+    }
+    cancel() { this.done = true; clearTimeout(this.holdTimer); IN.liveDraw = null; R.renderOverlay(); }
+  }
+
+  /* ---- slice eraser / stroke eraser ---- */
+  class EraseAction {
+    constructor(rec, s, kind) {
+      this.kind = kind; this.rec = rec;
+      this.slot = B.slot();
+      this.changed = false;
+      D.begin();
+      this.last = R.toWorld(s.x, s.y);
+      IN.cursor = { x: s.x, y: s.y, r: this.radiusScreen() };
+      this.apply(this.last, this.last);
+    }
+    radiusScreen() { return Math.max(this.kind === 'slice' ? 2 : 4, (this.slot.size / 2) * D.doc.view.zoom); }
+    apply(a, b) {
+      const zoom = D.doc.view.zoom;
+      const r = Math.max(this.kind === 'slice' ? 1.2 / zoom : 3 / zoom, this.slot.size / 2);
+      const seg = [Math.min(a[0], b[0]) - r, Math.min(a[1], b[1]) - r, Math.max(a[0], b[0]) + r, Math.max(a[1], b[1]) + r];
+      const map = new Map();
+      const remove = [];
+      for (const l of targetLayers(false)) {
+        for (const it of l.items) {
+          if (it.t !== 's' || !G.bbHit(it.bb, seg)) continue;
+          if (!G.strokeHitSeg(it, a[0], a[1], b[0], b[1], r)) continue;
+          if (this.kind === 'eraser') { remove.push(it.id); continue; }
+          // slice: cut along the segment
+          const half = (it.w * (it.mm || 1)) / 2;
+          const cutR = r + (B.catalog[it.b].kind === 'fill' ? 0 : half * 0.5);
+          let pieces = [it.pts];
+          const d = hyp(b[0] - a[0], b[1] - a[1]);
+          const steps = Math.max(1, Math.ceil(d / Math.max(cutR * 0.5, 0.3)));
+          for (let k = 0; k <= steps; k++) {
+            const t = k / steps, cx = a[0] + (b[0] - a[0]) * t, cy = a[1] + (b[1] - a[1]) * t;
+            const next = [];
+            for (const p of pieces) {
+              const res = G.slice(p, cx, cy, cutR, Math.max(cutR * 0.4, 0.25));
+              if (res) next.push(...res); else next.push(p);
+            }
+            pieces = next;
+          }
+          map.set(it.id, pieces.filter((p) => p.length >= 6).map((p) => D.withPts(it, p)));
+        }
+      }
+      if (remove.length) { D.removeIds(remove); this.changed = true; }
+      if (map.size) { D.replace(map); this.changed = true; }
+      if (remove.length || map.size) R.render();
+    }
+    move(e, rect) {
+      for (const s of samplesOf(e, rect)) {
+        const w = R.toWorld(s.x, s.y);
+        this.apply(this.last, w);
+        this.last = w;
+        IN.cursor = { x: s.x, y: s.y, r: this.radiusScreen() };
+      }
+      R.renderOverlay();
+    }
+    up() {
+      IN.cursor = null;
+      if (this.changed) { D.commit(); A.emit('layers:thumbs'); }
+      else D.history.pending = null;
+      R.renderOverlay();
+    }
+    cancel() { this.up(); }
+  }
+
+  /* ---- nudge ---- */
+  class NudgeAction {
+    constructor(rec, s) {
+      this.rec = rec;
+      this.slot = B.slot();
+      this.last = R.toWorld(s.x, s.y);
+      this.done = new Set();
+      this.changed = false;
+      D.begin();
+      IN.cursor = { x: s.x, y: s.y, r: this.slot.size, nudge: true };
+    }
+    move(e, rect) {
+      const s = samplesOf(e, rect).pop();
+      const w = R.toWorld(s.x, s.y);
+      const dx = w[0] - this.last[0], dy = w[1] - this.last[1];
+      const Rw = this.slot.size / D.doc.view.zoom;
+      const l = D.active();
+      if (l.locked) { A.toast('This layer is locked'); return; }
+      const box = [this.last[0] - Rw, this.last[1] - Rw, this.last[0] + Rw, this.last[1] + Rw];
+      const map = new Map();
+      for (const it of l.items) {
+        if (it.t !== 's' || !G.bbHit(it.bb, box)) continue;
+        let pts = this.done.has(it.id) ? it.pts.slice() : G.resample(it.pts, Math.max(Rw / 10, 0.5));
+        let moved = false;
+        for (let i = 0; i < pts.length; i += 3) {
+          const d = hyp(pts[i] - this.last[0], pts[i + 1] - this.last[1]);
+          if (d < Rw) { const f = (1 - d / Rw) ** 2; pts[i] += dx * f; pts[i + 1] += dy * f; moved = true; }
+        }
+        if (moved) { const n = D.withPts(it, pts); this.done.add(n.id); map.set(it.id, [n]); }
+      }
+      if (map.size) { D.replace(map); this.changed = true; R.render(); }
+      this.last = w;
+      IN.cursor = { x: s.x, y: s.y, r: this.slot.size, nudge: true };
+      R.renderOverlay();
+    }
+    up() { IN.cursor = null; if (this.changed) { D.commit(); A.emit('layers:thumbs'); } else D.history.pending = null; R.renderOverlay(); }
+    cancel() { this.up(); }
+  }
+
+  /* ---- lasso / item picker ---- */
+  class LassoAction {
+    constructor(rec, s, opts = {}) {
+      this.rec = rec; this.opts = opts;
+      this.poly = [];
+      this.start = { x: s.x, y: s.y };
+      this.moved = 0;
+      if (IN.selMode === 'lasso') this.poly.push(...R.toWorld(s.x, s.y));
+      IN.lasso = this;
+      A.emit('selmenu:show');
+    }
+    move(e, rect) {
+      for (const s of samplesOf(e, rect)) {
+        this.moved = Math.max(this.moved, hyp(s.x - this.start.x, s.y - this.start.y));
+        if (IN.selMode === 'lasso') this.poly.push(...R.toWorld(s.x, s.y));
+        this.cur = { x: s.x, y: s.y };
+      }
+      R.renderOverlay();
+    }
+    up(e, rect) {
+      IN.lasso = null;
+      const zoom = D.doc.view.zoom;
+      const end = this.cur || this.start;
+      if (IN.selMode === 'picker' || this.moved < 8 || this.poly.length < 8) {
+        const [wx, wy] = R.toWorld(end.x, end.y);
+        const it = pickItem(wx, wy, 10 / zoom);
+        if (it) {
+          const ids = new Set(R.sel);
+          if (ids.has(it.id)) ids.delete(it.id); else ids.add(it.id);
+          SEL.set(ids);
+        } else if (IN.selMode === 'lasso' || this.moved < 8) SEL.clear();
+        R.renderOverlay();
+        return;
+      }
+      const poly = [];
+      for (let i = 0; i < this.poly.length; i += 2) poly.push(this.poly[i], this.poly[i + 1]);
+      const xs = poly.filter((_, i) => i % 2 === 0), ys = poly.filter((_, i) => i % 2 === 1);
+      const pbb = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+      const found = [];
+      for (const l of targetLayers(IN.selLayerOnly)) {
+        for (const it of l.items) {
+          if (!G.bbHit(it.bb, pbb)) continue;
+          if (it.t === 'i') {
+            const cs = B.imageCorners(it);
+            const inside = cs.filter(([x, y]) => G.pointInPoly(x, y, poly)).length;
+            if (IN.selPartial ? inside > 0 : inside === 4) found.push(it.id);
+            continue;
+          }
+          if (B.catalog[it.b].mask) continue;
+          const p = it.pts, n = G.count(p), step = Math.max(1, Math.floor(n / 40));
+          let ins = 0, tot = 0;
+          for (let i = 0; i < n; i += step) { tot++; if (G.pointInPoly(p[i * 3], p[i * 3 + 1], poly)) ins++; }
+          if (IN.selPartial ? ins > 0 : ins >= tot * 0.85) found.push(it.id);
+        }
+      }
+      const ids = new Set(R.sel);
+      if (found.length && found.every((id) => ids.has(id))) found.forEach((id) => ids.delete(id));
+      else found.forEach((id) => ids.add(id));
+      SEL.set(ids);
+      R.renderOverlay();
+    }
+    cancel() { IN.lasso = null; R.renderOverlay(); }
+  }
+
+  /* ---- transforming the selection ---- */
+  class SelTransformAction {
+    constructor(rec, s, hit) {
+      this.rec = rec; this.hit = hit;
+      this.start = R.toWorld(s.x, s.y);
+      this.T0 = R.selPreview || M.id();
+      const bb = SEL.box;
+      const c = [[bb[0], bb[1]], [bb[2], bb[1]], [bb[2], bb[3]], [bb[0], bb[3]]].map(([x, y]) => M.apply(this.T0, x, y));
+      this.corners = c;
+      this.center = [(c[0][0] + c[2][0]) / 2, (c[0][1] + c[2][1]) / 2];
+      this.theta = Math.atan2(c[1][1] - c[0][1], c[1][0] - c[0][0]);
+      A.emit('selpopup:hide');
+    }
+    move(e, rect) {
+      const s = samplesOf(e, rect).pop();
+      const [x, y] = R.toWorld(s.x, s.y);
+      let T;
+      if (this.hit.kind === 'move') T = M.mul(M.translate(x - this.start[0], y - this.start[1]), this.T0);
+      else if (this.hit.kind === 'rotate') {
+        let r = Math.atan2(y - this.center[1], x - this.center[0]) - Math.atan2(this.start[1] - this.center[1], this.start[0] - this.center[0]);
+        const st = Math.PI / 12, k = Math.round(r / st) * st;
+        if (Math.abs(r - k) < A.rad(2.5)) r = k;
+        T = M.mul(M.about(M.rotate(r), this.center[0], this.center[1]), this.T0);
+        this.angle = r;
+      } else {
+        if (IN.scaleMode === 'off') return;
+        const i = this.hit.i, piv = this.corners[(i + 2) % 4], c0 = this.corners[i];
+        if (IN.scaleMode === 'scale') {
+          const d0 = hyp(c0[0] - piv[0], c0[1] - piv[1]) || 1;
+          // project the pointer onto the diagonal for a stable uniform scale
+          const ux = (c0[0] - piv[0]) / d0, uy = (c0[1] - piv[1]) / d0;
+          const d1 = Math.max(0.02 * d0, (x - piv[0]) * ux + (y - piv[1]) * uy);
+          T = M.mul(M.about(M.scale(d1 / d0), piv[0], piv[1]), this.T0);
+        } else {
+          const th = this.theta, rot = M.rotate(-th);
+          const [l0x, l0y] = M.apply(rot, c0[0] - piv[0], c0[1] - piv[1]);
+          const [l1x, l1y] = M.apply(rot, x - piv[0], y - piv[1]);
+          const sx = Math.abs(l0x) > 1e-6 ? l1x / l0x : 1, sy = Math.abs(l0y) > 1e-6 ? l1y / l0y : 1;
+          const S = M.mul(M.rotate(th), M.mul(M.scale(sx, sy), M.rotate(-th)));
+          T = M.mul(M.about(S, piv[0], piv[1]), this.T0);
+        }
+      }
+      R.selPreview = T;
+      R.render();
+      A.emit('selection:preview');
+    }
+    up() { IN.commitSelTransform(); }
+    cancel() { this.up(); }
+  }
+  IN.commitSelTransform = () => {
+    const T = R.selPreview;
+    if (!T) return A.emit('selection');
+    const isId = T.every((v, i) => Math.abs(v - M.id()[i]) < 1e-9);
+    if (!isId) {
+      D.begin();
+      const map = new Map(), ids = [];
+      for (const { it } of SEL.items()) {
+        const n = D.transformItem(it, T, IN.scaleMode !== 'stretch');
+        map.set(it.id, [n]); ids.push(n.id);
+      }
+      D.replace(map);
+      R.selPreview = null;
+      D.commit();
+      SEL.set(ids);
+      A.emit('layers:thumbs');
+    } else { R.selPreview = null; R.render(); A.emit('selection'); }
+  };
+
+  /* ---- two-finger gesture (canvas or selection) ---- */
+  class GestureAction {
+    constructor(recs, selection = false) {
+      this.ids = recs.map((r) => r.id);
+      const [a, b] = recs;
+      this.a0 = [a.x, a.y]; this.b0 = [b.x, b.y];
+      this.d0 = hyp(b.x - a.x, b.y - a.y) || 1;
+      this.ang0 = Math.atan2(b.y - a.y, b.x - a.x);
+      this.mid0 = [(a.x + b.x) / 2, (a.y + b.y) / 2];
+      this.v0 = Object.assign({}, D.doc.view);
+      this.w0 = R.toWorld(this.mid0[0], this.mid0[1]);
+      this.selection = selection;
+      this.rotUnlocked = false;
+      if (selection) { this.T0 = R.selPreview || M.id(); A.emit('selpopup:hide'); }
+      else R.gesturing = true;
+    }
+    move() {
+      const a = pointers.get(this.ids[0]), b = pointers.get(this.ids[1]);
+      if (!a || !b) return;
+      const d = hyp(b.x - a.x, b.y - a.y) || 1;
+      const ang = Math.atan2(b.y - a.y, b.x - a.x);
+      const mid = [(a.x + b.x) / 2, (a.y + b.y) / 2];
+      let dr = ang - this.ang0;
+      while (dr > Math.PI) dr -= 2 * Math.PI; while (dr < -Math.PI) dr += 2 * Math.PI;
+      const sc = d / this.d0;
+      if (this.selection) {
+        const w0 = R.toWorld(this.mid0[0], this.mid0[1]), w1 = R.toWorld(mid[0], mid[1]);
+        const s = IN.scaleMode === 'off' ? 1 : sc;
+        const r = IN.allowSelRotate ? dr : 0;
+        const T = M.mul(M.translate(w1[0] - w0[0], w1[1] - w0[1]), M.mul(M.about(M.mul(M.rotate(r), M.scale(s)), w0[0], w0[1]), this.T0));
+        R.selPreview = T;
+        R.render();
+        return;
+      }
+      if (!this.rotUnlocked && Math.abs(dr) > 0.18 && A.settings.allowRotate) this.rotUnlocked = true;
+      let rot = this.v0.rot + (this.rotUnlocked ? dr : 0);
+      const near = Math.round(rot / (Math.PI / 2)) * (Math.PI / 2);
+      if (this.rotUnlocked && Math.abs(rot - near) < A.rad(4)) rot = near;
+      const zoom = A.clamp(this.v0.zoom * sc, R.ZMIN, R.ZMAX);
+      const c = Math.cos(rot) * zoom, s = Math.sin(rot) * zoom;
+      const [wx, wy] = this.w0;
+      R.setView({ zoom, rot, tx: mid[0] - (c * wx - s * wy), ty: mid[1] - (s * wx + c * wy) });
+      if (touchSession) touchSession.gestureMoved = true;
+    }
+    up() { this.end(); }
+    end() {
+      if (this.ended) return;
+      this.ended = true;
+      if (this.selection) IN.commitSelTransform();
+      else { R.gesturing = false; R.render(); }
+    }
+    cancel() { this.end(); }
+  }
+
+  class PanAction {
+    constructor(rec) { this.rec = rec; this.last = [rec.x, rec.y]; R.gesturing = true; }
+    move() {
+      const r = this.rec;
+      const v = D.doc.view;
+      R.setView({ tx: v.tx + r.x - this.last[0], ty: v.ty + r.y - this.last[1] });
+      this.last = [r.x, r.y];
+    }
+    up() { R.gesturing = false; R.render(); }
+    cancel() { this.up(); }
+  }
+
+  class GuideAction {
+    constructor(rec, s, g, h) {
+      this.g = g; this.h = h; this.last = R.toWorld(s.x, s.y); this.moved = 0; this.start = [s.x, s.y];
+    }
+    move(e, rect) {
+      const s = samplesOf(e, rect).pop();
+      const w = R.toWorld(s.x, s.y);
+      this.moved = Math.max(this.moved, hyp(s.x - this.start[0], s.y - this.start[1]));
+      GU.drag(this.g, this.h, w[0], w[1], w[0] - this.last[0], w[1] - this.last[1]);
+      this.last = w;
+      R.renderOverlay();
+    }
+    up() {
+      if (this.h.center && this.moved < 6) {
+        const now = performance.now();
+        if (now - lastCenterTap < 350) { GU.special(this.g); lastCenterTap = 0; } else lastCenterTap = now;
+      }
+      D.changed('guides');
+      R.renderOverlay();
+    }
+    cancel() { this.up(); }
+  }
+
+  class EyedropAction {
+    constructor(rec, s) { this.sample(s.x, s.y); }
+    sample(x, y) {
+      try {
+        const px = R.mctx.getImageData(Math.round(x * A.dpr), Math.round(y * A.dpr), 1, 1).data;
+        this.color = A.C.rgbToHex(px[0], px[1], px[2]);
+      } catch (e) { this.color = null; }
+      IN.loupe = { x, y, color: this.color };
+      R.renderOverlay();
+    }
+    move(e, rect) { const s = samplesOf(e, rect).pop(); this.sample(s.x, s.y); }
+    up() {
+      IN.loupe = null; IN.eyedrop = false;
+      if (this.color) A.emit('color:pick', this.color);
+      A.emit('eyedrop:end');
+      R.renderOverlay();
+    }
+    cancel() { IN.loupe = null; IN.eyedrop = false; A.emit('eyedrop:end'); R.renderOverlay(); }
+  }
+
+  /* ================= routing ================= */
+  const fingerMode = () => {
+    const f = A.settings.fingerAction;
+    if (f === 'auto') return penSeen ? 'pan' : 'draw';
+    return f;
+  };
+
+  function startPrimary(rec, s, e) {
+    const isFinger = rec.type === 'touch';
+    if (IN.eyedrop) return new EyedropAction(rec, s);
+    const g = GU.active();
+    if (g) { const h = GU.hitHandle(g, s.x, s.y); if (h) return new GuideAction(rec, s, g, h); }
+    if (R.sel.size) {
+      const hit = SEL.hit(s.x, s.y);
+      if (hit) return new SelTransformAction(rec, s, hit);
+    }
+    let tool = B.slot().b;
+    if (isFinger) {
+      const fm = fingerMode();
+      if (fm === 'pan') return new PanAction(rec);
+      if (fm === 'select') tool = 'select';
+    }
+    if (tool !== 'select' && R.sel.size) SEL.clear();
+    if (tool === 'select') return new LassoAction(rec, s);
+    if (tool === 'slice' || tool === 'eraser') return new EraseAction(rec, s, tool);
+    if (tool === 'nudge') return new NudgeAction(rec, s);
+    if (B.isDrawing(tool) || B.catalog[tool].mask) {
+      const l = D.doc.layerMode === 'auto' ? null : D.active();
+      if (l && l.locked) { A.toast('This layer is locked'); return null; }
+      return new DrawAction(rec, s, { finger: isFinger });
+    }
+    return null;
+  }
+
+  function onDown(e) {
+    if (e.button > 0 && e.pointerType === 'mouse' && e.button !== 1 && e.button !== 2) return;
+    e.preventDefault();
+    A.closePopovers();
+    A.emit('canvas:down');
+    const rect = rectOf();
+    const s = sampleOf(e, rect);
+    const rec = { id: e.pointerId, type: e.pointerType, x: s.x, y: s.y, sx: s.x, sy: s.y, t0: performance.now(), moved: 0 };
+    pointers.set(e.pointerId, rec);
+    try { R.overlay.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    IN.hover = null;
+
+    if (rec.type === 'pen') {
+      penSeen = true;
+      if (action && action.rec && action.rec.type === 'touch' && action instanceof DrawAction) action.cancel();
+      if (action instanceof GestureAction || action instanceof PanAction) action.cancel();
+      action = startPrimary(rec, s, e);
+      if (action) action.owner = rec.id;
+      return;
+    }
+    if (rec.type === 'mouse') {
+      if (e.button === 1 || e.button === 2 || spaceDown) { action = new PanAction(rec); action.owner = rec.id; return; }
+      action = startPrimary(rec, s, e);
+      if (action) action.owner = rec.id;
+      return;
+    }
+    // touch
+    const penBusy = action && action.owner != null && pointers.get(action.owner) && pointers.get(action.owner).type === 'pen';
+    if (penBusy) { rec.ignored = true; return; }
+    const touches = [...pointers.values()].filter((p) => p.type === 'touch' && !p.ignored);
+    if (!touchSession || touches.length === 1) touchSession = { t0: performance.now(), max: 1, moved: 0, gestureMoved: false };
+    touchSession.max = Math.max(touchSession.max, touches.length);
+    if (touches.length === 1) {
+      action = startPrimary(rec, s, e);
+      if (action) action.owner = rec.id;
+    } else if (touches.length === 2) {
+      if (action) {
+        const young = performance.now() - touches[0].t0 < 260 && touches[0].moved < 40;
+        if (action instanceof DrawAction && young) action.cancel();
+        else if (action instanceof EraseAction || action instanceof NudgeAction) { action.up(); if (D.history.undo.length && young) { /* keep */ } }
+        else if (action instanceof LassoAction) action.cancel();
+        else if (action instanceof DrawAction) { action.up(); }
+        else if (action.cancel) action.cancel();
+      }
+      let inSel = false;
+      if (R.sel.size) {
+        const c = SEL.screenCorners();
+        inSel = c && touches.every((t) => G.pointInPoly(t.x, t.y, c.flat()));
+      }
+      action = new GestureAction(touches, inSel);
+      action.owner = null;
+      action.multi = true;
+    }
+  }
+
+  function onMove(e) {
+    const rect = rectOf();
+    const rec = pointers.get(e.pointerId);
+    if (!rec) {
+      if (e.pointerType === 'pen' && A.settings.hoverCursor) {
+        const s = sampleOf(e, rect);
+        IN.hover = { x: s.x, y: s.y };
+        R.renderOverlay();
+      } else if (e.pointerType === 'mouse' && A.settings.hoverCursor) {
+        const s = sampleOf(e, rect);
+        IN.hover = { x: s.x, y: s.y, mouse: true };
+        R.renderOverlay();
+      }
+      return;
+    }
+    if (rec.ignored) return;
+    e.preventDefault();
+    const s = sampleOf(e, rect);
+    rec.x = s.x; rec.y = s.y;
+    rec.moved = Math.max(rec.moved, hyp(s.x - rec.sx, s.y - rec.sy));
+    if (touchSession && rec.type === 'touch') touchSession.moved = Math.max(touchSession.moved, rec.moved);
+    if (!action) return;
+    if (action.multi) { if (action.ids.includes(rec.id)) action.move(e, rect); return; }
+    if (action.owner === rec.id) action.move(e, rect);
+  }
+
+  function onUp(e) {
+    const rect = rectOf();
+    const rec = pointers.get(e.pointerId);
+    pointers.delete(e.pointerId);
+    if (!rec) return;
+    if (rec.ignored) return;
+    if (action) {
+      if (action.multi) {
+        if (action.ids.includes(rec.id)) { action.up(e, rect); action = null; }
+      } else if (action.owner === rec.id) {
+        const a = action; action = null;
+        if (e.type === 'pointercancel' && a.cancel && a instanceof DrawAction) a.up(null, rect); else a.up(e, rect);
+      }
+    }
+    if (rec.type === 'touch') {
+      const touches = [...pointers.values()].filter((p) => p.type === 'touch' && !p.ignored);
+      if (!touches.length && touchSession) {
+        const ts = touchSession; touchSession = null;
+        const dt = performance.now() - ts.t0;
+        if (dt < 320 && ts.moved < 14) {
+          if (ts.max === 2 && A.settings.twoFingerUndo) { if (D.undo()) A.toast('Undo'); }
+          else if (ts.max === 3 && A.settings.threeFingerRedo) { if (D.redo()) A.toast('Redo'); }
+        }
+      }
+    }
+  }
+
+  IN.cancelAll = () => { if (action && action.cancel) action.cancel(); action = null; pointers.clear(); };
+
+  /* ================= overlay painter ================= */
+  const paint = (ctx) => {
+    const doc = D.doc;
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2f6fdb';
+    // live stroke
+    if (IN.liveDraw) {
+      const d = IN.liveDraw;
+      const it = d.liveItem();
+      if (it.pts.length) {
+        ctx.save();
+        ctx.setTransform(...M.mul(M.scale(A.dpr), R.matrix()));
+        B.render(ctx, it, 1);
+        ctx.restore();
+        if (doc.precision.measure && G.count(it.pts) >= 2) {
+          const p = it.pts, n = p.length;
+          const straight = it.sharp || d.shape;
+          let txt;
+          if (d.shape && (d.shape.kind === 'circle')) {
+            const bb = G.bbox(it.pts); txt = 'r ' + A.fmtLen((bb[2] - bb[0]) / 2);
+          } else if (d.shape && d.shape.closed) { const bb = G.bbox(it.pts); txt = `${A.fmtLen(bb[2] - bb[0])} × ${A.fmtLen(bb[3] - bb[1])}`; }
+          else txt = A.fmtLen(straight ? hyp(p[n - 3] - p[0], p[n - 2] - p[1]) : G.length(p));
+          const [sx, sy] = R.toScreen(p[n - 3], p[n - 2]);
+          R.label(ctx, txt, sx + 40, sy - 26, accent);
+        }
+        if (d.shape) {
+          const p = it.pts; const [sx, sy] = R.toScreen(p[0], p[1]);
+          R.label(ctx, d.shape.kind, sx, sy - 26, '#5b6474');
+        }
+      }
+    }
+    // last measured stroke label
+    if (IN.lastMeasure && performance.now() < IN.lastMeasure.until && doc.precision.measure) {
+      const it = IN.lastMeasure.item, p = it.pts, n = p.length;
+      const [sx, sy] = R.toScreen((p[0] + p[n - 3]) / 2, (p[1] + p[n - 2]) / 2);
+      R.label(ctx, A.fmtLen(it.sharp ? hyp(p[n - 3] - p[0], p[n - 2] - p[1]) : G.length(p)), sx, sy - 18, accent);
+    }
+    // lasso
+    if (IN.lasso && IN.lasso.poly.length > 2) {
+      const pl = IN.lasso.poly;
+      ctx.beginPath();
+      for (let i = 0; i < pl.length; i += 2) { const [x, y] = R.toScreen(pl[i], pl[i + 1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+      ctx.closePath();
+      ctx.fillStyle = A.C.rgba(accent.startsWith('#') ? accent : '#2f6fdb', 0.07); ctx.fill();
+      ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5; ctx.strokeStyle = accent; ctx.stroke(); ctx.setLineDash([]);
+    }
+    // selection box
+    const c = SEL.screenCorners();
+    if (c && R.sel.size) {
+      ctx.beginPath(); c.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath();
+      ctx.setLineDash([6, 4]); ctx.lineWidth = 1.25; ctx.strokeStyle = accent; ctx.stroke(); ctx.setLineDash([]);
+      if (IN.scaleMode !== 'off') for (const [x, y] of c) {
+        ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 2; ctx.stroke();
+      }
+      if (IN.allowSelRotate) {
+        const top = [(c[0][0] + c[1][0]) / 2, (c[0][1] + c[1][1]) / 2], ctr = [(c[0][0] + c[2][0]) / 2, (c[0][1] + c[2][1]) / 2];
+        const dx = top[0] - ctr[0], dy = top[1] - ctr[1], L = hyp(dx, dy) || 1;
+        const rh = [top[0] + (dx / L) * 30, top[1] + (dy / L) * 30];
+        ctx.beginPath(); ctx.moveTo(top[0], top[1]); ctx.lineTo(rh[0], rh[1]); ctx.lineWidth = 1.25; ctx.stroke();
+        ctx.beginPath(); ctx.arc(rh[0], rh[1], 8, 0, Math.PI * 2); ctx.fillStyle = accent; ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(rh[0], rh[1], 4, -0.4, 4.2); ctx.stroke();
+      }
+    }
+    // eraser / nudge cursor
+    if (IN.cursor) {
+      ctx.beginPath(); ctx.arc(IN.cursor.x, IN.cursor.y, IN.cursor.r, 0, Math.PI * 2);
+      ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(30,35,45,.55)'; ctx.stroke();
+      ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.beginPath(); ctx.arc(IN.cursor.x, IN.cursor.y, IN.cursor.r + 1.2, 0, Math.PI * 2); ctx.stroke();
+    }
+    // hover cursor (Apple Pencil hover / mouse)
+    if (IN.hover && !IN.liveDraw && !IN.cursor) {
+      const slot = B.slot();
+      const cat = B.catalog[slot.b];
+      let r = cat.kind === 'tool' ? (slot.b === 'select' ? 0 : (slot.b === 'nudge' ? slot.size : (slot.size / 2) * doc.view.zoom)) : Math.max(1.5, (slot.size * (cat.wire ? 1 / doc.view.zoom : 1) / 2) * doc.view.zoom);
+      if (cat.kind === 'fill') r = 3;
+      if (r > 0) {
+        ctx.beginPath(); ctx.arc(IN.hover.x, IN.hover.y, r, 0, Math.PI * 2);
+        ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(30,35,45,.5)'; ctx.stroke();
+        if (cat.kind !== 'tool') { ctx.globalAlpha = 0.25; ctx.fillStyle = slot.color; ctx.fill(); ctx.globalAlpha = 1; }
+      }
+    }
+    // eyedropper loupe
+    if (IN.loupe) {
+      const { x, y, color } = IN.loupe;
+      const ly = y - 70;
+      ctx.beginPath(); ctx.arc(x, ly, 30, 0, Math.PI * 2); ctx.fillStyle = color || '#fff'; ctx.fill();
+      ctx.lineWidth = 4; ctx.strokeStyle = '#fff'; ctx.stroke(); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,.3)'; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - 8, y); ctx.lineTo(x + 8, y); ctx.moveTo(x, y - 8); ctx.lineTo(x, y + 8); ctx.strokeStyle = '#000'; ctx.stroke();
+      if (color) R.label(ctx, color.toUpperCase(), x, ly + 46, '#30343c');
+    }
+  };
+
+  /* ================= keyboard ================= */
+  const typing = () => { const a = document.activeElement; return a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable); };
+  function onKey(e) {
+    if (!D.doc || !A.$('#canvas-view') || A.$('#canvas-view').hidden || typing()) return;
+    const mod = e.metaKey || e.ctrlKey;
+    const k = e.key.toLowerCase();
+    if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? D.redo() : D.undo(); return; }
+    if (mod && k === 'y') { e.preventDefault(); D.redo(); return; }
+    if (mod && k === 'a') { e.preventDefault(); A.emit('cmd', 'selectAll'); return; }
+    if (mod && k === 'c') { e.preventDefault(); A.emit('cmd', 'copy'); return; }
+    if (mod && k === 'x') { e.preventDefault(); A.emit('cmd', 'cut'); return; }
+    if (mod && k === 'v') { return; } // handled by paste event (images) and fallback below
+    if (mod && k === 'd') { e.preventDefault(); A.emit('cmd', 'duplicate'); return; }
+    if (mod && k === 'e') { e.preventDefault(); A.emit('cmd', 'export'); return; }
+    if (mod) return;
+    if (k === 'backspace' || k === 'delete') { if (R.sel.size) { e.preventDefault(); A.emit('cmd', 'delete'); } return; }
+    if (k === 'escape') { SEL.clear(); A.closePopovers(); return; }
+    if (k === ' ') { spaceDown = true; return; }
+    if (/^[1-8]$/.test(k)) { A.emit('slot:select', +k - 1); return; }
+    if (k === '[' || k === ']') { A.emit('slot:size', k === ']' ? 1.15 : 1 / 1.15); return; }
+    if (k === '0') { A.emit('cmd', 'resetView'); return; }
+    if (k === 'f') { A.emit('cmd', 'fit'); return; }
+    if (k === 'g') { A.emit('cmd', 'toggleGrid'); return; }
+    if (k === 'h') { A.emit('cmd', 'toggleUI'); return; }
+    if (k === 'l') { A.emit('cmd', 'toggleLayers'); return; }
+    if (k === 'p') { A.emit('cmd', 'togglePrecision'); return; }
+    if (k === '=' || k === '+') { R.zoomAt(R.w / 2, R.h / 2, 1.25); return; }
+    if (k === '-') { R.zoomAt(R.w / 2, R.h / 2, 0.8); return; }
+  }
+
+  IN.init = (el) => {
+    el.addEventListener('pointerdown', onDown, { passive: false });
+    el.addEventListener('pointermove', onMove, { passive: false });
+    el.addEventListener('pointerup', onUp);
+    el.addEventListener('pointercancel', onUp);
+    el.addEventListener('pointerleave', (e) => { if (!pointers.has(e.pointerId)) { IN.hover = null; R.renderOverlay(); } });
+    el.addEventListener('contextmenu', (e) => e.preventDefault());
+    el.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const rect = rectOf();
+      const x = e.clientX - rect.left, y = e.clientY - rect.top;
+      if (e.ctrlKey || e.metaKey) R.zoomAt(x, y, Math.exp(-e.deltaY * 0.012));
+      else { const v = D.doc.view; R.setView({ tx: v.tx - e.deltaX, ty: v.ty - e.deltaY }); }
+      R.gesturing = true; clearTimeout(IN._wt); IN._wt = setTimeout(() => { R.gesturing = false; R.render(); }, 140);
+    }, { passive: false });
+    // Safari trackpad / iOS page-level gestures
+    let gs = 1;
+    ['gesturestart', 'gesturechange', 'gestureend'].forEach((n) => document.addEventListener(n, (e) => {
+      e.preventDefault();
+      if (!el.isConnected || A.$('#canvas-view').hidden) return;
+      if (pointers.size) return; // touch pinch handled by pointer events
+      if (n === 'gesturestart') gs = 1;
+      if (n === 'gesturechange' && e.scale) { R.zoomAt(e.clientX || R.w / 2, e.clientY || R.h / 2, e.scale / gs); gs = e.scale; }
+    }, { passive: false }));
+    document.addEventListener('touchmove', (e) => { if (e.target === el) e.preventDefault(); }, { passive: false });
+    addEventListener('keydown', onKey);
+    addEventListener('keyup', (e) => { if (e.key === ' ') spaceDown = false; });
+    R.painters.push(GU.paint, paint);
+  };
+})();
