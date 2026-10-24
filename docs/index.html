@@ -81,8 +81,7 @@ input, select, textarea { font: inherit; color: inherit; -webkit-user-select: te
 .grow { flex: 1; min-width: 0; }
 #app { position: fixed; inset: 0; }
 /* Home Screen app under the clock: iPadOS reports a shorter viewport, so size by the full screen */
-.standalone #app { inset: auto; top: 0; left: 0; right: 0; height: 100vh; }
-@supports (height: 100lvh) { .standalone #app { height: 100lvh; } }
+.standalone #app { inset: auto; top: 0; left: 0; right: 0; height: calc(100% + env(safe-area-inset-top, 0px)); }
 .standalone, .standalone body { background: var(--bg); }
 
 /* ---------- buttons & fields ---------- */
@@ -408,7 +407,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
 </div>
 <div id="toasts" aria-live="polite"></div>
 
-<script>/* ---- core.js ---- */
+<script>window.AXIOM_BUILD = 'mvme58je';
+/* ---- core.js ---- */
 /* Axiom core: namespace, math, color, events, DOM helpers */
 'use strict';
 const A = (window.A = {});
@@ -4870,6 +4870,7 @@ A.fmtDate = (t) => {
         ...g('⌘A ⌘C ⌘V ⌘D', 'Select all, copy, paste, duplicate'), ...g('Delete', 'Delete selection'),
         ...g('Space + drag', 'Pan (mouse)'), ...g('0 / F', 'Reset view / fit drawing'), ...g('G  P  L  H', 'Grid, precision, layers, hide interface')),
       h('p', { class: 'small muted num', style: { marginTop: '18px' } }, A.IN.inputStats ? `Pencil input on this device: ${A.IN.inputStats.rate} samples per second · high-frequency samples ${A.IN.inputStats.coalesced ? 'available' : 'not available'}` : 'Draw a stroke with the Pencil, then reopen Help to see your input rate.'),
+      h('p', { class: 'small muted num', style: { marginTop: '6px' } }, `Version ${A.VERSION} · build ${window.AXIOM_BUILD || 'dev'} · screen ${screen.width}×${screen.height} · window ${innerWidth}×${innerHeight} · app ${Math.round(A.$('#app').getBoundingClientRect().height)}`),
       h('p', { class: 'small muted', style: { marginTop: '6px' } }, 'Axiom is in Stage 1: the infinite-canvas foundation. Next come PDF study sets, LaTeX, plots and an AI tutor that can read your work.')));
     back.addEventListener('pointerdown', (e) => { if (e.target === back) close(); });
     document.body.append(back);
@@ -5176,12 +5177,31 @@ A.fmtDate = (t) => {
     return doc;
   }
 
+  /* ---------- Home Screen app: fill the real screen ----------
+     Under the clock (black-translucent) iPadOS reports a viewport that is short by the status-bar
+     height, leaving an empty strip at the bottom. Size the app from the physical screen instead. */
+  function fitStandalone() {
+    const root = document.documentElement, app = A.$('#app');
+    if (!root.classList.contains('standalone') || !app) return;
+    const land = innerWidth > innerHeight;
+    const big = Math.max(screen.width, screen.height), small = Math.min(screen.width, screen.height);
+    const fullW = land ? big : small, fullH = land ? small : big;
+    // only when the app owns the whole screen (not Split View / Stage Manager windows)
+    if (Math.abs(innerWidth - fullW) <= 4 && innerHeight < fullH) app.style.height = fullH + 'px';
+    else app.style.height = '';
+    if (D.doc && R.main) { R.resize(); R.render(); }
+  }
+  addEventListener('resize', () => setTimeout(fitStandalone, 50));
+  addEventListener('orientationchange', () => setTimeout(fitStandalone, 300));
+
   /* ---------- boot ---------- */
   async function boot() {
     try { if (navigator.standalone || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches) document.documentElement.classList.add('standalone'); } catch (e) { /* ignore */ }
     UI.applyTheme();
+    fitStandalone();
     if (matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => UI.applyTheme());
     R.init(A.$('#main'), A.$('#overlay'));
+    fitStandalone();
     A.IN.init(A.$('#overlay'));
     UI.mountStatus(A.$('#statusbar'));
     UI.mountTools(A.$('#tools'));

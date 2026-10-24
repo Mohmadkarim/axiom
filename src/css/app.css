@@ -65,8 +65,7 @@ input, select, textarea { font: inherit; color: inherit; -webkit-user-select: te
 .grow { flex: 1; min-width: 0; }
 #app { position: fixed; inset: 0; }
 /* Home Screen app under the clock: iPadOS reports a shorter viewport, so size by the full screen */
-.standalone #app { inset: auto; top: 0; left: 0; right: 0; height: 100vh; }
-@supports (height: 100lvh) { .standalone #app { height: 100lvh; } }
+.standalone #app { inset: auto; top: 0; left: 0; right: 0; height: calc(100% + env(safe-area-inset-top, 0px)); }
 .standalone, .standalone body { background: var(--bg); }
 
 /* ---------- buttons & fields ---------- */

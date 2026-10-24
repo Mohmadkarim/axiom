@@ -28,7 +28,8 @@ ${fonts}
 </head>
 <body>
 ${body}
-<script>${js}</script>
+<script>window.AXIOM_BUILD = '${build}';
+${js}</script>
 </body>
 </html>
 `;
