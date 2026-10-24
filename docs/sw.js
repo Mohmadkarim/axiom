@@ -1,5 +1,5 @@
 /* Axiom service worker: network-first for the app page (fresh updates), cache fallback offline */
-const CACHE = 'axiom-vmvmyabv9';
+const CACHE = 'axiom-vmvmywbag';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './vendor/pdf.min.js', './vendor/pdf.worker.min.js', './vendor/epub.min.js', './vendor/jszip.min.js'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => {

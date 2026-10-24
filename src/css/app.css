@@ -1377,3 +1377,16 @@ h5, .g-sec-h h2, .sub, .nb-fly-h, .pp-h, .bk-up-h { font-size: 11px !important; 
 #reader-view .rd-inkbar { position: absolute; top: calc(100% + 14px); left: 50%; translate: -50% 0; z-index: 3; display: flex; align-items: center; white-space: nowrap; max-width: calc(100vw - 32px); overflow-x: auto; scrollbar-width: none; box-shadow: var(--float-shadow); }
 #reader-view .rd-inkbar[hidden] { display: none; }
 #reader-view .rd-inkbar::-webkit-scrollbar { display: none; }
+
+/* ===== Apple Pencil calibration ===== */
+.pc-back { position: fixed; inset: 0; z-index: 9000; background: var(--bg); touch-action: none; }
+.pc-target { position: absolute; width: 64px; height: 64px; margin: -32px 0 0 -32px; pointer-events: none; transition: left .25s var(--ease), top .25s var(--ease); }
+.pc-target::before, .pc-target::after { content: ''; position: absolute; background: var(--accent); }
+.pc-target::before { left: 31px; top: 0; width: 2px; height: 64px; }
+.pc-target::after { top: 31px; left: 0; height: 2px; width: 64px; }
+.pc-target.hit::before, .pc-target.hit::after { background: #2f9e6b; }
+.pc-panel { position: absolute; left: 50%; bottom: calc(40px + env(safe-area-inset-bottom, 0px)); translate: -50% 0; width: min(440px, calc(100vw - 32px)); text-align: center; display: grid; gap: 10px; justify-items: center; }
+.pc-panel h3 { margin: 0; font-size: 18px; }
+.pc-msg { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+/* zoomed-in pages scroll sideways on both sides instead of being cut off on the left */
+#reader-view .rd-pages { width: max-content; min-width: 100%; margin: 0 auto; }
