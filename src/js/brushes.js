@@ -91,11 +91,29 @@
     if (p) return p;
     const c = B.catalog[item.b] || B.catalog.pen;
     p = new Path2D();
-    if (c.kind === 'var') G.buildVar(p, item.pts, item.w, c.taper || 0);
+    if (c.kind === 'var') G.buildVar(p, item.sharp ? item.pts : G.spline(item.pts, Math.max(1.1, item.w * 0.4), 1400), item.w, c.taper || 0);
     else if (c.kind === 'fill') (item.sharp ? G.buildPoly : G.buildLine)(p, item.pts, true);
     else (item.sharp ? G.buildPoly : G.buildLine)(p, item.pts, !!item.closed);
     geo.set(item, p);
     return p;
+  };
+
+  /* ---------- dark display: adapt ink to a dark canvas (display only; exports keep true colors) ---------- */
+  B.dark = false;
+  const dcache = new Map();
+  B.col = (c) => {
+    if (!B.dark) return c;
+    let v = dcache.get(c);
+    if (v) return v;
+    const rgb = A.C.hexToRgb(c);
+    if (!rgb) return c;
+    const [hh, s, l] = A.C.rgbToHsl(...rgb);
+    const w = Math.min(1, s * 2.5);                       // grays invert fully, saturated colors keep their hue
+    const inv = 0.06 + (1 - l) * 0.88;
+    const sat = Math.max(l, 1 - l) * 0.86 + 0.07;
+    v = A.C.rgbToHex(...A.C.hslToRgb(hh, s, inv + (sat - inv) * w));
+    dcache.set(c, v);
+    return v;
   };
 
   /* ---------- render one stroke (ctx already holds the world transform) ---------- */
@@ -103,9 +121,10 @@
     const c = B.catalog[item.b] || B.catalog.pen;
     const path = B.path(item);
     const a = item.o * alphaMul;
+    const col = item.raw ? item.c : B.col(item.c);
     ctx.save();
     ctx.globalAlpha = a;
-    if (c.blend) ctx.globalCompositeOperation = c.blend;
+    if (c.blend) ctx.globalCompositeOperation = B.dark ? 'screen' : c.blend;
     if (c.mask) ctx.globalCompositeOperation = 'destination-out';
     if (c.soft) {
       const t = ctx.getTransform();
@@ -115,19 +134,19 @@
       ctx.shadowOffsetX = OFF;
       ctx.shadowOffsetY = 0;
       ctx.shadowBlur = Math.max(1, item.w * k * 0.45);
-      ctx.shadowColor = c.mask ? 'rgba(0,0,0,1)' : item.c;
+      ctx.shadowColor = c.mask ? 'rgba(0,0,0,1)' : col;
       ctx.fillStyle = '#000';
       ctx.fill(path);
     } else if (c.kind === 'var') {
-      ctx.fillStyle = c.grain ? B.grain(ctx, item.c) : (c.mask ? '#000' : item.c);
+      ctx.fillStyle = c.grain ? B.grain(ctx, col) : (c.mask ? '#000' : col);
       ctx.fill(path);
     } else if (c.kind === 'fill') {
-      ctx.fillStyle = item.c;
+      ctx.fillStyle = col;
       ctx.fill(path);
     } else {
       const t = ctx.getTransform();
       const k = Math.hypot(t.a, t.b) || 1;
-      ctx.strokeStyle = item.c;
+      ctx.strokeStyle = col;
       ctx.lineWidth = c.wire ? (item.w * (A.dpr || 1)) / k : item.w;
       ctx.lineCap = c.cap || 'round';
       ctx.lineJoin = 'round';
@@ -181,7 +200,7 @@
     }
     const c = B.catalog[item.b] || B.catalog.pen;
     const sink = G.svgSink();
-    if (c.kind === 'var') G.buildVar(sink, item.pts, item.w, c.taper || 0);
+    if (c.kind === 'var') G.buildVar(sink, item.sharp ? item.pts : G.spline(item.pts, Math.max(1.1, item.w * 0.4), 1400), item.w, c.taper || 0);
     else if (c.kind === 'fill') (item.sharp ? G.buildPoly : G.buildLine)(sink, item.pts, true);
     else (item.sharp ? G.buildPoly : G.buildLine)(sink, item.pts, !!item.closed);
     const d = sink.toString();

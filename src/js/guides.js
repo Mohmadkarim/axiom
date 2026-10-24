@@ -209,7 +209,7 @@
     const slot = A.B.slot();
     const z = D.doc.view.zoom;
     const band = Math.max(3, Math.min(60, (slot.size || 2) * z));
-    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2f6fdb';
+    const accent = R.accent();
     const polys = GU.outline(g).map((poly) => poly.map(([x, y]) => R.toScreen(x, y)));
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     for (const poly of polys) {

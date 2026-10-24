@@ -6,6 +6,8 @@
   const S3 = Math.sqrt(3) / 2;
 
   R.ZMIN = 0.02; R.ZMAX = 64;
+  R.accent = () => R._acc || (R._acc = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2f6fdb');
+  R.themeChanged = () => { R._acc = null; R.cacheValid = false; R.render(); };
   R.painters = [];
   R.sel = new Set();            // selected item ids
   R.selPreview = null;          // world matrix applied to selected items while transforming
@@ -31,6 +33,17 @@
     }
     R.cacheValid = false;
   };
+
+  /* ---------- dark canvas (display only) ---------- */
+  R.DARK_PAPER = '#1c1f25';
+  R.isDarkTheme = () => {
+    const t = A.settings.theme;
+    if (t === 'dark') return true;
+    if (t === 'light') return false;
+    try { return matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) { return false; }
+  };
+  R.darkActive = (doc = D.doc) => !!doc && A.settings.darkCanvas !== false && R.isDarkTheme() && A.C.luminance(doc.paper.bg) > 0.5;
+  R.displayBg = (doc = D.doc) => (R.darkActive(doc) ? R.DARK_PAPER : doc.paper.bg);
 
   /* ---------- camera ---------- */
   R.view = () => D.doc.view;
@@ -163,11 +176,13 @@
   /* opts: {m, w, h, doc, bg (null = transparent), grid, sel:Set, selPreview, fade, scratch, onImage, dpr, onlyIds:Set} */
   R.drawScene = (ctx, o) => {
     const doc = o.doc;
+    const prevDark = B.dark;
+    B.dark = !!o.dark;
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, o.w, o.h);
     if (o.bg) { ctx.fillStyle = o.bg; ctx.fillRect(0, 0, o.w, o.h); }
-    if (o.grid) R.drawGrid(ctx, o.m, o.w, o.h, doc.paper, { dpr: o.dpr, axes: false });
+    if (o.grid) R.drawGrid(ctx, o.m, o.w, o.h, o.bg ? Object.assign({}, doc.paper, { bg: o.bg }) : doc.paper, { dpr: o.dpr, axes: false });
     const vbb = R.worldBB(o.m, o.w, o.h);
     const sel = o.sel && o.sel.size ? o.sel : null;
     const fade = sel && o.fade ? 0.28 : 1;
@@ -210,6 +225,7 @@
       }
     }
     ctx.restore();
+    B.dark = prevDark;
   };
 
   let mainQueued = false, overlayQueued = false;
@@ -230,7 +246,7 @@
     if (!force && R.gesturing && R.lastMs > 14 && R.cacheValid && t0 - lastFull < 220) {
       const ctx = R.mctx;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = D.doc.paper.bg;
+      ctx.fillStyle = R.displayBg();
       ctx.fillRect(0, 0, W, H);
       ctx.setTransform(...M.mul(m, M.inv(R.cacheM)));
       ctx.drawImage(R.cache, 0, 0);
@@ -239,7 +255,7 @@
       return;
     }
     R.drawScene(R.mctx, {
-      m, w: W, h: H, doc: D.doc, bg: D.doc.paper.bg, grid: D.doc.precision.grid,
+      m, w: W, h: H, doc: D.doc, bg: R.displayBg(), dark: R.darkActive(), grid: D.doc.precision.grid,
       sel: R.sel, selPreview: R.selPreview, fade: R.fadeOthers && A.settings.highlightSelection,
       scratch: R.scratch, sctx: R.sctx, onImage: R.render, dpr: A.dpr,
     });
@@ -267,7 +283,10 @@
     const ctx = R.mctx;
     ctx.save();
     ctx.setTransform(...R.dmatrix(doc.view));
+    const prevDark = B.dark;
+    B.dark = R.darkActive();
     if (item.t === 'i') B.renderImage(ctx, item, 1, R.render); else B.render(ctx, item, 1);
+    B.dark = prevDark;
     ctx.restore();
     R.cacheValid = false;
   };
@@ -281,12 +300,15 @@
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, R.overlay.width, R.overlay.height);
       if (!D.doc) return;
+      const prevDark = B.dark;
+      B.dark = R.darkActive();
       for (const p of R.painters) {
         ctx.save();
         ctx.setTransform(A.dpr, 0, 0, A.dpr, 0, 0);
         try { p(ctx); } catch (e) { console.error(e); }
         ctx.restore();
       }
+      B.dark = prevDark;
     });
   };
 

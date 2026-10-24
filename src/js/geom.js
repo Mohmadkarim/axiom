@@ -181,6 +181,35 @@
     if (closed) sink.closePath();
   };
 
+  /* Centripetal Catmull-Rom through the points, sampled every ~step (width interpolated linearly).
+     Turns sparse simplified points back into a smooth curve. */
+  G.spline = (pts, step, maxPts = 2400) => {
+    const n = G.count(pts);
+    if (n < 3) return pts;
+    const L = G.length(pts);
+    step = Math.max(step, L / maxPts);
+    const P = (i) => { i = i < 0 ? 0 : i >= n ? n - 1 : i; return [pts[i * 3], pts[i * 3 + 1], pts[i * 3 + 2]]; };
+    const out = [pts[0], pts[1], pts[2]];
+    for (let i = 0; i < n - 1; i++) {
+      const p0 = P(i - 1), p1 = P(i), p2 = P(i + 1), p3 = P(i + 2);
+      const seg = hyp(p2[0] - p1[0], p2[1] - p1[1]);
+      const k = Math.max(1, Math.ceil(seg / step));
+      const d = (a, b) => Math.max(1e-4, Math.sqrt(hyp(b[0] - a[0], b[1] - a[1])));
+      const t1 = d(p0, p1), t2 = t1 + d(p1, p2), t3 = t2 + d(p2, p3);
+      for (let j = 1; j <= k; j++) {
+        const u = j / k;
+        if (k === 1 || seg < 1e-6) { out.push(p2[0], p2[1], p2[2]); break; }
+        const t = t1 + (t2 - t1) * u;
+        const lerp = (a, b, ta, tb) => { const w = (t - ta) / (tb - ta || 1e-6); return [a[0] + (b[0] - a[0]) * w, a[1] + (b[1] - a[1]) * w]; };
+        const A1 = lerp(p0, p1, 0, t1), A2 = lerp(p1, p2, t1, t2), A3 = lerp(p2, p3, t2, t3);
+        const B1 = lerp(A1, A2, 0, t2), B2 = lerp(A2, A3, t1, t3);
+        const C = lerp(B1, B2, t1, t2);
+        out.push(C[0], C[1], p1[2] + (p2[2] - p1[2]) * u);
+      }
+    }
+    return out;
+  };
+
   /* polyline (sharp corners), for recognized shapes */
   G.buildPoly = (sink, pts, closed = false) => {
     const n = G.count(pts);

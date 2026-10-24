@@ -332,7 +332,8 @@
     const r = host.getBoundingClientRect();
     const W = r.width || (isBar ? 64 : 300), H = r.height || 600;
     let x, y;
-    const safeL = 10, top = 64;
+    const sb = A.$('#statusbar');
+    const safeL = 10, top = sb ? Math.round(sb.getBoundingClientRect().bottom + 10) : 64;
     if (isBar || pos.x == null) x = S.toolSide === 'right' ? innerWidth - W - safeL : safeL;
     else x = pos.x;
     y = pos.y != null ? pos.y : Math.max(top, (innerHeight - H) / 2);

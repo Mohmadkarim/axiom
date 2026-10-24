@@ -7,7 +7,7 @@
 <meta name="description" content="An infinite canvas for scientists and mathematicians">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Axiom">
 <meta name="theme-color" content="#eef0f3">
 <link rel="manifest" href="manifest.webmanifest">
@@ -835,6 +835,8 @@ A.fmtDate = (t) => {
     activePalette: 0,
     sort: 'updated',
     seenWelcome: false,
+    darkCanvas: true,
+    penSeen: false,
   });
   let S = defaults();
   try {
@@ -1029,6 +1031,35 @@ A.fmtDate = (t) => {
     }
     sink.lineTo(pts[pts.length - 3], pts[pts.length - 2]);
     if (closed) sink.closePath();
+  };
+
+  /* Centripetal Catmull-Rom through the points, sampled every ~step (width interpolated linearly).
+     Turns sparse simplified points back into a smooth curve. */
+  G.spline = (pts, step, maxPts = 2400) => {
+    const n = G.count(pts);
+    if (n < 3) return pts;
+    const L = G.length(pts);
+    step = Math.max(step, L / maxPts);
+    const P = (i) => { i = i < 0 ? 0 : i >= n ? n - 1 : i; return [pts[i * 3], pts[i * 3 + 1], pts[i * 3 + 2]]; };
+    const out = [pts[0], pts[1], pts[2]];
+    for (let i = 0; i < n - 1; i++) {
+      const p0 = P(i - 1), p1 = P(i), p2 = P(i + 1), p3 = P(i + 2);
+      const seg = hyp(p2[0] - p1[0], p2[1] - p1[1]);
+      const k = Math.max(1, Math.ceil(seg / step));
+      const d = (a, b) => Math.max(1e-4, Math.sqrt(hyp(b[0] - a[0], b[1] - a[1])));
+      const t1 = d(p0, p1), t2 = t1 + d(p1, p2), t3 = t2 + d(p2, p3);
+      for (let j = 1; j <= k; j++) {
+        const u = j / k;
+        if (k === 1 || seg < 1e-6) { out.push(p2[0], p2[1], p2[2]); break; }
+        const t = t1 + (t2 - t1) * u;
+        const lerp = (a, b, ta, tb) => { const w = (t - ta) / (tb - ta || 1e-6); return [a[0] + (b[0] - a[0]) * w, a[1] + (b[1] - a[1]) * w]; };
+        const A1 = lerp(p0, p1, 0, t1), A2 = lerp(p1, p2, t1, t2), A3 = lerp(p2, p3, t2, t3);
+        const B1 = lerp(A1, A2, 0, t2), B2 = lerp(A2, A3, t1, t3);
+        const C = lerp(B1, B2, t1, t2);
+        out.push(C[0], C[1], p1[2] + (p2[2] - p1[2]) * u);
+      }
+    }
+    return out;
   };
 
   /* polyline (sharp corners), for recognized shapes */
@@ -1388,11 +1419,29 @@ A.fmtDate = (t) => {
     if (p) return p;
     const c = B.catalog[item.b] || B.catalog.pen;
     p = new Path2D();
-    if (c.kind === 'var') G.buildVar(p, item.pts, item.w, c.taper || 0);
+    if (c.kind === 'var') G.buildVar(p, item.sharp ? item.pts : G.spline(item.pts, Math.max(1.1, item.w * 0.4), 1400), item.w, c.taper || 0);
     else if (c.kind === 'fill') (item.sharp ? G.buildPoly : G.buildLine)(p, item.pts, true);
     else (item.sharp ? G.buildPoly : G.buildLine)(p, item.pts, !!item.closed);
     geo.set(item, p);
     return p;
+  };
+
+  /* ---------- dark display: adapt ink to a dark canvas (display only; exports keep true colors) ---------- */
+  B.dark = false;
+  const dcache = new Map();
+  B.col = (c) => {
+    if (!B.dark) return c;
+    let v = dcache.get(c);
+    if (v) return v;
+    const rgb = A.C.hexToRgb(c);
+    if (!rgb) return c;
+    const [hh, s, l] = A.C.rgbToHsl(...rgb);
+    const w = Math.min(1, s * 2.5);                       // grays invert fully, saturated colors keep their hue
+    const inv = 0.06 + (1 - l) * 0.88;
+    const sat = Math.max(l, 1 - l) * 0.86 + 0.07;
+    v = A.C.rgbToHex(...A.C.hslToRgb(hh, s, inv + (sat - inv) * w));
+    dcache.set(c, v);
+    return v;
   };
 
   /* ---------- render one stroke (ctx already holds the world transform) ---------- */
@@ -1400,9 +1449,10 @@ A.fmtDate = (t) => {
     const c = B.catalog[item.b] || B.catalog.pen;
     const path = B.path(item);
     const a = item.o * alphaMul;
+    const col = item.raw ? item.c : B.col(item.c);
     ctx.save();
     ctx.globalAlpha = a;
-    if (c.blend) ctx.globalCompositeOperation = c.blend;
+    if (c.blend) ctx.globalCompositeOperation = B.dark ? 'screen' : c.blend;
     if (c.mask) ctx.globalCompositeOperation = 'destination-out';
     if (c.soft) {
       const t = ctx.getTransform();
@@ -1412,19 +1462,19 @@ A.fmtDate = (t) => {
       ctx.shadowOffsetX = OFF;
       ctx.shadowOffsetY = 0;
       ctx.shadowBlur = Math.max(1, item.w * k * 0.45);
-      ctx.shadowColor = c.mask ? 'rgba(0,0,0,1)' : item.c;
+      ctx.shadowColor = c.mask ? 'rgba(0,0,0,1)' : col;
       ctx.fillStyle = '#000';
       ctx.fill(path);
     } else if (c.kind === 'var') {
-      ctx.fillStyle = c.grain ? B.grain(ctx, item.c) : (c.mask ? '#000' : item.c);
+      ctx.fillStyle = c.grain ? B.grain(ctx, col) : (c.mask ? '#000' : col);
       ctx.fill(path);
     } else if (c.kind === 'fill') {
-      ctx.fillStyle = item.c;
+      ctx.fillStyle = col;
       ctx.fill(path);
     } else {
       const t = ctx.getTransform();
       const k = Math.hypot(t.a, t.b) || 1;
-      ctx.strokeStyle = item.c;
+      ctx.strokeStyle = col;
       ctx.lineWidth = c.wire ? (item.w * (A.dpr || 1)) / k : item.w;
       ctx.lineCap = c.cap || 'round';
       ctx.lineJoin = 'round';
@@ -1478,7 +1528,7 @@ A.fmtDate = (t) => {
     }
     const c = B.catalog[item.b] || B.catalog.pen;
     const sink = G.svgSink();
-    if (c.kind === 'var') G.buildVar(sink, item.pts, item.w, c.taper || 0);
+    if (c.kind === 'var') G.buildVar(sink, item.sharp ? item.pts : G.spline(item.pts, Math.max(1.1, item.w * 0.4), 1400), item.w, c.taper || 0);
     else if (c.kind === 'fill') (item.sharp ? G.buildPoly : G.buildLine)(sink, item.pts, true);
     else (item.sharp ? G.buildPoly : G.buildLine)(sink, item.pts, !!item.closed);
     const d = sink.toString();
@@ -1783,6 +1833,8 @@ A.fmtDate = (t) => {
   const S3 = Math.sqrt(3) / 2;
 
   R.ZMIN = 0.02; R.ZMAX = 64;
+  R.accent = () => R._acc || (R._acc = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2f6fdb');
+  R.themeChanged = () => { R._acc = null; R.cacheValid = false; R.render(); };
   R.painters = [];
   R.sel = new Set();            // selected item ids
   R.selPreview = null;          // world matrix applied to selected items while transforming
@@ -1808,6 +1860,17 @@ A.fmtDate = (t) => {
     }
     R.cacheValid = false;
   };
+
+  /* ---------- dark canvas (display only) ---------- */
+  R.DARK_PAPER = '#1c1f25';
+  R.isDarkTheme = () => {
+    const t = A.settings.theme;
+    if (t === 'dark') return true;
+    if (t === 'light') return false;
+    try { return matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) { return false; }
+  };
+  R.darkActive = (doc = D.doc) => !!doc && A.settings.darkCanvas !== false && R.isDarkTheme() && A.C.luminance(doc.paper.bg) > 0.5;
+  R.displayBg = (doc = D.doc) => (R.darkActive(doc) ? R.DARK_PAPER : doc.paper.bg);
 
   /* ---------- camera ---------- */
   R.view = () => D.doc.view;
@@ -1940,11 +2003,13 @@ A.fmtDate = (t) => {
   /* opts: {m, w, h, doc, bg (null = transparent), grid, sel:Set, selPreview, fade, scratch, onImage, dpr, onlyIds:Set} */
   R.drawScene = (ctx, o) => {
     const doc = o.doc;
+    const prevDark = B.dark;
+    B.dark = !!o.dark;
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, o.w, o.h);
     if (o.bg) { ctx.fillStyle = o.bg; ctx.fillRect(0, 0, o.w, o.h); }
-    if (o.grid) R.drawGrid(ctx, o.m, o.w, o.h, doc.paper, { dpr: o.dpr, axes: false });
+    if (o.grid) R.drawGrid(ctx, o.m, o.w, o.h, o.bg ? Object.assign({}, doc.paper, { bg: o.bg }) : doc.paper, { dpr: o.dpr, axes: false });
     const vbb = R.worldBB(o.m, o.w, o.h);
     const sel = o.sel && o.sel.size ? o.sel : null;
     const fade = sel && o.fade ? 0.28 : 1;
@@ -1987,6 +2052,7 @@ A.fmtDate = (t) => {
       }
     }
     ctx.restore();
+    B.dark = prevDark;
   };
 
   let mainQueued = false, overlayQueued = false;
@@ -2007,7 +2073,7 @@ A.fmtDate = (t) => {
     if (!force && R.gesturing && R.lastMs > 14 && R.cacheValid && t0 - lastFull < 220) {
       const ctx = R.mctx;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = D.doc.paper.bg;
+      ctx.fillStyle = R.displayBg();
       ctx.fillRect(0, 0, W, H);
       ctx.setTransform(...M.mul(m, M.inv(R.cacheM)));
       ctx.drawImage(R.cache, 0, 0);
@@ -2016,7 +2082,7 @@ A.fmtDate = (t) => {
       return;
     }
     R.drawScene(R.mctx, {
-      m, w: W, h: H, doc: D.doc, bg: D.doc.paper.bg, grid: D.doc.precision.grid,
+      m, w: W, h: H, doc: D.doc, bg: R.displayBg(), dark: R.darkActive(), grid: D.doc.precision.grid,
       sel: R.sel, selPreview: R.selPreview, fade: R.fadeOthers && A.settings.highlightSelection,
       scratch: R.scratch, sctx: R.sctx, onImage: R.render, dpr: A.dpr,
     });
@@ -2044,7 +2110,10 @@ A.fmtDate = (t) => {
     const ctx = R.mctx;
     ctx.save();
     ctx.setTransform(...R.dmatrix(doc.view));
+    const prevDark = B.dark;
+    B.dark = R.darkActive();
     if (item.t === 'i') B.renderImage(ctx, item, 1, R.render); else B.render(ctx, item, 1);
+    B.dark = prevDark;
     ctx.restore();
     R.cacheValid = false;
   };
@@ -2058,12 +2127,15 @@ A.fmtDate = (t) => {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, R.overlay.width, R.overlay.height);
       if (!D.doc) return;
+      const prevDark = B.dark;
+      B.dark = R.darkActive();
       for (const p of R.painters) {
         ctx.save();
         ctx.setTransform(A.dpr, 0, 0, A.dpr, 0, 0);
         try { p(ctx); } catch (e) { console.error(e); }
         ctx.restore();
       }
+      B.dark = prevDark;
     });
   };
 
@@ -2312,7 +2384,7 @@ A.fmtDate = (t) => {
     const slot = A.B.slot();
     const z = D.doc.view.zoom;
     const band = Math.max(3, Math.min(60, (slot.size || 2) * z));
-    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2f6fdb';
+    const accent = R.accent();
     const polys = GU.outline(g).map((poly) => poly.map(([x, y]) => R.toScreen(x, y)));
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     for (const poly of polys) {
@@ -2579,6 +2651,7 @@ A.fmtDate = (t) => {
         const pe = e.getPredictedEvents();
         if (pe && pe.length) {
           const last = pe[pe.length - 1];
+          if (hyp(last.clientX - rect.left - s.x, last.clientY - rect.top - s.y) > 24) { R.renderOverlay(); return; }
           let [wx, wy] = R.toWorld(last.clientX - rect.left, last.clientY - rect.top);
           if (this.guide) [wx, wy] = GU.project(this.guide, wx, wy, this.gctx);
           this.predicted = [wx, wy, this.pm];
@@ -2626,7 +2699,7 @@ A.fmtDate = (t) => {
         sharp = true;
       } else if (!live && !this.guide && np > 2) {
         if (this.slot.smoothing > 0.12) pts = G.chaikin(pts, 1);
-        pts = G.simplify(pts, 0.22 / this.zoom, 0.035);
+        pts = G.simplify(pts, 0.1 / this.zoom, 0.025);
       }
       // connect endpoints to nearby stroke ends
       if (!live && doc.precision.snap && doc.precision.connect && G.count(pts) >= 2) {
@@ -2648,7 +2721,7 @@ A.fmtDate = (t) => {
       const { pts, sharp, closed } = this.finalPts(true);
       const cat = this.cat;
       if (cat.mask) {
-        return { t: 's', b: cat.soft ? 'airbrush' : 'pen', c: D.doc.paper.bg, w: this.slot.size, o: 0.92, pts, sharp, closed };
+        return { t: 's', b: cat.soft ? 'airbrush' : 'pen', c: R.displayBg(), raw: true, w: this.slot.size, o: 0.92, pts, sharp, closed };
       }
       return { t: 's', b: this.slot.b, c: this.slot.color, w: this.slot.size, o: this.slot.opacity, pts, sharp, closed };
     }
@@ -2790,14 +2863,15 @@ A.fmtDate = (t) => {
       this.poly = [];
       this.start = { x: s.x, y: s.y };
       this.moved = 0;
-      if (IN.selMode === 'lasso') this.poly.push(...R.toWorld(s.x, s.y));
+      this.mode = opts.forceLasso ? 'lasso' : IN.selMode;
+      if (this.mode === 'lasso') this.poly.push(...R.toWorld(s.x, s.y));
       IN.lasso = this;
       A.emit('selmenu:show');
     }
     move(e, rect) {
       for (const s of samplesOf(e, rect)) {
         this.moved = Math.max(this.moved, hyp(s.x - this.start.x, s.y - this.start.y));
-        if (IN.selMode === 'lasso') this.poly.push(...R.toWorld(s.x, s.y));
+        if (this.mode === 'lasso') this.poly.push(...R.toWorld(s.x, s.y));
         this.cur = { x: s.x, y: s.y };
       }
       R.renderOverlay();
@@ -2806,14 +2880,14 @@ A.fmtDate = (t) => {
       IN.lasso = null;
       const zoom = D.doc.view.zoom;
       const end = this.cur || this.start;
-      if (IN.selMode === 'picker' || this.moved < 8 || this.poly.length < 8) {
+      if (this.mode === 'picker' || this.moved < 8 || this.poly.length < 8) {
         const [wx, wy] = R.toWorld(end.x, end.y);
         const it = pickItem(wx, wy, 10 / zoom);
         if (it) {
           const ids = new Set(R.sel);
           if (ids.has(it.id)) ids.delete(it.id); else ids.add(it.id);
           SEL.set(ids);
-        } else if (IN.selMode === 'lasso' || this.moved < 8) SEL.clear();
+        } else if (this.mode === 'lasso' || this.moved < 8) SEL.clear();
         R.renderOverlay();
         return;
       }
@@ -2969,6 +3043,56 @@ A.fmtDate = (t) => {
     cancel() { this.end(); }
   }
 
+  /* ---- one finger: drag pans; long-press then move = lasso; long-press and lift = context menu ---- */
+  class FingerAction {
+    constructor(rec, s) {
+      this.rec = rec;
+      this.start = { x: s.x, y: s.y };
+      this.last = [s.x, s.y];
+      this.moved = 0;
+      this.v0 = { tx: D.doc.view.tx, ty: D.doc.view.ty };
+      R.gesturing = true;
+      this.timer = setTimeout(() => this.onHold(), A.settings.holdTime || 500);
+    }
+    onHold() {
+      if (this.ended || this.moved > 10) return;
+      R.setView({ tx: this.v0.tx, ty: this.v0.ty }); // undo tiny drift
+      R.gesturing = false;
+      this.held = true;
+      this.holdPt = { x: this.rec.x, y: this.rec.y, t: performance.now(), type: 'touch' };
+      this.lasso = new LassoAction(this.rec, this.holdPt, { forceLasso: true, temp: true });
+      IN.holdRing = { x: this.holdPt.x, y: this.holdPt.y };
+      R.renderOverlay();
+    }
+    move(e, rect) {
+      const r = this.rec;
+      this.moved = Math.max(this.moved, hyp(r.x - this.start.x, r.y - this.start.y));
+      if (this.held) {
+        if (hyp(r.x - this.holdPt.x, r.y - this.holdPt.y) > 6) IN.holdRing = null;
+        this.lasso.move(e, rect);
+        return;
+      }
+      if (this.moved > 10) clearTimeout(this.timer);
+      const v = D.doc.view;
+      R.setView({ tx: v.tx + r.x - this.last[0], ty: v.ty + r.y - this.last[1] });
+      this.last = [r.x, r.y];
+    }
+    up(e, rect) {
+      this.ended = true;
+      clearTimeout(this.timer);
+      IN.holdRing = null;
+      if (!this.held) { R.gesturing = false; R.render(); return; }
+      if (this.lasso.moved >= 8 && this.lasso.poly.length >= 8) { this.lasso.up(e, rect); return; }
+      this.lasso.cancel();
+      A.emit('canvas:menu', { x: this.holdPt.x, y: this.holdPt.y });
+    }
+    cancel() {
+      this.ended = true; clearTimeout(this.timer); IN.holdRing = null;
+      if (this.lasso) this.lasso.cancel();
+      R.gesturing = false; R.render();
+    }
+  }
+
   class PanAction {
     constructor(rec) { this.rec = rec; this.last = [rec.x, rec.y]; R.gesturing = true; }
     move() {
@@ -3007,6 +3131,9 @@ A.fmtDate = (t) => {
   class EyedropAction {
     constructor(rec, s) { this.sample(s.x, s.y); }
     sample(x, y) {
+      const [wx, wy] = R.toWorld(x, y);
+      const hit = pickItem(wx, wy, 6 / D.doc.view.zoom);
+      if (hit && hit.t === 's') { this.color = hit.c; IN.loupe = { x, y, color: B.col(hit.c) }; R.renderOverlay(); return; }
       try {
         const px = R.mctx.getImageData(Math.round(x * A.dpr), Math.round(y * A.dpr), 1, 1).data;
         this.color = A.C.rgbToHex(px[0], px[1], px[2]);
@@ -3027,7 +3154,7 @@ A.fmtDate = (t) => {
   /* ================= routing ================= */
   const fingerMode = () => {
     const f = A.settings.fingerAction;
-    if (f === 'auto') return penSeen ? 'pan' : 'draw';
+    if (f === 'auto') return penSeen || A.settings.penSeen ? 'pan' : 'draw';
     return f;
   };
 
@@ -3043,7 +3170,7 @@ A.fmtDate = (t) => {
     let tool = B.slot().b;
     if (isFinger) {
       const fm = fingerMode();
-      if (fm === 'pan') return new PanAction(rec);
+      if (fm === 'pan') return new FingerAction(rec, s);
       if (fm === 'select') tool = 'select';
     }
     if (tool !== 'select' && R.sel.size) SEL.clear();
@@ -3072,6 +3199,7 @@ A.fmtDate = (t) => {
 
     if (rec.type === 'pen') {
       penSeen = true;
+      if (!A.settings.penSeen) { A.settings.penSeen = true; A.saveSettings(); }
       if (action && action.rec && action.rec.type === 'touch' && action instanceof DrawAction) action.cancel();
       if (action instanceof GestureAction || action instanceof PanAction) action.cancel();
       action = startPrimary(rec, s, e);
@@ -3171,7 +3299,7 @@ A.fmtDate = (t) => {
   /* ================= overlay painter ================= */
   const paint = (ctx) => {
     const doc = D.doc;
-    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2f6fdb';
+    const accent = R.accent();
     // live stroke
     if (IN.liveDraw) {
       const d = IN.liveDraw;
@@ -3229,6 +3357,11 @@ A.fmtDate = (t) => {
         ctx.beginPath(); ctx.arc(rh[0], rh[1], 8, 0, Math.PI * 2); ctx.fillStyle = accent; ctx.fill();
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(rh[0], rh[1], 4, -0.4, 4.2); ctx.stroke();
       }
+    }
+    // long-press ring
+    if (IN.holdRing) {
+      ctx.beginPath(); ctx.arc(IN.holdRing.x, IN.holdRing.y, 30, 0, Math.PI * 2);
+      ctx.lineWidth = 3; ctx.strokeStyle = accent; ctx.globalAlpha = 0.85; ctx.stroke(); ctx.globalAlpha = 1;
     }
     // eraser / nudge cursor
     if (IN.cursor) {
@@ -3655,7 +3788,8 @@ A.fmtDate = (t) => {
     const r = host.getBoundingClientRect();
     const W = r.width || (isBar ? 64 : 300), H = r.height || 600;
     let x, y;
-    const safeL = 10, top = 64;
+    const sb = A.$('#statusbar');
+    const safeL = 10, top = sb ? Math.round(sb.getBoundingClientRect().bottom + 10) : 64;
     if (isBar || pos.x == null) x = S.toolSide === 'right' ? innerWidth - W - safeL : safeL;
     else x = pos.x;
     y = pos.y != null ? pos.y : Math.max(top, (innerHeight - H) / 2);
@@ -4321,14 +4455,15 @@ A.fmtDate = (t) => {
     },
     copy() { if (!R.sel.size) return; writeClip(selItems()); A.toast(`Copied ${R.sel.size}`); },
     cut() { if (!R.sel.size) return; writeClip(selItems()); cmds.delete(); },
-    paste() {
+    paste(at) {
       if (!A.clip || !A.clip.items || !A.clip.items.length) return A.toast('Nothing to paste');
       const items = A.clip.items.map((it) => Object.assign({}, it, { id: A.uid() }));
       let bb = null; items.forEach((it) => (bb = G.bbUnion(bb, it.bb)));
       const [cx, cy] = R.toWorld(R.w / 2, R.h / 2);
       const vis = R.visibleBB();
       const onScreen = G.bbHit(bb, vis);
-      const T = onScreen ? M.translate(24 / D.doc.view.zoom, 24 / D.doc.view.zoom) : M.translate(cx - (bb[0] + bb[2]) / 2, cy - (bb[1] + bb[3]) / 2);
+      const T = Array.isArray(at) ? M.translate(at[0] - (bb[0] + bb[2]) / 2, at[1] - (bb[1] + bb[3]) / 2)
+        : onScreen ? M.translate(24 / D.doc.view.zoom, 24 / D.doc.view.zoom) : M.translate(cx - (bb[0] + bb[2]) / 2, cy - (bb[1] + bb[3]) / 2);
       const moved = items.map((it) => D.transformItem(it, T, false));
       let l = D.active();
       if (l.locked) l = D.addLayer();
@@ -4394,6 +4529,33 @@ A.fmtDate = (t) => {
     D.commit(); R.render();
   }
   A.on('cmd', (c) => { if (cmds[c]) cmds[c](); });
+
+  /* long-press menu (finger held still, then lifted) */
+  A.on('canvas:menu', ({ x, y }) => {
+    const w = R.toWorld(x, y);
+    const box = h('div', { class: 'menu' });
+    const it = (icon, label, fn, cls) => { const b = h('button', { class: cls || '', onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); box.append(b); };
+    const hasClip = A.clip && A.clip.items && A.clip.items.length;
+    const c = R.sel.size ? A.SEL.screenCorners() : null;
+    if (c && G.pointInPoly(x, y, c.flat())) {
+      it('copy', 'Copy', () => cmds.copy());
+      it('clear', 'Cut', () => cmds.cut());
+      it('duplicate', 'Duplicate', () => cmds.duplicate());
+      if (hasClip) it('paste', 'Paste here', () => cmds.paste(w));
+      box.append(h('hr'));
+      it('trash', 'Delete', () => cmds.delete(), 'danger');
+    } else {
+      const hit = A.IN.pickItem(w[0], w[1], 12 / D.doc.view.zoom);
+      if (hit) { A.SEL.set([hit.id]); return; }
+      if (hasClip) it('paste', `Paste here (${A.clip.items.length})`, () => cmds.paste(w));
+      it('selectall', 'Select all', () => cmds.selectAll());
+      it('lasso', 'Select with the Pencil', () => A.emit('tool:select'));
+      box.append(h('hr'));
+      it('image', 'Insert image here', async () => { const f = await pickFile('image/*'); if (f) UI.importImageFile(f, w); });
+      it('pdf', 'Insert PDF', async () => { const f = await pickFile('application/pdf,.pdf'); if (f) UI.importPdf(f); });
+    }
+    A.popover(box, { x, y }, {});
+  });
   A.on('tool:select', () => {
     const i = S.slots.findIndex((s) => s.b === 'select');
     if (i >= 0) A.UI.setSlot(i);
@@ -4431,7 +4593,7 @@ A.fmtDate = (t) => {
     it('paste', 'Paste strokes', () => cmds.paste());
     A.popover(box, anchor, { side: 'down' });
   }
-  UI.importImageFile = async (file) => {
+  UI.importImageFile = async (file, at) => {
     try {
       let src = await readAs(file, 'url');
       const im = await loadImg(src);
@@ -4444,7 +4606,11 @@ A.fmtDate = (t) => {
         src = c.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.88);
         w = c.width; hh = c.height;
       }
-      placeImage(src, w, hh);
+      const img = placeImage(src, w, hh);
+      if (Array.isArray(at)) {
+        const bb = img.bb, T = M.translate(at[0] - (bb[0] + bb[2]) / 2, at[1] - (bb[1] + bb[3]) / 2);
+        D.begin(); D.replace(new Map([[img.id, [D.transformItem(img, T)]]])); D.commit(); R.render();
+      }
     } catch (e) { A.toast('That image could not be read'); }
   };
   function placeImage(src, w, hh, opts = {}) {
@@ -4622,6 +4788,7 @@ A.fmtDate = (t) => {
     const t = S.theme;
     if (t === 'system') delete document.documentElement.dataset.theme;
     else document.documentElement.dataset.theme = t;
+    if (A.R && A.R.themeChanged) A.R.themeChanged();
   };
   UI.openSettings = () => {
     const back = h('div', { class: 'modal-back' });
@@ -4638,9 +4805,10 @@ A.fmtDate = (t) => {
         row('Appearance', null, sel('theme', [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']], UI.applyTheme)),
         row('Tool setup', 'Double-tap the toolbar grip to switch', sel('toolSetup', [['bar', 'Tool Bar'], ['wheel', 'Tool Wheel']], () => { S.toolPos = null; UI.renderTools(); })),
         row('Toolbar side', null, sel('toolSide', [['left', 'Left'], ['right', 'Right']], () => { S.toolPos = null; UI.renderTools(); })),
+        row('Dark canvas in dark mode', 'Paper turns dark and ink adapts. Exports keep your real colors.', toggleSw(S.darkCanvas !== false, (v) => { set('darkCanvas', v); R.themeChanged(); }, 's-darkcanvas')),
         row('Palette on toolbar', 'Quick colors under the color button', toggleSw(S.showPalette, (v) => { set('showPalette', v); UI.renderTools(); }, 's-pal')),
         h('h5', null, 'Apple Pencil and touch'),
-        row('Finger action', 'Auto: fingers draw until you use a Pencil, then they pan', sel('fingerAction', [['auto', 'Auto'], ['draw', 'Draw'], ['pan', 'Pan'], ['select', 'Select']])),
+        row('Finger action', 'Pan: drag to move. Hold still, then move to lasso, or lift for a menu. Auto pans once a Pencil has been used.', sel('fingerAction', [['auto', 'Auto'], ['pan', 'Pan'], ['draw', 'Draw'], ['select', 'Select']])),
         row('Pressure response', 'Softer makes light strokes thicker', (() => {
           const r = h('input', { type: 'range', min: 40, max: 200, value: Math.round(S.pressure * 100), id: 's-pressure', style: { width: '160px' } });
           r.addEventListener('change', () => set('pressure', +r.value / 100));
@@ -4685,7 +4853,7 @@ A.fmtDate = (t) => {
       h('h5', null, 'Touch'),
       h('div', { class: 'help-grid' },
         ...g('Pencil', 'Draws with the active tool. Pressure changes width, and tilting the Pencil shades with the Pencil brush.'),
-        ...g('1 finger', 'Pans once you have used a Pencil (Settings › Finger action).'),
+        ...g('1 finger', 'Drag to pan. Hold still, then move to lasso-select, or lift for a menu (paste here, select all, insert).'),
         ...g('2 fingers', 'Pinch to zoom, drag to pan, twist to rotate (snaps to 0°, 90°…).'),
         ...g('2-finger tap', 'Undo'), ...g('3-finger tap', 'Redo'),
         ...g('Draw & hold', 'Turns your stroke into a clean line, arc, circle, ellipse, triangle, rectangle or polygon. Keep holding and move to adjust.'),

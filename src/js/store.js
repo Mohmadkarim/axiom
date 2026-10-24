@@ -95,6 +95,8 @@
     activePalette: 0,
     sort: 'updated',
     seenWelcome: false,
+    darkCanvas: true,
+    penSeen: false,
   });
   let S = defaults();
   try {

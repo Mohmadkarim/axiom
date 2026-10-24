@@ -202,6 +202,7 @@
         const pe = e.getPredictedEvents();
         if (pe && pe.length) {
           const last = pe[pe.length - 1];
+          if (hyp(last.clientX - rect.left - s.x, last.clientY - rect.top - s.y) > 24) { R.renderOverlay(); return; }
           let [wx, wy] = R.toWorld(last.clientX - rect.left, last.clientY - rect.top);
           if (this.guide) [wx, wy] = GU.project(this.guide, wx, wy, this.gctx);
           this.predicted = [wx, wy, this.pm];
@@ -249,7 +250,7 @@
         sharp = true;
       } else if (!live && !this.guide && np > 2) {
         if (this.slot.smoothing > 0.12) pts = G.chaikin(pts, 1);
-        pts = G.simplify(pts, 0.22 / this.zoom, 0.035);
+        pts = G.simplify(pts, 0.1 / this.zoom, 0.025);
       }
       // connect endpoints to nearby stroke ends
       if (!live && doc.precision.snap && doc.precision.connect && G.count(pts) >= 2) {
@@ -271,7 +272,7 @@
       const { pts, sharp, closed } = this.finalPts(true);
       const cat = this.cat;
       if (cat.mask) {
-        return { t: 's', b: cat.soft ? 'airbrush' : 'pen', c: D.doc.paper.bg, w: this.slot.size, o: 0.92, pts, sharp, closed };
+        return { t: 's', b: cat.soft ? 'airbrush' : 'pen', c: R.displayBg(), raw: true, w: this.slot.size, o: 0.92, pts, sharp, closed };
       }
       return { t: 's', b: this.slot.b, c: this.slot.color, w: this.slot.size, o: this.slot.opacity, pts, sharp, closed };
     }
@@ -413,14 +414,15 @@
       this.poly = [];
       this.start = { x: s.x, y: s.y };
       this.moved = 0;
-      if (IN.selMode === 'lasso') this.poly.push(...R.toWorld(s.x, s.y));
+      this.mode = opts.forceLasso ? 'lasso' : IN.selMode;
+      if (this.mode === 'lasso') this.poly.push(...R.toWorld(s.x, s.y));
       IN.lasso = this;
       A.emit('selmenu:show');
     }
     move(e, rect) {
       for (const s of samplesOf(e, rect)) {
         this.moved = Math.max(this.moved, hyp(s.x - this.start.x, s.y - this.start.y));
-        if (IN.selMode === 'lasso') this.poly.push(...R.toWorld(s.x, s.y));
+        if (this.mode === 'lasso') this.poly.push(...R.toWorld(s.x, s.y));
         this.cur = { x: s.x, y: s.y };
       }
       R.renderOverlay();
@@ -429,14 +431,14 @@
       IN.lasso = null;
       const zoom = D.doc.view.zoom;
       const end = this.cur || this.start;
-      if (IN.selMode === 'picker' || this.moved < 8 || this.poly.length < 8) {
+      if (this.mode === 'picker' || this.moved < 8 || this.poly.length < 8) {
         const [wx, wy] = R.toWorld(end.x, end.y);
         const it = pickItem(wx, wy, 10 / zoom);
         if (it) {
           const ids = new Set(R.sel);
           if (ids.has(it.id)) ids.delete(it.id); else ids.add(it.id);
           SEL.set(ids);
-        } else if (IN.selMode === 'lasso' || this.moved < 8) SEL.clear();
+        } else if (this.mode === 'lasso' || this.moved < 8) SEL.clear();
         R.renderOverlay();
         return;
       }
@@ -592,6 +594,56 @@
     cancel() { this.end(); }
   }
 
+  /* ---- one finger: drag pans; long-press then move = lasso; long-press and lift = context menu ---- */
+  class FingerAction {
+    constructor(rec, s) {
+      this.rec = rec;
+      this.start = { x: s.x, y: s.y };
+      this.last = [s.x, s.y];
+      this.moved = 0;
+      this.v0 = { tx: D.doc.view.tx, ty: D.doc.view.ty };
+      R.gesturing = true;
+      this.timer = setTimeout(() => this.onHold(), A.settings.holdTime || 500);
+    }
+    onHold() {
+      if (this.ended || this.moved > 10) return;
+      R.setView({ tx: this.v0.tx, ty: this.v0.ty }); // undo tiny drift
+      R.gesturing = false;
+      this.held = true;
+      this.holdPt = { x: this.rec.x, y: this.rec.y, t: performance.now(), type: 'touch' };
+      this.lasso = new LassoAction(this.rec, this.holdPt, { forceLasso: true, temp: true });
+      IN.holdRing = { x: this.holdPt.x, y: this.holdPt.y };
+      R.renderOverlay();
+    }
+    move(e, rect) {
+      const r = this.rec;
+      this.moved = Math.max(this.moved, hyp(r.x - this.start.x, r.y - this.start.y));
+      if (this.held) {
+        if (hyp(r.x - this.holdPt.x, r.y - this.holdPt.y) > 6) IN.holdRing = null;
+        this.lasso.move(e, rect);
+        return;
+      }
+      if (this.moved > 10) clearTimeout(this.timer);
+      const v = D.doc.view;
+      R.setView({ tx: v.tx + r.x - this.last[0], ty: v.ty + r.y - this.last[1] });
+      this.last = [r.x, r.y];
+    }
+    up(e, rect) {
+      this.ended = true;
+      clearTimeout(this.timer);
+      IN.holdRing = null;
+      if (!this.held) { R.gesturing = false; R.render(); return; }
+      if (this.lasso.moved >= 8 && this.lasso.poly.length >= 8) { this.lasso.up(e, rect); return; }
+      this.lasso.cancel();
+      A.emit('canvas:menu', { x: this.holdPt.x, y: this.holdPt.y });
+    }
+    cancel() {
+      this.ended = true; clearTimeout(this.timer); IN.holdRing = null;
+      if (this.lasso) this.lasso.cancel();
+      R.gesturing = false; R.render();
+    }
+  }
+
   class PanAction {
     constructor(rec) { this.rec = rec; this.last = [rec.x, rec.y]; R.gesturing = true; }
     move() {
@@ -630,6 +682,9 @@
   class EyedropAction {
     constructor(rec, s) { this.sample(s.x, s.y); }
     sample(x, y) {
+      const [wx, wy] = R.toWorld(x, y);
+      const hit = pickItem(wx, wy, 6 / D.doc.view.zoom);
+      if (hit && hit.t === 's') { this.color = hit.c; IN.loupe = { x, y, color: B.col(hit.c) }; R.renderOverlay(); return; }
       try {
         const px = R.mctx.getImageData(Math.round(x * A.dpr), Math.round(y * A.dpr), 1, 1).data;
         this.color = A.C.rgbToHex(px[0], px[1], px[2]);
@@ -650,7 +705,7 @@
   /* ================= routing ================= */
   const fingerMode = () => {
     const f = A.settings.fingerAction;
-    if (f === 'auto') return penSeen ? 'pan' : 'draw';
+    if (f === 'auto') return penSeen || A.settings.penSeen ? 'pan' : 'draw';
     return f;
   };
 
@@ -666,7 +721,7 @@
     let tool = B.slot().b;
     if (isFinger) {
       const fm = fingerMode();
-      if (fm === 'pan') return new PanAction(rec);
+      if (fm === 'pan') return new FingerAction(rec, s);
       if (fm === 'select') tool = 'select';
     }
     if (tool !== 'select' && R.sel.size) SEL.clear();
@@ -695,6 +750,7 @@
 
     if (rec.type === 'pen') {
       penSeen = true;
+      if (!A.settings.penSeen) { A.settings.penSeen = true; A.saveSettings(); }
       if (action && action.rec && action.rec.type === 'touch' && action instanceof DrawAction) action.cancel();
       if (action instanceof GestureAction || action instanceof PanAction) action.cancel();
       action = startPrimary(rec, s, e);
@@ -794,7 +850,7 @@
   /* ================= overlay painter ================= */
   const paint = (ctx) => {
     const doc = D.doc;
-    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2f6fdb';
+    const accent = R.accent();
     // live stroke
     if (IN.liveDraw) {
       const d = IN.liveDraw;
@@ -852,6 +908,11 @@
         ctx.beginPath(); ctx.arc(rh[0], rh[1], 8, 0, Math.PI * 2); ctx.fillStyle = accent; ctx.fill();
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(rh[0], rh[1], 4, -0.4, 4.2); ctx.stroke();
       }
+    }
+    // long-press ring
+    if (IN.holdRing) {
+      ctx.beginPath(); ctx.arc(IN.holdRing.x, IN.holdRing.y, 30, 0, Math.PI * 2);
+      ctx.lineWidth = 3; ctx.strokeStyle = accent; ctx.globalAlpha = 0.85; ctx.stroke(); ctx.globalAlpha = 1;
     }
     // eraser / nudge cursor
     if (IN.cursor) {

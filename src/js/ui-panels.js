@@ -254,14 +254,15 @@
     },
     copy() { if (!R.sel.size) return; writeClip(selItems()); A.toast(`Copied ${R.sel.size}`); },
     cut() { if (!R.sel.size) return; writeClip(selItems()); cmds.delete(); },
-    paste() {
+    paste(at) {
       if (!A.clip || !A.clip.items || !A.clip.items.length) return A.toast('Nothing to paste');
       const items = A.clip.items.map((it) => Object.assign({}, it, { id: A.uid() }));
       let bb = null; items.forEach((it) => (bb = G.bbUnion(bb, it.bb)));
       const [cx, cy] = R.toWorld(R.w / 2, R.h / 2);
       const vis = R.visibleBB();
       const onScreen = G.bbHit(bb, vis);
-      const T = onScreen ? M.translate(24 / D.doc.view.zoom, 24 / D.doc.view.zoom) : M.translate(cx - (bb[0] + bb[2]) / 2, cy - (bb[1] + bb[3]) / 2);
+      const T = Array.isArray(at) ? M.translate(at[0] - (bb[0] + bb[2]) / 2, at[1] - (bb[1] + bb[3]) / 2)
+        : onScreen ? M.translate(24 / D.doc.view.zoom, 24 / D.doc.view.zoom) : M.translate(cx - (bb[0] + bb[2]) / 2, cy - (bb[1] + bb[3]) / 2);
       const moved = items.map((it) => D.transformItem(it, T, false));
       let l = D.active();
       if (l.locked) l = D.addLayer();
@@ -327,6 +328,33 @@
     D.commit(); R.render();
   }
   A.on('cmd', (c) => { if (cmds[c]) cmds[c](); });
+
+  /* long-press menu (finger held still, then lifted) */
+  A.on('canvas:menu', ({ x, y }) => {
+    const w = R.toWorld(x, y);
+    const box = h('div', { class: 'menu' });
+    const it = (icon, label, fn, cls) => { const b = h('button', { class: cls || '', onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); box.append(b); };
+    const hasClip = A.clip && A.clip.items && A.clip.items.length;
+    const c = R.sel.size ? A.SEL.screenCorners() : null;
+    if (c && G.pointInPoly(x, y, c.flat())) {
+      it('copy', 'Copy', () => cmds.copy());
+      it('clear', 'Cut', () => cmds.cut());
+      it('duplicate', 'Duplicate', () => cmds.duplicate());
+      if (hasClip) it('paste', 'Paste here', () => cmds.paste(w));
+      box.append(h('hr'));
+      it('trash', 'Delete', () => cmds.delete(), 'danger');
+    } else {
+      const hit = A.IN.pickItem(w[0], w[1], 12 / D.doc.view.zoom);
+      if (hit) { A.SEL.set([hit.id]); return; }
+      if (hasClip) it('paste', `Paste here (${A.clip.items.length})`, () => cmds.paste(w));
+      it('selectall', 'Select all', () => cmds.selectAll());
+      it('lasso', 'Select with the Pencil', () => A.emit('tool:select'));
+      box.append(h('hr'));
+      it('image', 'Insert image here', async () => { const f = await pickFile('image/*'); if (f) UI.importImageFile(f, w); });
+      it('pdf', 'Insert PDF', async () => { const f = await pickFile('application/pdf,.pdf'); if (f) UI.importPdf(f); });
+    }
+    A.popover(box, { x, y }, {});
+  });
   A.on('tool:select', () => {
     const i = S.slots.findIndex((s) => s.b === 'select');
     if (i >= 0) A.UI.setSlot(i);
@@ -364,7 +392,7 @@
     it('paste', 'Paste strokes', () => cmds.paste());
     A.popover(box, anchor, { side: 'down' });
   }
-  UI.importImageFile = async (file) => {
+  UI.importImageFile = async (file, at) => {
     try {
       let src = await readAs(file, 'url');
       const im = await loadImg(src);
@@ -377,7 +405,11 @@
         src = c.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.88);
         w = c.width; hh = c.height;
       }
-      placeImage(src, w, hh);
+      const img = placeImage(src, w, hh);
+      if (Array.isArray(at)) {
+        const bb = img.bb, T = M.translate(at[0] - (bb[0] + bb[2]) / 2, at[1] - (bb[1] + bb[3]) / 2);
+        D.begin(); D.replace(new Map([[img.id, [D.transformItem(img, T)]]])); D.commit(); R.render();
+      }
     } catch (e) { A.toast('That image could not be read'); }
   };
   function placeImage(src, w, hh, opts = {}) {
@@ -555,6 +587,7 @@
     const t = S.theme;
     if (t === 'system') delete document.documentElement.dataset.theme;
     else document.documentElement.dataset.theme = t;
+    if (A.R && A.R.themeChanged) A.R.themeChanged();
   };
   UI.openSettings = () => {
     const back = h('div', { class: 'modal-back' });
@@ -571,9 +604,10 @@
         row('Appearance', null, sel('theme', [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']], UI.applyTheme)),
         row('Tool setup', 'Double-tap the toolbar grip to switch', sel('toolSetup', [['bar', 'Tool Bar'], ['wheel', 'Tool Wheel']], () => { S.toolPos = null; UI.renderTools(); })),
         row('Toolbar side', null, sel('toolSide', [['left', 'Left'], ['right', 'Right']], () => { S.toolPos = null; UI.renderTools(); })),
+        row('Dark canvas in dark mode', 'Paper turns dark and ink adapts. Exports keep your real colors.', toggleSw(S.darkCanvas !== false, (v) => { set('darkCanvas', v); R.themeChanged(); }, 's-darkcanvas')),
         row('Palette on toolbar', 'Quick colors under the color button', toggleSw(S.showPalette, (v) => { set('showPalette', v); UI.renderTools(); }, 's-pal')),
         h('h5', null, 'Apple Pencil and touch'),
-        row('Finger action', 'Auto: fingers draw until you use a Pencil, then they pan', sel('fingerAction', [['auto', 'Auto'], ['draw', 'Draw'], ['pan', 'Pan'], ['select', 'Select']])),
+        row('Finger action', 'Pan: drag to move. Hold still, then move to lasso, or lift for a menu. Auto pans once a Pencil has been used.', sel('fingerAction', [['auto', 'Auto'], ['pan', 'Pan'], ['draw', 'Draw'], ['select', 'Select']])),
         row('Pressure response', 'Softer makes light strokes thicker', (() => {
           const r = h('input', { type: 'range', min: 40, max: 200, value: Math.round(S.pressure * 100), id: 's-pressure', style: { width: '160px' } });
           r.addEventListener('change', () => set('pressure', +r.value / 100));
@@ -618,7 +652,7 @@
       h('h5', null, 'Touch'),
       h('div', { class: 'help-grid' },
         ...g('Pencil', 'Draws with the active tool. Pressure changes width, and tilting the Pencil shades with the Pencil brush.'),
-        ...g('1 finger', 'Pans once you have used a Pencil (Settings › Finger action).'),
+        ...g('1 finger', 'Drag to pan. Hold still, then move to lasso-select, or lift for a menu (paste here, select all, insert).'),
         ...g('2 fingers', 'Pinch to zoom, drag to pan, twist to rotate (snaps to 0°, 90°…).'),
         ...g('2-finger tap', 'Undo'), ...g('3-finger tap', 'Redo'),
         ...g('Draw & hold', 'Turns your stroke into a clean line, arc, circle, ellipse, triangle, rectangle or polygon. Keep holding and move to adjust.'),
