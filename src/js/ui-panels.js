@@ -27,21 +27,18 @@
     readout.addEventListener('click', () => viewMenu(readout));
     const right = h('div', { class: 'sb-group panel' },
       btn('book', 'Study panel: documents and tutor', () => A.ST.toggle(), 'btn-study'),
-      h('div', { class: 'sb-sep' }),
-      opt(btn('import', 'Import', (e) => importMenu(e.currentTarget))),
-      opt(btn('export', 'Export', () => UI.openExport())),
-      opt(btn('hide', 'Hide interface (H)', () => A.emit('cmd', 'toggleUI'))),
-      btn('settings', 'Settings', () => UI.openSettings()),
-      opt(btn('help', 'Help and gestures', () => UI.openHelp())),
+      btn('export', 'Export', () => UI.openExport()),
       (() => { const b = btn('more', 'More', () => {
         const box = h('div', { class: 'menu' });
         const it = (icon, label, fn) => { const x = h('button', { onclick: () => { A.closePopovers(); fn(); } }); x.innerHTML = A.icon(icon); x.append(label); box.append(x); };
         it('import', 'Import', () => importMenu(b));
-        it('export', 'Export', () => UI.openExport());
+        it('artboard', 'Add artboard', () => UI.artboardMenu(b));
         it('hide', 'Hide interface', () => A.emit('cmd', 'toggleUI'));
+        box.append(h('hr'));
+        it('settings', 'Settings', () => UI.openSettings());
         it('help', 'Help and gestures', () => UI.openHelp());
         A.popover(box, b, { side: 'down' });
-      }); b.classList.add('sb-more'); return b; })());
+      }); return b; })());
     el.append(left, readout, right);
     const syncName = () => { name.textContent = D.doc ? D.doc.name : ''; };
     UI.syncName = syncName;

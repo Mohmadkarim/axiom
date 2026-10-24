@@ -8,9 +8,9 @@ cd "$(dirname "$0")"
 rm -rf web && mkdir web && cp ../dist/index.html ../dist/*.png web/ && cp -R ../dist/vendor web/vendor
 "$HOME/.local/share/xcodegen/xcodegen/bin/xcodegen" generate --quiet
 if [ "$1" = "device" ]; then
-  DEST='generic/platform=iOS'; [ -n "$3" ] && DEST="platform=iOS,id=$3"
+  DEST="generic/platform=iOS"; REG=""; [ -n "$3" ] && DEST="platform=iOS,id=$3" && REG="-allowProvisioningDeviceRegistration"
   xcodebuild -project Axiom.xcodeproj -scheme Axiom -configuration Release -destination "$DEST" \
-    -derivedDataPath build DEVELOPMENT_TEAM="$2" -allowProvisioningUpdates -allowProvisioningDeviceRegistration -quiet build
+    -derivedDataPath build DEVELOPMENT_TEAM="$2" -allowProvisioningUpdates $REG -quiet build
   echo "$(pwd)/build/Build/Products/Release-iphoneos/Axiom.app"
 else
   xcodebuild -project Axiom.xcodeproj -scheme Axiom -configuration Debug -destination 'generic/platform=iOS Simulator' \
