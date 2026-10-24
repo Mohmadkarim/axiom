@@ -1012,3 +1012,49 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
 .conv-btn { background: transparent; border: 0; padding: 0 4px; font-size: 14px; }
 .composer { background: var(--bg); border-top: 1px solid var(--line); }
 .composer-in { border-color: var(--line); background: var(--panel-2); border-radius: 16px; }
+
+/* ---------- reader top bar adapts to its real width (tutor open, portrait) ---------- */
+.rd-top { container-type: inline-size; container-name: rdtop; flex-wrap: nowrap; }
+.rd-top .rd-group { flex: none; }
+.rd-top > .rd-group:first-child { min-width: 0; flex: 0 1 auto; }
+.rd-title { min-width: 0; max-width: 300px; }
+.rd-title-main { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rd-zoomrow { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px; gap: 6px; }
+@container rdtop (max-width: 900px) {
+  .rd-title { max-width: 190px; }
+  .rd-tools button { font-size: 0 !important; gap: 0 !important; padding: 0 10px !important; }
+}
+@container rdtop (max-width: 640px) {
+  .rd-title { max-width: 110px; }
+  .rd-title-sub { display: none; }
+  .rd-top .sb-sep { display: none; }
+}
+@container rdtop (max-width: 500px) {
+  .rd-title { display: none; }
+}
+
+/* ---------- ask bar: type your question right at the selection ---------- */
+.rd-actions.ask-bar { flex-direction: column; align-items: stretch; gap: 8px; padding: 8px; width: min(420px, calc(100% - 16px)); border-radius: 18px; }
+.ab-row { display: flex; gap: 6px; align-items: center; }
+.ab-in { flex: 1; min-width: 0; height: 40px; border-radius: 12px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.08); color: #fff; padding: 0 12px; font-size: 15px; outline: none; }
+.ab-in::placeholder { color: rgba(255,255,255,.5); }
+.ab-in:focus { border-color: var(--accent); background: rgba(255,255,255,.12); }
+.rd-actions .ab-send { width: 40px; height: 40px; padding: 0; border-radius: 12px; background: var(--accent); justify-content: center; flex: none; }
+.ab-chips { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.rd-actions .ab-chip { height: 32px; padding: 0 11px; border-radius: 10px; background: rgba(255,255,255,.08); font-size: 13px; }
+.rd-actions .ab-ic { width: 34px; height: 32px; padding: 0; justify-content: center; opacity: .8; }
+.ab-sep { flex: 1; }
+
+/* ---------- notebook chrome when the window is narrow (tutor open, portrait) ---------- */
+#nb-ui { container-type: inline-size; container-name: nbui; }
+@container nbui (max-width: 640px) {
+  .nb-sub { display: none; }
+  .nb-title > span:first-child { max-width: 130px; font-size: 17px; }
+  .nb-tr .ibtn { width: 38px; height: 38px; }
+  .nb-audio { width: calc(100% - 100px); }
+  .au-rate { display: none; }
+}
+@container nbui (max-width: 480px) {
+  .nb-tl .nb-title { display: none; }
+  .nb-tr .sb-sep, .nb-tr .ibtn[aria-label="Redo"] { display: none; }
+}

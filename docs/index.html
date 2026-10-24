@@ -1028,6 +1028,52 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
 .conv-btn { background: transparent; border: 0; padding: 0 4px; font-size: 14px; }
 .composer { background: var(--bg); border-top: 1px solid var(--line); }
 .composer-in { border-color: var(--line); background: var(--panel-2); border-radius: 16px; }
+
+/* ---------- reader top bar adapts to its real width (tutor open, portrait) ---------- */
+.rd-top { container-type: inline-size; container-name: rdtop; flex-wrap: nowrap; }
+.rd-top .rd-group { flex: none; }
+.rd-top > .rd-group:first-child { min-width: 0; flex: 0 1 auto; }
+.rd-title { min-width: 0; max-width: 300px; }
+.rd-title-main { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rd-zoomrow { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px; gap: 6px; }
+@container rdtop (max-width: 900px) {
+  .rd-title { max-width: 190px; }
+  .rd-tools button { font-size: 0 !important; gap: 0 !important; padding: 0 10px !important; }
+}
+@container rdtop (max-width: 640px) {
+  .rd-title { max-width: 110px; }
+  .rd-title-sub { display: none; }
+  .rd-top .sb-sep { display: none; }
+}
+@container rdtop (max-width: 500px) {
+  .rd-title { display: none; }
+}
+
+/* ---------- ask bar: type your question right at the selection ---------- */
+.rd-actions.ask-bar { flex-direction: column; align-items: stretch; gap: 8px; padding: 8px; width: min(420px, calc(100% - 16px)); border-radius: 18px; }
+.ab-row { display: flex; gap: 6px; align-items: center; }
+.ab-in { flex: 1; min-width: 0; height: 40px; border-radius: 12px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.08); color: #fff; padding: 0 12px; font-size: 15px; outline: none; }
+.ab-in::placeholder { color: rgba(255,255,255,.5); }
+.ab-in:focus { border-color: var(--accent); background: rgba(255,255,255,.12); }
+.rd-actions .ab-send { width: 40px; height: 40px; padding: 0; border-radius: 12px; background: var(--accent); justify-content: center; flex: none; }
+.ab-chips { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.rd-actions .ab-chip { height: 32px; padding: 0 11px; border-radius: 10px; background: rgba(255,255,255,.08); font-size: 13px; }
+.rd-actions .ab-ic { width: 34px; height: 32px; padding: 0; justify-content: center; opacity: .8; }
+.ab-sep { flex: 1; }
+
+/* ---------- notebook chrome when the window is narrow (tutor open, portrait) ---------- */
+#nb-ui { container-type: inline-size; container-name: nbui; }
+@container nbui (max-width: 640px) {
+  .nb-sub { display: none; }
+  .nb-title > span:first-child { max-width: 130px; font-size: 17px; }
+  .nb-tr .ibtn { width: 38px; height: 38px; }
+  .nb-audio { width: calc(100% - 100px); }
+  .au-rate { display: none; }
+}
+@container nbui (max-width: 480px) {
+  .nb-tl .nb-title { display: none; }
+  .nb-tr .sb-sep, .nb-tr .ibtn[aria-label="Redo"] { display: none; }
+}
 </style>
 </head>
 <body>
@@ -1049,7 +1095,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
 </div>
 <div id="toasts" aria-live="polite"></div>
 
-<script>window.AXIOM_BUILD = 'mvmseydw';
+<script>window.AXIOM_BUILD = 'mvmsne16';
 /* ---- core.js ---- */
 /* Axiom core: namespace, math, color, events, DOM helpers */
 'use strict';
@@ -7829,7 +7875,7 @@ A.fmtDate = (t) => {
     c.msgs.forEach((m) => list.append(msgEl(m)));
     const chipsRow = h('div', { class: 'att-row' });
     els.chips = chipsRow;
-    const ta = h('textarea', { class: 'composer-in', id: 'ai-input', rows: 1, placeholder: S.aiMode === 'app' ? 'Ask, then send to your Claude or ChatGPT app…' : ctx.placeholder ? ctx.placeholder(mode) : (mode === 'check' ? 'What should I check? (your canvas is attached)' : 'Ask about your work, a page, or a concept…') });
+    const ta = h('textarea', { class: 'composer-in', id: 'ai-input', rows: 1, placeholder: S.aiMode === 'app' ? 'Ask… (opens in your AI app)' : ctx.placeholder ? ctx.placeholder(mode) : (mode === 'check' ? 'What should I check? (your canvas is attached)' : 'Ask about your work, a page, or a concept…') });
     els.ta = ta;
     const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(180, ta.scrollHeight) + 'px'; };
     ta.addEventListener('input', grow);
@@ -8124,6 +8170,54 @@ A.fmtDate = (t) => {
   };
   const linesIn = (lines, r) => lines.filter((l) => { const cx = (l.r[0] + l.r[2]) / 2, cy = (l.r[1] + l.r[3]) / 2; return cx >= r[0] && cx <= r[2] && cy >= r[1] && cy <= r[3]; });
 
+  /* ---------- where am I: book, chapter, section, printed page (sent to the tutor automatically) ---------- */
+  RD.bookInfo = async () => {
+    if (!st || !st.pdf) return {};
+    if (st.info) return st.info;
+    const info = { title: st.meta.name, author: '' };
+    try { const md = await st.pdf.getMetadata(); const I = (md && md.info) || {}; if (I.Title && I.Title.length > 3) info.title = I.Title; if (I.Author) info.author = I.Author; } catch (e) { /* none */ }
+    st.info = info;
+    return info;
+  };
+  /* flatten the outline into [{page, depth, title}] sorted by page */
+  RD.sectionMap = async () => {
+    if (!st || !st.pdf) return [];
+    if (st.secMap) return st.secMap;
+    const out = [];
+    try {
+      if (!st.outline) st.outline = (await st.pdf.getOutline()) || [];
+      const walk = async (items, depth) => {
+        for (const it of items) {
+          try {
+            let dest = it.dest;
+            if (typeof dest === 'string') dest = await st.pdf.getDestination(dest);
+            if (dest && dest[0]) out.push({ page: (await st.pdf.getPageIndex(dest[0])) + 1, depth, title: String(it.title || '').trim() });
+          } catch (e) { /* entry without a page */ }
+          if (it.items && it.items.length && depth < 3) await walk(it.items, depth + 1);
+        }
+      };
+      await walk(st.outline, 0);
+    } catch (e) { /* no outline */ }
+    out.sort((a, b) => a.page - b.page || a.depth - b.depth);
+    st.secMap = out;
+    return out;
+  };
+  /* "Chapter 3 Connectedness and Compactness › §29 Local Compactness" for a page */
+  RD.locationOf = async (n) => {
+    const map = await RD.sectionMap();
+    const trail = [];
+    for (const e of map) { if (e.page > n) break; trail[e.depth] = e.title; trail.length = e.depth + 1; }
+    let printed = null, header = '';
+    try {
+      const lines = await RD.lines(n);
+      const top = (lines[0] && lines[0].text.length < 90 ? lines[0].text : lines.slice(0, 1).map((l) => l.text.slice(0, 90)).join('')) || '';
+      header = top.slice(0, 120);
+      const m = top.match(/^\s*(\d{1,4})\b/) || top.match(/\b(\d{1,4})\s*$/);
+      if (m) printed = +m[1];
+    } catch (e) { /* scanned page */ }
+    return { trail: trail.filter(Boolean), printed, header };
+  };
+
   /* ---------- rendering ---------- */
   const themeFilter = { paper: '', sepia: 'sepia(.38) saturate(1.1) brightness(.97)', night: 'invert(.92) hue-rotate(180deg) contrast(.92)' };
   function layout(keep = true) {
@@ -8347,20 +8441,29 @@ A.fmtDate = (t) => {
   function showActions(n, r) {
     clearActions();
     const p = st.pages[n - 1], pr = p.el.getBoundingClientRect(), hr = host.getBoundingClientRect();
-    const bar = h('div', { class: 'rd-actions', role: 'toolbar', 'aria-label': 'Selection' });
-    const b = (icon, label, fn, primary) => { const x = h('button', { class: primary ? 'primary' : '', onclick: fn }); x.innerHTML = A.icon(icon); x.append(label); bar.append(x); };
-    b('spark', 'Ask', () => ask('ask', n, r), true);
-    b('book', 'Explain', () => ask('explain', n, r));
-    b('help', 'Hint', () => ask('hint', n, r));
-    b('rename', 'Highlight', () => { addHighlight(n, r); st.focus = null; drawOverlays(n); clearActions(); });
-    b('copy', 'Copy text', async () => { const t = linesIn(await RD.lines(n), r).map((l) => l.text).join('\n'); copyText(t); });
-    bar.append(h('button', { class: 'x', 'aria-label': 'Clear selection', html: A.icon('close'), onclick: () => { st.focus = null; drawOverlays(n); clearActions(); } }));
+    const bar = h('div', { class: 'rd-actions ask-bar', role: 'dialog', 'aria-label': 'Ask about the selection' });
+    const inp = h('input', { class: 'ab-in', placeholder: 'Ask about this…', enterkeyhint: 'send', autocomplete: 'off' });
+    const go = () => { const q = inp.value.trim(); if (q) ask('ask', n, r, q); };
+    inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') go(); if (e.key === 'Escape') { st.focus = null; drawOverlays(n); clearActions(); } });
+    const send = h('button', { class: 'ab-send', 'aria-label': 'Send question', html: A.icon('send'), onclick: go });
+    const chip = (label, fn) => h('button', { class: 'ab-chip', onclick: fn }, label);
+    bar.append(
+      h('div', { class: 'ab-row' }, inp, send),
+      h('div', { class: 'ab-chips' },
+        chip('Explain', () => ask('explain', n, r)),
+        chip('Fill in steps', () => ask('prove', n, r)),
+        chip('Hint', () => ask('hint', n, r)),
+        h('i', { class: 'ab-sep' }),
+        h('button', { class: 'ab-ic', title: 'Highlight', 'aria-label': 'Highlight', html: A.icon('rename'), onclick: () => { addHighlight(n, r); st.focus = null; drawOverlays(n); clearActions(); } }),
+        h('button', { class: 'ab-ic', title: 'Copy text', 'aria-label': 'Copy text', html: A.icon('copy'), onclick: async () => { const t = linesIn(await RD.lines(n), r).map((l) => l.text).join('\n'); copyText(t); } }),
+        h('button', { class: 'ab-ic', title: 'Clear selection', 'aria-label': 'Clear selection', html: A.icon('close'), onclick: () => { st.focus = null; drawOverlays(n); clearActions(); } })));
     host.append(bar);
     const bw = bar.offsetWidth, bh = bar.offsetHeight;
     let x = pr.left + ((r[0] + r[2]) / 2) * pr.width - bw / 2 - hr.left;
-    let y = pr.top + r[1] * pr.height - bh - 12 - hr.top;
-    if (y < 70) y = pr.top + r[3] * pr.height + 12 - hr.top;
-    bar.style.left = A.clamp(x, 8, hr.width - bw - 8) + 'px';
+    let y = pr.top + r[3] * pr.height + 12 - hr.top;
+    if (y + bh > hr.height - 70) y = pr.top + r[1] * pr.height - bh - 12 - hr.top;
+    const maxX = st.main.clientWidth + (st.main.getBoundingClientRect().left - hr.left) - bw - 8;
+    bar.style.left = A.clamp(x, 8, Math.max(8, maxX)) + 'px';
     bar.style.top = A.clamp(y, 64, hr.height - bh - 60) + 'px';
   }
   const copyText = (t) => {
@@ -8373,14 +8476,18 @@ A.fmtDate = (t) => {
     saveAnn(); drawOverlays(n); renderRail();
     A.toast('Highlighted');
   }
-  async function ask(kind, n, r) {
+  async function ask(kind, n, r, question) {
     clearActions();
     toggleTutor(true);
     const url = await regionImage(n, r);
     const text = linesIn(await RD.lines(n), r).map((l) => l.text).join('\n');
-    const att = { kind: 'image', label: `p. ${n} · selection`, url, page: n, rect: r, text };
-    if (kind === 'explain') A.AI.ask('Explain this passage rigorously.', { mode: 'explain', attachments: [att] });
+    const loc = await RD.locationOf(n);
+    const where = loc.trail.length ? loc.trail[loc.trail.length - 1] : `p. ${n}`;
+    const att = { kind: 'image', label: `${where} · p. ${loc.printed || n}`, url, page: n, rect: r, text };
+    if (question) A.AI.ask(question, { mode: 'explain', attachments: [att] });
+    else if (kind === 'explain') A.AI.ask('Explain this passage rigorously, step by step.', { mode: 'explain', attachments: [att] });
     else if (kind === 'hint') A.AI.ask('Give me a hint for this. Not the solution.', { mode: 'hint', attachments: [att] });
+    else if (kind === 'prove') A.AI.ask('Fill in the details of this argument: justify every step that the book skips.', { mode: 'explain', attachments: [att] });
     else A.AI.ask('', { send: false, attachments: [att] });
   }
 
@@ -8399,7 +8506,7 @@ A.fmtDate = (t) => {
     onRemoveAtt: (a) => { if (st.focus && a.page === st.focus.page) { st.focus = null; drawOverlays(a.page); } },
     systemExtra: () => (st.kind === 'epub'
       ? `The student is reading the EPUB book "${st.meta.name}" in Axiom's reader. The text of the chapter on screen is provided. When you refer to a passage, quote it briefly in a > blockquote; line citations are not available in EPUBs.`
-      : `The student is reading "${st.meta.name}" (${st.pdf ? st.pdf.numPages + ' pages' : ''}) in Axiom's reader. Regions they select are attached as images together with the text of the selected lines. Their own handwriting on the page may appear in those images.`),
+      : `The student is reading "${st.meta.name}" (${st.pdf ? st.pdf.numPages + ' pages' : ''}) in Axiom's reader. Each message comes with the book, chapter and section, the page text as numbered lines, and the region they selected (as an image plus its text). Their own handwriting on the page may appear in those images. Use the book's own notation and the results stated earlier in the chapter; if the question depends on something defined earlier that you were not shown, say what you are assuming.`),
     contextText: async (atts) => {
       if (st.kind === 'epub') {
         const chap = epubChapterText();
@@ -8408,7 +8515,19 @@ A.fmtDate = (t) => {
       }
       const pages = new Set([st.page]);
       atts.forEach((a) => a.page && pages.add(a.page));
-      const parts = [`[Reader context: "${st.meta.name}", the student is on page ${st.page} of ${st.pdf.numPages}.]`];
+      const focusPage = (atts.find((a) => a.page) || {}).page || st.page;
+      const info = await RD.bookInfo();
+      const loc = await RD.locationOf(focusPage);
+      const parts = [[
+        `[Book: "${info.title}"${info.author ? ' by ' + info.author : ''}, ${st.pdf.numPages} PDF pages.`,
+        loc.trail.length ? `Location: ${loc.trail.join(' › ')}.` : (loc.header ? `Running header of the page: "${loc.header}".` : ''),
+        `The student is on PDF page ${focusPage}${loc.printed && loc.printed !== focusPage ? ` (printed page number ${loc.printed})` : ''}.]`,
+      ].filter(Boolean).join(' ')];
+      // a little of the previous page, so arguments that start there are not cut off
+      if (focusPage > 1 && atts.some((a) => a.page && a.rect && a.rect[1] < 0.3)) {
+        const prev = await RD.lines(focusPage - 1);
+        if (prev.length) parts.push(`End of the previous page (p. ${focusPage - 1}), for continuity:\n` + prev.slice(-18).map((l) => `L${l.id}: ${l.text}`).join('\n'));
+      }
       for (const n of pages) {
         const lines = await RD.lines(n);
         if (!lines.length) { parts.push(`p. ${n}: (no extractable text; this page is probably a scan)`); continue; }
@@ -8708,10 +8827,18 @@ A.fmtDate = (t) => {
       inkBar.append(ib('undo', 'Undo', () => RD.inkUndo()));
     };
     drawInkBar();
-    const themeBtn = ib('eye', 'Reading theme', (e) => {
+    const moreBtn = ib('more', 'View and options', (e) => {
       const m = h('div', { class: 'menu' });
+      const row = h('div', { class: 'rd-zoomrow' },
+        h('button', { class: 'ibtn', 'aria-label': isEpub ? 'Smaller text' : 'Zoom out', html: A.icon('minus'), onclick: () => { if (isEpub) { S.epubFont = A.clamp((S.epubFont || 1) - 0.1, 0.7, 2); A.saveSettings(); applyEpubTheme(); } else { st.zoom = A.clamp(st.zoom / 1.2, 0.5, 3); layout(); } } }),
+        h('span', { class: 'small muted' }, isEpub ? 'Text size' : 'Zoom'),
+        h('button', { class: 'ibtn', 'aria-label': isEpub ? 'Larger text' : 'Zoom in', html: A.icon('plus'), onclick: () => { if (isEpub) { S.epubFont = A.clamp((S.epubFont || 1) + 0.1, 0.7, 2); A.saveSettings(); applyEpubTheme(); } else { st.zoom = A.clamp(st.zoom * 1.2, 0.5, 3); layout(); } } }));
+      m.append(row, h('hr'));
       [['paper', 'Paper'], ['sepia', 'Sepia'], ['night', 'Night']].forEach(([id, l]) => m.append(h('button', { class: (S.readerTheme || 'paper') === id ? 'on' : '', onclick: () => { S.readerTheme = id; A.saveSettings(); host.dataset.theme = id; applyEpubTheme(); A.closePopovers(); } }, h('i', { class: 'rd-theme-dot ' + id }), l)));
-      if (!isEpub) m.append(h('hr'), h('button', { onclick: () => { st.fit = st.fit === 'width' ? 'page' : 'width'; S.readerFit = st.fit; A.saveSettings(); st.zoom = 1; layout(); A.closePopovers(); } }, A.iconEl('scale'), st.fit === 'width' ? 'Fit whole page' : 'Fit page width'));
+      if (!isEpub) {
+        m.append(h('hr'), h('button', { onclick: () => { st.fit = st.fit === 'width' ? 'page' : 'width'; S.readerFit = st.fit; A.saveSettings(); st.zoom = 1; layout(); A.closePopovers(); } }, A.iconEl('scale'), st.fit === 'width' ? 'Fit whole page' : 'Fit page width'));
+        m.append(h('button', { onclick: () => { A.closePopovers(); const md = A.ST.doc(meta.id); RD.close(); A.UI.studyDoc(md); } }, A.iconEl('rename'), 'Work on this page on a canvas'));
+      }
       A.popover(m, e.currentTarget, { side: 'down' });
     });
     const pageLbl = h('span', { class: 'num rd-page-n' }, String(st.page));
@@ -8725,13 +8852,7 @@ A.fmtDate = (t) => {
         h('div', { class: 'rd-title' }, h('div', { class: 'rd-title-main' }, meta.name), h('div', { class: 'rd-title-sub' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, subj ? subj.name : (meta.kind === 'sheet' ? 'Problem set' : 'Book'))),
         h('div', { class: 'sb-sep' }), ib('gallery', isEpub ? 'Contents and highlights' : 'Pages, contents and highlights', () => toggleRail(), 'rd-btn-rail'), isEpub ? null : ib('search', 'Search', (e) => openSearch(e.currentTarget))),
       isEpub ? null : h('div', { class: 'rd-group-wrap' }, h('div', { class: 'rd-group panel' }, toolSeg), inkBar),
-      h('div', { class: 'rd-group panel' },
-        (() => { const b = isEpub ? h('button', { class: 'ibtn rd-aa', title: 'Smaller text', 'aria-label': 'Smaller text', onclick: () => { S.epubFont = A.clamp((S.epubFont || 1) - 0.1, 0.7, 2); A.saveSettings(); applyEpubTheme(); } }, 'A') : ib('minus', 'Zoom out', () => { st.zoom = A.clamp(st.zoom / 1.2, 0.5, 3); layout(); }); b.classList.add('rd-zoom'); return b; })(),
-        (() => { const b = isEpub ? h('button', { class: 'ibtn rd-aa big', title: 'Larger text', 'aria-label': 'Larger text', onclick: () => { S.epubFont = A.clamp((S.epubFont || 1) + 0.1, 0.7, 2); A.saveSettings(); applyEpubTheme(); } }, 'A') : ib('plus', 'Zoom in', () => { st.zoom = A.clamp(st.zoom * 1.2, 0.5, 3); layout(); }); b.classList.add('rd-zoom'); return b; })(),
-        themeBtn,
-        isEpub ? null : ib('rename', 'Work on this page on the canvas', () => { const m = A.ST.doc(meta.id); RD.close(); A.UI.studyDoc(m); }),
-        h('div', { class: 'sb-sep' }),
-        ib('spark', 'Tutor', () => toggleTutor(), 'rd-btn-tutor')));
+      h('div', { class: 'rd-group panel' }, moreBtn, h('div', { class: 'sb-sep' }), ib('spark', 'Tutor', () => toggleTutor(), 'rd-btn-tutor')));
     const main = h('main', { class: 'rd-main', tabindex: 0 });
     const pagesWrap = h('div', { class: 'rd-pages' });
     main.append(pagesWrap);

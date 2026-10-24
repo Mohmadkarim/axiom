@@ -245,7 +245,7 @@
     c.msgs.forEach((m) => list.append(msgEl(m)));
     const chipsRow = h('div', { class: 'att-row' });
     els.chips = chipsRow;
-    const ta = h('textarea', { class: 'composer-in', id: 'ai-input', rows: 1, placeholder: S.aiMode === 'app' ? 'Ask, then send to your Claude or ChatGPT app…' : ctx.placeholder ? ctx.placeholder(mode) : (mode === 'check' ? 'What should I check? (your canvas is attached)' : 'Ask about your work, a page, or a concept…') });
+    const ta = h('textarea', { class: 'composer-in', id: 'ai-input', rows: 1, placeholder: S.aiMode === 'app' ? 'Ask… (opens in your AI app)' : ctx.placeholder ? ctx.placeholder(mode) : (mode === 'check' ? 'What should I check? (your canvas is attached)' : 'Ask about your work, a page, or a concept…') });
     els.ta = ta;
     const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(180, ta.scrollHeight) + 'px'; };
     ta.addEventListener('input', grow);
