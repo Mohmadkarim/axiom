@@ -439,7 +439,10 @@
       const stylus = [...e.changedTouches].some((t) => t.touchType === 'stylus');
       if (stylus || fingerSelects()) e.preventDefault(); // keep the Pencil from scrolling
     }, { passive: false });
-    main.addEventListener('pointerdown', (e) => {
+    // in the iPad app the Pencil arrives natively at 240 Hz (see input.js); WebKit's own pen events are then ignored
+    const webPen = (e) => A.IN.nativePen && e.pointerType === 'pen' && !e.__native;
+    const down = (e) => {
+      if (webPen(e)) return;
       if (e.target.closest('.rd-hl') && st.tool !== 'write') return;
       const selecting = e.pointerType === 'pen' || e.pointerType === 'mouse' || fingerSelects();
       if (!selecting || e.button > 0) return;
@@ -455,15 +458,18 @@
         else cur.stroke = { id: A.uid(), c: INK[st.inkColor] || INK.black, w: st.inkWidth, pts: [fx, fy, e.pointerType === 'pen' ? Math.max(0.05, e.pressure) : 0.6] };
       }
       try { main.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-    });
-    main.addEventListener('pointermove', (e) => {
-      if (!cur || e.pointerId !== cur.id) return;
+    };
+    const move = (e) => {
+      if (webPen(e) || !cur || e.pointerId !== cur.id) return;
       e.preventDefault();
       const list = (e.getCoalescedEvents && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
       if (cur.erase) { for (const ev of list) eraseAt(cur.p, (ev.clientX - cur.r.left) / cur.r.width, (ev.clientY - cur.r.top) / cur.r.height); return; }
       if (cur.stroke) {
         const sp = cur.stroke.pts;
+        cur.r = cur.p.el.getBoundingClientRect(); // the page can move under the pen (scroll, chrome); measure it every time
+        cur.fresh = cur.fresh || A.IN.freshFilter();
         for (const ev of list) {
+          if (!cur.fresh(ev.timeStamp || 0, ev.clientX, ev.clientY)) continue;
           const fx = (ev.clientX - cur.r.left) / cur.r.width, fy = (ev.clientY - cur.r.top) / cur.r.height, m = ev.pointerType === 'pen' ? Math.max(0.05, ev.pressure) : 0.6, k = sp.length - 3;
           // keep samples at least ~0.6 px apart; closer ones just move the last point (no jitter, no lag)
           if (Math.hypot((fx - sp[k]) * cur.r.width, (fy - sp[k + 1]) * cur.r.height) > 0.6) sp.push(fx, fy, m);
@@ -476,9 +482,9 @@
       const sh = shapeOf(cur.pts);
       st.focus = Object.assign({ page: cur.p.n }, sh);
       drawOverlays(cur.p.n);
-    });
+    };
     const up = (e) => {
-      if (!cur || e.pointerId !== cur.id) return;
+      if (webPen(e) || !cur || e.pointerId !== cur.id) return;
       if (cur.erase) { cur = null; return; }
       if (cur.stroke) {
         const s = cur.stroke, p = cur.p;
@@ -499,8 +505,19 @@
       if (st.tool === 'highlight') { addHighlight(n, sh.rect); st.focus = null; drawOverlays(n); return; }
       showActions(n, sh.rect);
     };
+    main.addEventListener('pointerdown', down);
+    main.addEventListener('pointermove', move);
     main.addEventListener('pointerup', up);
     main.addEventListener('pointercancel', up);
+    RD.nativePen = (phase, samples, mk) => {
+      if (!st || !main.isConnected) return;
+      const ev = (sm, type) => { const e = mk(sm, type); e.target = document.elementFromPoint(e.clientX, e.clientY) || main; return e; };
+      const withList = (e, list) => { e.getCoalescedEvents = () => list.map((sm) => ev(sm, 'pointermove')); return e; };
+      const last = samples[samples.length - 1];
+      if (phase === 'b') { down(ev(samples[0], 'pointerdown')); if (samples.length > 1) move(withList(ev(last, 'pointermove'), samples.slice(1))); return; }
+      move(withList(ev(last, 'pointermove'), samples));
+      if (phase !== 'm') up(ev(last, phase === 'c' ? 'pointercancel' : 'pointerup'));
+    };
   }
   /* a closed loop is a lasso; otherwise the drag's corners define a box */
   function shapeOf(pts) {

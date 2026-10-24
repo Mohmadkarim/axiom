@@ -85,9 +85,27 @@
     }
     return { x: e.clientX - rect.left, y: e.clientY - rect.top, p: e.pressure, tilt, t: e.timeStamp || performance.now(), type: e.pointerType };
   };
+  /* WebKit can hand the same Pencil samples over twice (overlapping coalesced lists) or slightly out of order;
+     replaying them makes the line jump back each frame: doubled tracks on fast strokes and loops at the ends */
+  IN.freshFilter = () => {
+    let lastT = -Infinity;
+    const seen = [];
+    return (t, x, y) => {
+      if (t < lastT - 0.5) return false;
+      const k = t + ':' + x + ':' + y;
+      if (seen.includes(k)) return false;
+      seen.push(k); if (seen.length > 128) seen.shift();
+      if (t > lastT) lastT = t;
+      return true;
+    };
+  };
+  const fresh = new Map();
   const samplesOf = (e, rect) => {
     const list = (e.getCoalescedEvents && e.getCoalescedEvents()) || [];
-    return (list.length ? list : [e]).map((ev) => sampleOf(ev, rect));
+    let f = fresh.get(e.pointerId);
+    if (!f) { f = IN.freshFilter(); fresh.set(e.pointerId, f); }
+    const out = (list.length ? list : [e]).filter((ev) => f(ev.timeStamp || 0, ev.clientX, ev.clientY)).map((ev) => sampleOf(ev, rect));
+    return out.length ? out : [sampleOf(e, rect)];
   };
   const targetLayers = (activeOnly) => D.doc.layers.filter((l) => l.visible && !l.locked && (!activeOnly || l.id === D.doc.activeLayerId));
   const pickItem = (wx, wy, tolW) => {
@@ -965,6 +983,7 @@
   };
   IN.penCal = penCal;
   function onDown(e) {
+    fresh.delete(e.pointerId);
     if (IN.nativePen && e.pointerType === 'pen' && !e.__native) { penCal.web = { x: e.clientX, y: e.clientY, t: performance.now() }; calPair(); return; }
     if (e.button > 0 && e.pointerType === 'mouse' && e.button !== 1 && e.button !== 2) return;
     e.preventDefault();
@@ -1087,7 +1106,10 @@
     preventDefault() {},
   });
   window.__axiomPen = (phase, samples, predicted) => {
-    if (!D.doc || !samples || !samples.length || A.$('#canvas-view').hidden) return;
+    if (!samples || !samples.length) return;
+    const rv = A.$('#reader-view');
+    if (rv && !rv.hidden && A.RD && A.RD.nativePen) return A.RD.nativePen(phase, samples, nativeEv);
+    if (!D.doc || A.$('#canvas-view').hidden) return;
     const last = samples[samples.length - 1];
     const withLists = (ev, list, pred) => { ev.getCoalescedEvents = () => list.map((s) => nativeEv(s, 'pointermove')); ev.getPredictedEvents = () => (pred || []).map((s) => nativeEv(s, 'pointermove')); return ev; };
     if (phase === 'b') {
