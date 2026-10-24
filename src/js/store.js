@@ -5,6 +5,10 @@
   let dbp = null;
   const mem = { docs: new Map(), meta: new Map() }; // fallback when IndexedDB is unavailable
   let useMem = false;
+  // native iPad app: drawings are files managed by the app (see ios/Axiom/DrawingStore.swift)
+  const NATIVE = !!(window.AXIOM_NATIVE && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.axiom);
+  const post = (m) => window.webkit.messageHandlers.axiom.postMessage(m);
+  A.native = NATIVE ? { post } : null;
 
   function open() {
     if (dbp) return dbp;
@@ -42,28 +46,33 @@
   A.store = {
     get usingMemory() { return useMem; },
     async listMeta() {
+      if (NATIVE) return JSON.parse((await post({ op: 'list' })) || '[]');
       await open();
       if (useMem) return [...mem.meta.values()];
       return tx('meta', 'readonly', (s) => req(s.getAll()));
     },
     async loadDoc(id) {
+      if (NATIVE) { const s = await post({ op: 'load', id }); return s ? JSON.parse(s) : null; }
       await open();
       if (useMem) return mem.docs.get(id) || null;
       return tx('docs', 'readonly', (s) => req(s.get(id)));
     },
     async saveDoc(doc, thumb) {
       const meta = { id: doc.id, name: doc.name, created: doc.created, updated: doc.updated, thumb: thumb || null, paper: doc.paper.bg };
+      if (NATIVE) { await post({ op: 'save', id: doc.id, doc: JSON.stringify(doc), meta: JSON.stringify(meta) }); return; }
       await open();
       if (useMem) { mem.docs.set(doc.id, JSON.parse(JSON.stringify(doc))); mem.meta.set(doc.id, meta); return; }
       await tx('docs', 'readwrite', (s) => s.put(doc));
       await tx('meta', 'readwrite', (s) => s.put(meta));
     },
     async saveMeta(meta) {
+      if (NATIVE) { await post({ op: 'saveMeta', id: meta.id, meta: JSON.stringify(meta) }); return; }
       await open();
       if (useMem) { mem.meta.set(meta.id, meta); return; }
       await tx('meta', 'readwrite', (s) => s.put(meta));
     },
     async deleteDoc(id) {
+      if (NATIVE) { await post({ op: 'delete', id }); return; }
       await open();
       if (useMem) { mem.docs.delete(id); mem.meta.delete(id); return; }
       await tx('docs', 'readwrite', (s) => s.delete(id));
@@ -103,8 +112,10 @@
     const raw = localStorage.getItem(KEY);
     if (raw) S = Object.assign(defaults(), JSON.parse(raw));
   } catch (e) { /* storage blocked */ }
+  if (NATIVE && window.AXIOM_SETTINGS && typeof window.AXIOM_SETTINGS === 'object') S = Object.assign(defaults(), window.AXIOM_SETTINGS);
   A.settings = S;
   A.saveSettings = A.debounce(() => {
     try { localStorage.setItem(KEY, JSON.stringify(A.settings)); } catch (e) { /* ignore */ }
+    if (NATIVE) post({ op: 'settings', json: JSON.stringify(A.settings) }).catch(() => {});
   }, 250);
 })();

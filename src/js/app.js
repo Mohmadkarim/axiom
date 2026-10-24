@@ -55,6 +55,7 @@
     R.renderNow(true);
   }
   A.on('go:gallery', showGallery);
+  A.on('app:background', () => { if (D.doc) autosave.flush(); });
   A.on('open', openDoc);
 
   /* ---------- sample drawing (first launch) ---------- */

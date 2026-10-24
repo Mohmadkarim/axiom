@@ -202,6 +202,11 @@ A.closePopovers = () => A.$$('.popover').forEach((p) => (p._close ? p._close() :
 
 /* downloads/sharing with graceful fallbacks */
 A.deliverFile = async (blob, filename, previewUrl) => {
+  if (A.native) {
+    const data = await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.readAsDataURL(blob); });
+    await A.native.post({ op: 'share', name: filename, mime: blob.type, data });
+    return true;
+  }
   try {
     const file = new File([blob], filename, { type: blob.type });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {

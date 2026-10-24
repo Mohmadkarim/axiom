@@ -405,7 +405,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
 </div>
 <div id="toasts" aria-live="polite"></div>
 
-<script>window.AXIOM_BUILD = 'mvmecuhk';
+<script>window.AXIOM_BUILD = 'mvmemo8t';
 /* ---- core.js ---- */
 /* Axiom core: namespace, math, color, events, DOM helpers */
 'use strict';
@@ -611,6 +611,11 @@ A.closePopovers = () => A.$$('.popover').forEach((p) => (p._close ? p._close() :
 
 /* downloads/sharing with graceful fallbacks */
 A.deliverFile = async (blob, filename, previewUrl) => {
+  if (A.native) {
+    const data = await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.readAsDataURL(blob); });
+    await A.native.post({ op: 'share', name: filename, mime: blob.type, data });
+    return true;
+  }
   try {
     const file = new File([blob], filename, { type: blob.type });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -747,6 +752,10 @@ A.fmtDate = (t) => {
   let dbp = null;
   const mem = { docs: new Map(), meta: new Map() }; // fallback when IndexedDB is unavailable
   let useMem = false;
+  // native iPad app: drawings are files managed by the app (see ios/Axiom/DrawingStore.swift)
+  const NATIVE = !!(window.AXIOM_NATIVE && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.axiom);
+  const post = (m) => window.webkit.messageHandlers.axiom.postMessage(m);
+  A.native = NATIVE ? { post } : null;
 
   function open() {
     if (dbp) return dbp;
@@ -784,28 +793,33 @@ A.fmtDate = (t) => {
   A.store = {
     get usingMemory() { return useMem; },
     async listMeta() {
+      if (NATIVE) return JSON.parse((await post({ op: 'list' })) || '[]');
       await open();
       if (useMem) return [...mem.meta.values()];
       return tx('meta', 'readonly', (s) => req(s.getAll()));
     },
     async loadDoc(id) {
+      if (NATIVE) { const s = await post({ op: 'load', id }); return s ? JSON.parse(s) : null; }
       await open();
       if (useMem) return mem.docs.get(id) || null;
       return tx('docs', 'readonly', (s) => req(s.get(id)));
     },
     async saveDoc(doc, thumb) {
       const meta = { id: doc.id, name: doc.name, created: doc.created, updated: doc.updated, thumb: thumb || null, paper: doc.paper.bg };
+      if (NATIVE) { await post({ op: 'save', id: doc.id, doc: JSON.stringify(doc), meta: JSON.stringify(meta) }); return; }
       await open();
       if (useMem) { mem.docs.set(doc.id, JSON.parse(JSON.stringify(doc))); mem.meta.set(doc.id, meta); return; }
       await tx('docs', 'readwrite', (s) => s.put(doc));
       await tx('meta', 'readwrite', (s) => s.put(meta));
     },
     async saveMeta(meta) {
+      if (NATIVE) { await post({ op: 'saveMeta', id: meta.id, meta: JSON.stringify(meta) }); return; }
       await open();
       if (useMem) { mem.meta.set(meta.id, meta); return; }
       await tx('meta', 'readwrite', (s) => s.put(meta));
     },
     async deleteDoc(id) {
+      if (NATIVE) { await post({ op: 'delete', id }); return; }
       await open();
       if (useMem) { mem.docs.delete(id); mem.meta.delete(id); return; }
       await tx('docs', 'readwrite', (s) => s.delete(id));
@@ -845,9 +859,11 @@ A.fmtDate = (t) => {
     const raw = localStorage.getItem(KEY);
     if (raw) S = Object.assign(defaults(), JSON.parse(raw));
   } catch (e) { /* storage blocked */ }
+  if (NATIVE && window.AXIOM_SETTINGS && typeof window.AXIOM_SETTINGS === 'object') S = Object.assign(defaults(), window.AXIOM_SETTINGS);
   A.settings = S;
   A.saveSettings = A.debounce(() => {
     try { localStorage.setItem(KEY, JSON.stringify(A.settings)); } catch (e) { /* ignore */ }
+    if (NATIVE) post({ op: 'settings', json: JSON.stringify(A.settings) }).catch(() => {});
   }, 250);
 })();
 
@@ -3186,6 +3202,7 @@ A.fmtDate = (t) => {
   }
 
   function onDown(e) {
+    if (IN.nativePen && e.pointerType === 'pen' && !e.__native) return;
     if (e.button > 0 && e.pointerType === 'mouse' && e.button !== 1 && e.button !== 2) return;
     e.preventDefault();
     A.closePopovers();
@@ -3242,6 +3259,7 @@ A.fmtDate = (t) => {
   }
 
   function onMove(e) {
+    if (IN.nativePen && e.pointerType === 'pen' && !e.__native && (e.buttons || e.pressure > 0 || pointers.has(7777))) return;
     const rect = rectOf();
     const rec = pointers.get(e.pointerId);
     if (!rec) {
@@ -3268,6 +3286,7 @@ A.fmtDate = (t) => {
   }
 
   function onUp(e) {
+    if (IN.nativePen && e.pointerType === 'pen' && !e.__native) return;
     const rect = rectOf();
     const rec = pointers.get(e.pointerId);
     pointers.delete(e.pointerId);
@@ -3293,6 +3312,28 @@ A.fmtDate = (t) => {
       }
     }
   }
+
+  /* ---------- native Apple Pencil stream (iPad app): every coalesced and predicted sample ---------- */
+  IN.nativePen = !!(window.AXIOM_NATIVE && window.AXIOM_NATIVE.pen);
+  const nativeEv = (s, type) => ({
+    __native: true, type, pointerId: 7777, pointerType: 'pen', button: 0, buttons: type === 'pointerup' || type === 'pointercancel' ? 0 : 1,
+    clientX: s[0], clientY: s[1], pressure: Math.max(0.01, s[2]), altitudeAngle: s[3], azimuthAngle: s[4], tiltX: 0, tiltY: 0, timeStamp: s[5],
+    preventDefault() {},
+  });
+  window.__axiomPen = (phase, samples, predicted) => {
+    if (!D.doc || !samples || !samples.length || A.$('#canvas-view').hidden) return;
+    const last = samples[samples.length - 1];
+    const withLists = (ev, list, pred) => { ev.getCoalescedEvents = () => list.map((s) => nativeEv(s, 'pointermove')); ev.getPredictedEvents = () => (pred || []).map((s) => nativeEv(s, 'pointermove')); return ev; };
+    if (phase === 'b') {
+      onDown(nativeEv(samples[0], 'pointerdown'));
+      if (samples.length > 1) onMove(withLists(nativeEv(last, 'pointermove'), samples.slice(1), []));
+    } else if (phase === 'm') {
+      onMove(withLists(nativeEv(last, 'pointermove'), samples, predicted));
+    } else {
+      if (samples.length) onMove(withLists(nativeEv(last, 'pointermove'), samples, []));
+      onUp(nativeEv(last, phase === 'c' ? 'pointercancel' : 'pointerup'));
+    }
+  };
 
   IN.cancelAll = () => { if (action && action.cancel) action.cancel(); action = null; pointers.clear(); };
 
@@ -3472,7 +3513,9 @@ A.fmtDate = (t) => {
   ];
 
   UI.setSlot = (i) => {
-    S.activeSlot = A.clamp(i, 0, 7);
+    i = A.clamp(i, 0, 7);
+    if (i !== S.activeSlot) S.prevSlot = S.activeSlot;
+    S.activeSlot = i;
     A.saveSettings();
     A.emit('slot');
   };
@@ -3482,6 +3525,33 @@ A.fmtDate = (t) => {
     A.emit('slot');
   };
   A.on('slot:select', (i) => UI.setSlot(i));
+
+  /* Apple Pencil double-tap (native app) follows the system setting in Settings › Apple Pencil */
+  const isEraser = (b) => b === 'slice' || b === 'eraser' || b === 'mask' || b === 'softmask';
+  A.on('pencil:tap', (action) => {
+    if (!D.doc) return;
+    const cur = S.activeSlot;
+    if (action === 'switchEraser') {
+      if (isEraser(S.slots[cur].b)) UI.setSlot(S.prevSlot != null && !isEraser(S.slots[S.prevSlot].b) ? S.prevSlot : 0);
+      else {
+        const e = S.slots.findIndex((s) => isEraser(s.b));
+        if (e >= 0) UI.setSlot(e); else A.toast('Put an eraser in a tool slot to use double-tap');
+      }
+      A.toast(B.catalog[slot().b].name, 900);
+    } else if (action === 'switchPrevious') {
+      if (S.prevSlot != null) { UI.setSlot(S.prevSlot); A.toast(B.catalog[slot().b].name, 900); }
+    } else if (action === 'showColorPalette') {
+      const c = host && host.querySelector('.colorbtn, .wcenter');
+      if (c) UI.openColor(c);
+    } else if (action === 'showInkAttributes') {
+      UI.openBrushMenu(slotEl(S.activeSlot), S.activeSlot);
+    }
+  });
+  /* Apple Pencil Pro squeeze: brush menu where the Pencil is hovering */
+  A.on('pencil:squeeze', (pt) => {
+    if (!D.doc) return;
+    UI.openBrushMenu(pt ? { x: pt.x, y: pt.y } : slotEl(S.activeSlot), S.activeSlot);
+  });
   A.on('slot:size', (f) => {
     const s = slot(), c = B.catalog[s.b];
     UI.updateSlot({ size: A.clamp(s.size * f, c.min || 0.2, c.max || 200) });
@@ -5124,6 +5194,7 @@ A.fmtDate = (t) => {
     R.renderNow(true);
   }
   A.on('go:gallery', showGallery);
+  A.on('app:background', () => { if (D.doc) autosave.flush(); });
   A.on('open', openDoc);
 
   /* ---------- sample drawing (first launch) ---------- */

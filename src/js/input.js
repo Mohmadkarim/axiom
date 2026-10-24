@@ -747,6 +747,7 @@
   }
 
   function onDown(e) {
+    if (IN.nativePen && e.pointerType === 'pen' && !e.__native) return;
     if (e.button > 0 && e.pointerType === 'mouse' && e.button !== 1 && e.button !== 2) return;
     e.preventDefault();
     A.closePopovers();
@@ -803,6 +804,7 @@
   }
 
   function onMove(e) {
+    if (IN.nativePen && e.pointerType === 'pen' && !e.__native && (e.buttons || e.pressure > 0 || pointers.has(7777))) return;
     const rect = rectOf();
     const rec = pointers.get(e.pointerId);
     if (!rec) {
@@ -829,6 +831,7 @@
   }
 
   function onUp(e) {
+    if (IN.nativePen && e.pointerType === 'pen' && !e.__native) return;
     const rect = rectOf();
     const rec = pointers.get(e.pointerId);
     pointers.delete(e.pointerId);
@@ -854,6 +857,28 @@
       }
     }
   }
+
+  /* ---------- native Apple Pencil stream (iPad app): every coalesced and predicted sample ---------- */
+  IN.nativePen = !!(window.AXIOM_NATIVE && window.AXIOM_NATIVE.pen);
+  const nativeEv = (s, type) => ({
+    __native: true, type, pointerId: 7777, pointerType: 'pen', button: 0, buttons: type === 'pointerup' || type === 'pointercancel' ? 0 : 1,
+    clientX: s[0], clientY: s[1], pressure: Math.max(0.01, s[2]), altitudeAngle: s[3], azimuthAngle: s[4], tiltX: 0, tiltY: 0, timeStamp: s[5],
+    preventDefault() {},
+  });
+  window.__axiomPen = (phase, samples, predicted) => {
+    if (!D.doc || !samples || !samples.length || A.$('#canvas-view').hidden) return;
+    const last = samples[samples.length - 1];
+    const withLists = (ev, list, pred) => { ev.getCoalescedEvents = () => list.map((s) => nativeEv(s, 'pointermove')); ev.getPredictedEvents = () => (pred || []).map((s) => nativeEv(s, 'pointermove')); return ev; };
+    if (phase === 'b') {
+      onDown(nativeEv(samples[0], 'pointerdown'));
+      if (samples.length > 1) onMove(withLists(nativeEv(last, 'pointermove'), samples.slice(1), []));
+    } else if (phase === 'm') {
+      onMove(withLists(nativeEv(last, 'pointermove'), samples, predicted));
+    } else {
+      if (samples.length) onMove(withLists(nativeEv(last, 'pointermove'), samples, []));
+      onUp(nativeEv(last, phase === 'c' ? 'pointercancel' : 'pointerup'));
+    }
+  };
 
   IN.cancelAll = () => { if (action && action.cancel) action.cancel(); action = null; pointers.clear(); };
 

@@ -16,7 +16,9 @@
   ];
 
   UI.setSlot = (i) => {
-    S.activeSlot = A.clamp(i, 0, 7);
+    i = A.clamp(i, 0, 7);
+    if (i !== S.activeSlot) S.prevSlot = S.activeSlot;
+    S.activeSlot = i;
     A.saveSettings();
     A.emit('slot');
   };
@@ -26,6 +28,33 @@
     A.emit('slot');
   };
   A.on('slot:select', (i) => UI.setSlot(i));
+
+  /* Apple Pencil double-tap (native app) follows the system setting in Settings › Apple Pencil */
+  const isEraser = (b) => b === 'slice' || b === 'eraser' || b === 'mask' || b === 'softmask';
+  A.on('pencil:tap', (action) => {
+    if (!D.doc) return;
+    const cur = S.activeSlot;
+    if (action === 'switchEraser') {
+      if (isEraser(S.slots[cur].b)) UI.setSlot(S.prevSlot != null && !isEraser(S.slots[S.prevSlot].b) ? S.prevSlot : 0);
+      else {
+        const e = S.slots.findIndex((s) => isEraser(s.b));
+        if (e >= 0) UI.setSlot(e); else A.toast('Put an eraser in a tool slot to use double-tap');
+      }
+      A.toast(B.catalog[slot().b].name, 900);
+    } else if (action === 'switchPrevious') {
+      if (S.prevSlot != null) { UI.setSlot(S.prevSlot); A.toast(B.catalog[slot().b].name, 900); }
+    } else if (action === 'showColorPalette') {
+      const c = host && host.querySelector('.colorbtn, .wcenter');
+      if (c) UI.openColor(c);
+    } else if (action === 'showInkAttributes') {
+      UI.openBrushMenu(slotEl(S.activeSlot), S.activeSlot);
+    }
+  });
+  /* Apple Pencil Pro squeeze: brush menu where the Pencil is hovering */
+  A.on('pencil:squeeze', (pt) => {
+    if (!D.doc) return;
+    UI.openBrushMenu(pt ? { x: pt.x, y: pt.y } : slotEl(S.activeSlot), S.activeSlot);
+  });
   A.on('slot:size', (f) => {
     const s = slot(), c = B.catalog[s.b];
     UI.updateSlot({ size: A.clamp(s.size * f, c.min || 0.2, c.max || 200) });
