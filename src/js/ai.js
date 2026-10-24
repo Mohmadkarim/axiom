@@ -41,6 +41,7 @@
     return katexP;
   };
   AI.katex = katex;
+  AI.sdk = () => sdk();
 
   /* ---------- markdown + math + citations ---------- */
   const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

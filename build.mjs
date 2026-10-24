@@ -1,7 +1,7 @@
 // Builds dist/index.html (installable PWA, everything inlined) and dist/artifact.html (claude.ai page form).
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from 'node:fs';
 const src = (p) => readFileSync(new URL('./src/' + p, import.meta.url), 'utf8');
-const ORDER = ['core', 'icons', 'store', 'subjects', 'geom', 'brushes', 'doc', 'render', 'guides', 'input', 'stamps', 'ui-tools', 'ui-color', 'ui-layers', 'ui-panels', 'study', 'ai', 'reader', 'textedit', 'notebook', 'ui-gallery', 'app'];
+const ORDER = ['core', 'icons', 'store', 'subjects', 'geom', 'brushes', 'doc', 'render', 'guides', 'input', 'stamps', 'ui-tools', 'ui-color', 'ui-layers', 'ui-panels', 'study', 'ai', 'planner', 'reader', 'textedit', 'notebook', 'ui-gallery', 'app'];
 const js = ORDER.map((n) => `/* ---- ${n}.js ---- */\n` + src(`js/${n}.js`)).join('\n');
 const css = src('css/app.css');
 const body = src('body.html');

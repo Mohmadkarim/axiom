@@ -107,8 +107,16 @@ final class PlannerBridge: NSObject, UNUserNotificationCenterDelegate {
     // MARK: - Reminders
 
     /// Replace every pending Axiom reminder with `list` ([{id, title, body, at}]); iOS keeps at most 64.
-    func syncReminders(_ list: [[String: Any]], done: @escaping (Int) -> Void) {
+    func syncReminders(_ list: [[String: Any]], ask: Bool, done: @escaping (Int) -> Void) {
         let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            // only ask when the user just added something; background refreshes never pop the permission sheet
+            if settings.authorizationStatus == .notDetermined && !ask { DispatchQueue.main.async { done(-2) }; return }
+            self.schedule(list, center: center, done: done)
+        }
+    }
+
+    private func schedule(_ list: [[String: Any]], center: UNUserNotificationCenter, done: @escaping (Int) -> Void) {
         center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
             guard granted else { DispatchQueue.main.async { done(-1) }; return }
             center.removeAllPendingNotificationRequests()

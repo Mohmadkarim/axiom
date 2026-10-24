@@ -296,6 +296,7 @@
           h('h1', { class: 'home-greet' }, greet + '.'),
           h('p', { class: 'home-sub' }, metas.length || docs.length ? 'Pick up where you left off.' : 'Start a drawing, or add a book or problem set to your library.')),
         h('div', { class: 'g-actions' }, newMenuBtn())));
+      main.append(A.PL.todaySection());
       const lastNb = notebooks.slice().sort(sorters.updated)[0];
       const lastCv = canvases.slice().sort(sorters.updated)[0];
       const lastBook = docs.filter((d) => d.lastRead).sort((a, b) => b.lastRead - a.lastRead)[0];
@@ -366,6 +367,7 @@
     main.append(h('header', { class: 'page-hero' },
       h('div', null, h('h1', { class: 'page-title' }, subj ? h('i', { class: 'dot big', style: { background: subj.color } }) : null, title)),
       h('div', { class: 'g-actions' }, ...acts)));
+    if (subj) main.append(A.PL.courseSection(subj.id));
     const anyHere = metas.some((m) => filter === 'notebooks' ? isNb(m) : filter === 'canvases' ? !isNb(m) : filter === 'favorites' ? m.fav : filter === 'none' ? !m.subject : m.subject === filter);
     if (anyHere) main.append(h('div', { class: 'g-tools' }, h('div', { class: 'g-search' }, A.iconEl('search'), search), sortBtn()));
     const body = h('div');

@@ -259,3 +259,13 @@ A.fmtDate = (t) => {
   if (d.toDateString() === y.toDateString()) return 'Yesterday, ' + time;
   return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
 };
+
+/* the visible height above the on-screen keyboard, for dialogs */
+(() => {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const set = () => document.documentElement.style.setProperty('--vvh', Math.round(vv.height) + 'px');
+  vv.addEventListener('resize', set); set();
+  // keep a focused field in view when the keyboard opens
+  vv.addEventListener('resize', () => { const a = document.activeElement; if (a && a.closest && a.closest('.modal') && a.scrollIntoView) setTimeout(() => a.scrollIntoView({ block: 'nearest' }), 60); });
+})();

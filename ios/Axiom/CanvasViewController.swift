@@ -182,7 +182,7 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         case "calMirror":
             replyHandler(planner.mirror(items: body["items"] as? [[String: Any]] ?? [], from: body["from"], to: body["to"]), nil); return
         case "notifSync":
-            planner.syncReminders(body["list"] as? [[String: Any]] ?? []) { replyHandler($0, nil) }; return
+            planner.syncReminders(body["list"] as? [[String: Any]] ?? [], ask: body["ask"] as? Bool ?? false) { replyHandler($0, nil) }; return
         case "snapshot":
             // a picture of part of the page, including embedded sites (Desmos) that the page itself cannot read
             let cfg = WKSnapshotConfiguration()
