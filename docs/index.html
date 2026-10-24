@@ -387,6 +387,161 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
   .g-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* ================= shared bits ================= */
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--dot, var(--faint)); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { height: 34px; padding: 0 12px; border-radius: 17px; border: 1px solid var(--line-strong); background: var(--panel-2); font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.chip.on { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+.chip.ghost { background: transparent; border-style: dashed; color: var(--muted); }
+.chip .dot { background: var(--dot, currentColor); }
+.chip-x { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; margin-right: -6px; color: inherit; opacity: .7; }
+.chip-x .ic { width: 13px; height: 13px; }
+.small-btn { height: 32px; padding: 0 12px; font-size: 13px; }
+.menu button.on { color: var(--accent); }
+.menu .dot { margin: 0 4px; }
+
+/* ================= split view: canvas + study panel ================= */
+#canvas-view { --spw: 0px; }
+#canvas-view.split #stage, #canvas-view.split #statusbar, #canvas-view.split #layers, #canvas-view.split #selmenu { right: var(--spw); }
+#canvas-view.split #statusbar { right: calc(var(--spw) + 10px); }
+#canvas-view.split #layers { right: calc(var(--spw) + 10px); }
+#canvas-view.split #selmenu { left: calc((100% - var(--spw)) / 2); }
+#canvas-view.narrow #readout, #canvas-view.narrow .sb-opt { display: none; }
+#canvas-view:not(.narrow) .sb-more { display: none; }
+#canvas-view.narrow .sb-name { max-width: 120px; }
+#canvas-view.narrow #statusbar { justify-content: space-between; }
+#studypanel {
+  position: absolute; z-index: 22; top: 0; right: 0; bottom: 0; width: var(--spw);
+  background: var(--panel-solid); border-left: 1px solid var(--line-strong); display: flex; flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px); padding-right: env(safe-area-inset-right, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.sp-grip { position: absolute; left: -7px; top: 0; bottom: 0; width: 14px; cursor: col-resize; touch-action: none; z-index: 2; }
+.sp-grip::after { content: ""; position: absolute; left: 5px; top: 50%; height: 44px; margin-top: -22px; width: 4px; border-radius: 2px; background: var(--line-strong); }
+.sp-head { display: flex; align-items: center; gap: 4px; padding: 8px 8px 0 10px; border-bottom: 1px solid var(--line); }
+.sp-tabs { display: flex; gap: 2px; overflow-x: auto; flex: 1; min-width: 0; scrollbar-width: none; align-items: flex-end; }
+.sp-tabs::-webkit-scrollbar { display: none; }
+.sp-tab { display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 8px 0 10px; border-radius: 10px 10px 0 0; color: var(--muted); font-weight: 600; font-size: 13px; cursor: pointer; flex: none; max-width: 200px; border: 1px solid transparent; border-bottom: 0; }
+.sp-tab .ic { width: 17px; height: 17px; }
+.sp-tab.on { background: var(--bg); color: var(--fg); border-color: var(--line); margin-bottom: -1px; }
+.sp-tab-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-x { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; color: var(--faint); }
+.sp-x .ic { width: 14px; height: 14px; }
+.sp-plus { width: 36px; height: 36px; flex: none; }
+.sp-body { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--bg); }
+.doc-menu { max-height: 60vh; overflow: auto; }
+
+/* document viewer */
+.docview { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.dv-bar { display: flex; align-items: center; gap: 2px; padding: 6px 8px; border-bottom: 1px solid var(--line); background: var(--panel-solid); }
+.dv-bar .ibtn { width: 38px; height: 38px; }
+.dv-page { width: 46px; height: 32px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--paper); text-align: center; font-size: 13px; }
+.dv-scroll { position: relative; flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; padding: 12px; touch-action: pan-x pan-y; }
+.dv-inner { margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.dv-pg { position: relative; background: #fff; box-shadow: var(--shadow); border-radius: 4px; overflow: hidden; flex: none; }
+.dv-pg canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.dv-pgnum { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #b6bcc6; font-size: 14px; }
+.dv-img { display: block; margin: 0 auto; max-width: none; border-radius: 6px; box-shadow: var(--shadow); background: #fff; }
+
+/* tutor */
+.tutor { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.tutor-head { display: flex; gap: 8px; align-items: center; padding: 10px 10px 6px; }
+.conv-btn { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); font-weight: 650; font-size: 13.5px; text-align: left; }
+.conv-btn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.model-sel { height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); padding: 0 8px; font-size: 13px; font-weight: 600; }
+.mode-seg { margin: 0 10px 6px; display: flex; }
+.mode-seg button { flex: 1; padding: 0 6px; }
+.msgs { flex: 1; min-height: 0; overflow: auto; padding: 8px 12px 16px; display: flex; flex-direction: column; gap: 14px; -webkit-overflow-scrolling: touch; }
+.msg { display: flex; flex-direction: column; gap: 6px; max-width: 100%; min-width: 0; }
+.msg.user { align-items: flex-end; }
+.msg .bubble { background: var(--accent); color: var(--accent-fg); padding: 9px 13px; border-radius: 16px 16px 4px 16px; max-width: 88%; white-space: pre-wrap; word-wrap: break-word; font-size: 14.5px; -webkit-user-select: text; user-select: text; }
+.msg-atts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.msg-img { width: 120px; height: 84px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line-strong); background: #fff; }
+.msg.bot .md { font-size: 14.5px; line-height: 1.55; -webkit-user-select: text; user-select: text; overflow-wrap: anywhere; }
+.msg.err .md { color: var(--danger); }
+.md p { margin: 0 0 10px; } .md p:last-child { margin-bottom: 0; }
+.md h3, .md h4, .md h5, .md h6 { margin: 14px 0 6px; font-size: 15px; }
+.md ul, .md ol { margin: 0 0 10px; padding-left: 22px; } .md li { margin: 3px 0; }
+.md code { font-family: var(--ff-num); font-size: 12.5px; background: var(--panel-2); padding: 1px 5px; border-radius: 5px; }
+.md pre { background: var(--panel-2); padding: 10px 12px; border-radius: 10px; overflow-x: auto; }
+.md pre code { background: none; padding: 0; }
+.md .katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; margin: 8px 0; }
+.md .katex { font-size: 1.06em; }
+.md hr { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
+.mathraw { font-family: var(--ff-num); }
+.msg-acts { display: flex; gap: 2px; }
+.msg-act { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: var(--faint); }
+.msg-act .ic { width: 16px; height: 16px; }
+.thinking { color: var(--muted); font-weight: 600; }
+.thinking i { font-style: normal; animation: blink 1.2s infinite; }
+.thinking i:nth-child(2) { animation-delay: .2s; } .thinking i:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%, 100% { opacity: .2; } 50% { opacity: 1; } }
+.composer { border-top: 1px solid var(--line); padding: 8px 10px 10px; background: var(--panel-solid); }
+.att-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: none; }
+.att-row::-webkit-scrollbar { display: none; }
+.att-chip { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 6px 0 4px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); font-size: 12.5px; font-weight: 600; flex: none; max-width: 220px; }
+.att-chip img { width: 26px; height: 26px; border-radius: 6px; object-fit: cover; background: #fff; }
+.att-chip.small { height: 28px; }
+.att-l { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.att-add { display: inline-flex; align-items: center; gap: 5px; height: 34px; padding: 0 10px; border-radius: 10px; border: 1px dashed var(--line-strong); color: var(--muted); font-size: 12.5px; font-weight: 600; flex: none; }
+.att-add .ic { width: 16px; height: 16px; }
+.composer-row { display: flex; gap: 8px; align-items: flex-end; }
+.composer-in { flex: 1; min-width: 0; resize: none; border-radius: 14px; border: 1px solid var(--line-strong); background: var(--paper); padding: 10px 12px; font-size: 15px; line-height: 1.4; max-height: 180px; }
+.send-btn { width: 42px; height: 42px; border-radius: 50%; background: var(--accent); color: var(--accent-fg); display: grid; place-items: center; flex: none; }
+.tutor-empty, .tutor-setup { margin: auto; max-width: 400px; text-align: center; padding: 20px 8px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.tutor-empty h4, .tutor-setup h4 { margin: 4px 0 0; font-size: 17px; }
+.tutor-empty p, .tutor-setup p { margin: 0; color: var(--muted); font-size: 13.5px; }
+.tutor-setup ol { text-align: left; color: var(--muted); font-size: 13.5px; margin: 4px 0; padding-left: 20px; }
+.tutor-setup .field { margin: 6px 0; font-family: var(--ff-num); }
+.tutor-setup .row { width: 100%; }
+.te-mark { width: 52px; height: 52px; border-radius: 16px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+.te-mark .ic { width: 28px; height: 28px; }
+.te-tips { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; width: 100%; }
+.te-tips .chip { justify-content: center; white-space: normal; height: auto; min-height: 36px; padding: 6px 12px; }
+
+/* visual library */
+.wide-pop { max-width: min(560px, calc(100vw - 16px)); width: 560px; }
+.vis-lib h4 { margin: 2px 4px 10px; }
+.vis-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; }
+.vis-tabs::-webkit-scrollbar { display: none; }
+.vis-tabs button { height: 32px; padding: 0 12px; border-radius: 16px; background: var(--panel-2); font-weight: 600; font-size: 13px; white-space: nowrap; color: var(--muted); border: 1px solid var(--line); flex: none; }
+.vis-tabs button.on { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.vis-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; max-height: 52vh; overflow: auto; }
+.vis-tile { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 6px; border-radius: 12px; border: 1px solid var(--line); background: #fff; color: #3a3f4b; font-size: 11.5px; font-weight: 600; text-align: center; }
+.vis-tile img { width: 86px; height: 86px; object-fit: contain; }
+.vis-tile:active { transform: scale(.97); }
+.vis-empty { grid-column: 1 / -1; padding: 10px 4px; }
+
+/* gallery with courses sidebar */
+.g-layout { display: grid; grid-template-columns: 230px 1fr; gap: 28px; align-items: start; }
+.g-side { position: sticky; top: calc(22px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; gap: 2px; padding-top: 4px; }
+.g-nav { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 8px 0 10px; border-radius: 10px; font-weight: 600; color: var(--fg); text-align: left; position: relative; }
+.g-nav .ic { width: 19px; height: 19px; color: var(--muted); }
+.g-nav .dot { width: 11px; height: 11px; margin: 0 4px; }
+.g-nav.on { background: var(--accent-soft); color: var(--accent); }
+.g-nav.on .ic { color: var(--accent); }
+.g-nav.ghost { color: var(--muted); font-weight: 500; }
+.g-count { color: var(--faint); font-size: 12px; }
+.g-more { width: 26px; height: 26px; display: none; place-items: center; border-radius: 7px; color: var(--muted); }
+.g-more .ic { width: 16px; height: 16px; }
+.g-nav:hover .g-more, .g-nav.on .g-more { display: grid; }
+.g-side-h { display: flex; align-items: center; justify-content: space-between; margin: 16px 0 4px 10px; font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.g-side-h .ibtn { width: 32px; height: 32px; }
+.g-main { min-width: 0; }
+.g-layout .g-wrap { padding: 0; }
+.card .date .dot { width: 7px; height: 7px; margin-right: 5px; vertical-align: 1px; }
+.doc-thumb { display: grid !important; place-items: center; color: var(--accent); background: var(--panel-2) !important; }
+.doc-thumb .ic { width: 42px; height: 42px; }
+.doc-kind { position: absolute; left: 10px; bottom: 8px; font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--muted); }
+.g-empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 12px; max-width: 520px; margin: 0 auto; }
+@media (max-width: 760px) {
+  .g-layout { grid-template-columns: 1fr; gap: 10px; }
+  .g-side { position: static; flex-direction: row; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
+  .g-side::-webkit-scrollbar { display: none; }
+  .g-nav { flex: none; height: 36px; border: 1px solid var(--line); }
+  .g-side-h { display: none; }
+  .g-nav .g-count { display: none; }
+}
 </style>
 </head>
 <body>
@@ -401,11 +556,12 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
     <div id="selmenu" class="panel" hidden></div>
     <div id="selpopup" class="panel" hidden></div>
     <button id="restore-ui" class="panel" aria-label="Show interface"></button>
+    <aside id="studypanel" hidden></aside>
   </section>
 </div>
 <div id="toasts" aria-live="polite"></div>
 
-<script>window.AXIOM_BUILD = 'mvmemo8t';
+<script>window.AXIOM_BUILD = 'mvmfzk02';
 /* ---- core.js ---- */
 /* Axiom core: namespace, math, color, events, DOM helpers */
 'use strict';
@@ -716,6 +872,13 @@ A.fmtDate = (t) => {
     chevdown: '<path d="m6 9 6 6 6-6"/>',
     wheel: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.2"/><path d="M12 3.5v5.3M12 15.2v5.3M3.5 12h5.3M15.2 12h5.3"/>',
     bar: '<rect x="8" y="3" width="8" height="18" rx="3"/><path d="M10.5 7h3M10.5 11h3M10.5 15h3"/>',
+    spark: '<path d="M12 3.5c.6 3.6 2.4 5.6 6 6.4-3.6.8-5.4 2.8-6 6.4-.6-3.6-2.4-5.6-6-6.4 3.6-.8 5.4-2.8 6-6.4Z"/><path d="M18.5 15.5c.25 1.5 1 2.3 2.5 2.6-1.5.3-2.25 1.1-2.5 2.6-.25-1.5-1-2.3-2.5-2.6 1.5-.3 2.25-1.1 2.5-2.6Z"/>',
+    chevup: '<path d="m6 15 6-6 6 6"/>',
+    send: '<path d="M12 19V5"/><path d="m6 11 6-6 6 6"/>',
+    book: '<path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5v-13Z"/><path d="M20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5v-13Z"/>',
+    shapes: '<circle cx="7.5" cy="7.5" r="4"/><path d="M14 4h6v6h-6z"/><path d="m7.5 13.5 4.5 7.5H3l4.5-7.5Z"/><path d="M14 17.5a3.5 3.5 0 0 0 7 0c0-1.2-.5-2-1.2-2.6"/>',
+    bookmark: '<path d="M6.5 3.5h11a1 1 0 0 1 1 1v16l-6.5-4-6.5 4v-16a1 1 0 0 1 1-1Z"/>',
+    folder: '<path d="M3.5 7.5A1.5 1.5 0 0 1 5 6h4l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5v-10Z"/>',
     share: '<path d="M12 3v12"/><path d="m8 7 4-4 4 4"/><path d="M6 11H5.5A1.5 1.5 0 0 0 4 12.5v7A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5v-7a1.5 1.5 0 0 0-1.5-1.5H18"/>',
 
     /* brushes */
@@ -748,9 +911,9 @@ A.fmtDate = (t) => {
 /* Axiom persistence: IndexedDB for drawings, localStorage for app settings */
 'use strict';
 (() => {
-  const DB_NAME = 'axiom', DB_VER = 1;
+  const DB_NAME = 'axiom', DB_VER = 2;
   let dbp = null;
-  const mem = { docs: new Map(), meta: new Map() }; // fallback when IndexedDB is unavailable
+  const mem = { docs: new Map(), meta: new Map(), files: new Map() }; // fallback when IndexedDB is unavailable
   let useMem = false;
   // native iPad app: drawings are files managed by the app (see ios/Axiom/DrawingStore.swift)
   const NATIVE = !!(window.AXIOM_NATIVE && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.axiom);
@@ -766,6 +929,7 @@ A.fmtDate = (t) => {
           const db = rq.result;
           if (!db.objectStoreNames.contains('docs')) db.createObjectStore('docs', { keyPath: 'id' });
           if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'id' });
+          if (!db.objectStoreNames.contains('files')) db.createObjectStore('files', { keyPath: 'id' });
         };
         rq.onsuccess = () => res(rq.result);
         rq.onerror = () => { useMem = true; res(null); };
@@ -805,7 +969,7 @@ A.fmtDate = (t) => {
       return tx('docs', 'readonly', (s) => req(s.get(id)));
     },
     async saveDoc(doc, thumb) {
-      const meta = { id: doc.id, name: doc.name, created: doc.created, updated: doc.updated, thumb: thumb || null, paper: doc.paper.bg };
+      const meta = { id: doc.id, name: doc.name, created: doc.created, updated: doc.updated, thumb: thumb || null, paper: doc.paper.bg, subject: doc.subject || null };
       if (NATIVE) { await post({ op: 'save', id: doc.id, doc: JSON.stringify(doc), meta: JSON.stringify(meta) }); return; }
       await open();
       if (useMem) { mem.docs.set(doc.id, JSON.parse(JSON.stringify(doc))); mem.meta.set(doc.id, meta); return; }
@@ -817,6 +981,36 @@ A.fmtDate = (t) => {
       await open();
       if (useMem) { mem.meta.set(meta.id, meta); return; }
       await tx('meta', 'readwrite', (s) => s.put(meta));
+    },
+    /* binary files: PDFs, photos, saved visuals (Blob in, Blob out) */
+    async saveFile(id, blob) {
+      if (NATIVE) {
+        const data = await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.readAsDataURL(blob); });
+        await post({ op: 'fileSave', id, data });
+        return;
+      }
+      await open();
+      if (useMem) { mem.files.set(id, blob); return; }
+      const buf = await blob.arrayBuffer(); // raw bytes: Safari can't store Blob objects in IndexedDB
+      await tx('files', 'readwrite', (s) => s.put({ id, buf, type: blob.type }));
+    },
+    async loadFile(id, type = 'application/octet-stream') {
+      if (NATIVE) {
+        const b64 = await post({ op: 'fileLoad', id });
+        if (!b64) return null;
+        return (await fetch('data:' + type + ';base64,' + b64)).blob();
+      }
+      await open();
+      if (useMem) return mem.files.get(id) || null;
+      const r = await tx('files', 'readonly', (s) => req(s.get(id)));
+      if (!r) return null;
+      return r.buf ? new Blob([r.buf], { type: r.type || type }) : r.blob || null;
+    },
+    async deleteFile(id) {
+      if (NATIVE) { await post({ op: 'fileDelete', id }); return; }
+      await open();
+      if (useMem) { mem.files.delete(id); return; }
+      await tx('files', 'readwrite', (s) => s.delete(id));
     },
     async deleteDoc(id) {
       if (NATIVE) { await post({ op: 'delete', id }); return; }
@@ -851,6 +1045,14 @@ A.fmtDate = (t) => {
     activePalette: 0,
     sort: 'updated',
     seenWelcome: false,
+    majors: null,               // e.g. ['math','physics']; null until onboarding
+    subjects: [],               // courses: {id, name, color}
+    documents: [],              // study library meta: {id, name, kind, type, subject, size, added, lastPage}
+    visuals: [],                // saved visuals meta: {id, name, subject, thumb}
+    aiKey: '',
+    aiModel: 'claude-opus-5-5',
+    panelW: 0,
+    galleryFilter: 'all',
     darkCanvas: true,
     penSeen: false,
   });
@@ -865,6 +1067,96 @@ A.fmtDate = (t) => {
     try { localStorage.setItem(KEY, JSON.stringify(A.settings)); } catch (e) { /* ignore */ }
     if (NATIVE) post({ op: 'settings', json: JSON.stringify(A.settings) }).catch(() => {});
   }, 250);
+})();
+
+/* ---- subjects.js ---- */
+/* Axiom studies: majors, courses (subjects), onboarding */
+'use strict';
+(() => {
+  const h = A.h;
+  const S = A.settings;
+  const SU = (A.SU = {});
+
+  SU.majors = [
+    { id: 'math', name: 'Mathematics', courses: ['Calculus', 'Linear Algebra', 'Real Analysis', 'Abstract Algebra', 'Topology', 'Differential Geometry', 'Complex Analysis', 'Number Theory', 'Probability'] },
+    { id: 'physics', name: 'Physics', courses: ['Classical Mechanics', 'Electromagnetism', 'Optics', 'Quantum Mechanics', 'Thermodynamics', 'Statistical Mechanics', 'Special Relativity'] },
+    { id: 'ee', name: 'Electrical Eng.', courses: ['Circuit Analysis', 'Signals & Systems', 'Electronics', 'Control Systems', 'Electromagnetics'] },
+    { id: 'me', name: 'Mechanical Eng.', courses: ['Statics', 'Dynamics', 'Mechanics of Materials', 'Fluid Mechanics', 'Heat Transfer'] },
+    { id: 'chem', name: 'Chemistry', courses: ['General Chemistry', 'Organic Chemistry', 'Physical Chemistry', 'Inorganic Chemistry'] },
+    { id: 'cs', name: 'Computer Science', courses: ['Discrete Math', 'Algorithms', 'Data Structures', 'Theory of Computation', 'Machine Learning'] },
+    { id: 'bio', name: 'Biology', courses: ['Cell Biology', 'Genetics', 'Biochemistry', 'Physiology'] },
+  ];
+  SU.colors = ['#3f7be0', '#e0574a', '#2f9e6b', '#d99a22', '#8e5bd6', '#1fa3b3', '#d4549a', '#6b7a8f', '#c26b2e', '#4a5bd4'];
+
+  SU.list = () => S.subjects || [];
+  SU.get = (id) => SU.list().find((s) => s.id === id) || null;
+  SU.name = (id) => (SU.get(id) || {}).name || '';
+  SU.color = (id) => (SU.get(id) || {}).color || 'var(--faint)';
+  SU.add = (name, color) => {
+    name = String(name || '').trim().slice(0, 48);
+    if (!name) return null;
+    const ex = SU.list().find((s) => s.name.toLowerCase() === name.toLowerCase());
+    if (ex) return ex;
+    const s = { id: A.uid(), name, color: color || SU.colors[SU.list().length % SU.colors.length] };
+    S.subjects = SU.list().concat([s]);
+    A.saveSettings();
+    A.emit('subjects');
+    return s;
+  };
+  SU.remove = (id) => { S.subjects = SU.list().filter((s) => s.id !== id); A.saveSettings(); A.emit('subjects'); };
+  SU.rename = (id, name) => { const s = SU.get(id); if (s && name) { s.name = name.slice(0, 48); A.saveSettings(); A.emit('subjects'); } };
+  SU.majorNames = () => (S.majors || []).map((m) => (SU.majors.find((x) => x.id === m) || {}).name).filter(Boolean);
+
+  /* "What do you study?" sheet: majors + courses */
+  SU.openSetup = (first = false) => new Promise((res) => {
+    const picked = new Set(S.majors || []);
+    const back = h('div', { class: 'modal-back' });
+    const box = h('div', { class: 'modal wide', role: 'dialog', 'aria-label': 'Your studies' });
+    const close = () => { back.remove(); res(); };
+    const body = h('div');
+    const draw = () => {
+      body.innerHTML = '';
+      const chips = h('div', { class: 'chips' });
+      SU.majors.forEach((m) => chips.append(h('button', { class: 'chip' + (picked.has(m.id) ? ' on' : ''), onclick: () => { picked.has(m.id) ? picked.delete(m.id) : picked.add(m.id); draw(); } }, m.name)));
+      body.append(h('h5', null, 'Majors'), chips);
+      const mine = h('div', { class: 'chips' });
+      SU.list().forEach((s) => mine.append(h('span', { class: 'chip on' }, h('i', { class: 'dot', style: { background: s.color } }), s.name,
+        h('button', { class: 'chip-x', 'aria-label': 'Remove ' + s.name, html: A.icon('close'), onclick: () => { SU.remove(s.id); draw(); } }))));
+      const inp = h('input', { class: 'field', id: 'course-input', placeholder: 'Add a course, e.g. Differential Geometry', autocomplete: 'off', style: { margin: '0' } });
+      const add = () => { if (SU.add(inp.value)) { inp.value = ''; draw(); setTimeout(() => A.$('#course-input')?.focus(), 0); } };
+      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') add(); });
+      body.append(h('h5', null, 'Your courses'), SU.list().length ? mine : h('p', { class: 'muted small' }, 'Courses become folders for your drawings and documents, and the tutor knows which course you are working on.'),
+        h('div', { class: 'row gap', style: { marginTop: '8px' } }, inp, h('button', { class: 'btn', onclick: add }, 'Add')));
+      const sugg = h('div', { class: 'chips' });
+      const have = new Set(SU.list().map((s) => s.name.toLowerCase()));
+      SU.majors.filter((m) => picked.has(m.id)).forEach((m) => m.courses.forEach((c) => {
+        if (!have.has(c.toLowerCase())) sugg.append(h('button', { class: 'chip ghost', onclick: () => { SU.add(c); draw(); } }, '+ ' + c));
+      }));
+      if (sugg.childElementCount) body.append(h('h5', null, 'Suggestions'), sugg);
+    };
+    draw();
+    const done = h('button', { class: 'btn primary', onclick: () => { S.majors = [...picked]; A.saveSettings(); A.emit('subjects'); close(); } }, first ? 'Start' : 'Done');
+    box.append(h('h3', null, first ? 'What do you study?' : 'Your studies'),
+      h('p', { class: 'muted' }, 'Axiom shows the visual tools for your majors first and organizes your work by course. You can change this any time in Settings.'),
+      body,
+      h('div', { class: 'row end gap', style: { marginTop: '22px' } }, first ? h('button', { class: 'btn', onclick: () => { S.majors = S.majors || []; A.saveSettings(); close(); } }, 'Skip') : null, done));
+    back.append(box);
+    document.body.append(back);
+  });
+
+  /* compact subject picker used in menus */
+  SU.pickMenu = (anchor, current, onPick) => {
+    const box = h('div', { class: 'menu' });
+    box.append(h('div', { class: 'sub' }, 'Course'));
+    const it = (id, name, color) => {
+      const b = h('button', { class: id === current ? 'on' : '', onclick: () => { A.closePopovers(); onPick(id); } }, h('i', { class: 'dot', style: { background: color } }), name);
+      box.append(b);
+    };
+    it(null, 'No course', 'transparent');
+    SU.list().forEach((s) => it(s.id, s.name, s.color));
+    box.append(h('hr'), h('button', { onclick: async () => { A.closePopovers(); const n = await A.dialog({ title: 'New course', input: '', okText: 'Add' }); const s = n && SU.add(n); if (s) onPick(s.id); } }, '+ New course'));
+    A.popover(box, anchor, { side: 'down' });
+  };
 })();
 
 /* ---- geom.js ---- */
@@ -1865,6 +2157,8 @@ A.fmtDate = (t) => {
       c.width = Math.round(R.w * A.dpr); c.height = Math.round(R.h * A.dpr);
     }
     R.cacheValid = false;
+    const cvv = document.getElementById('canvas-view');
+    if (cvv) cvv.classList.toggle('narrow', R.w < 720);
   };
 
   /* ---------- dark canvas (display only) ---------- */
@@ -3494,6 +3788,560 @@ A.fmtDate = (t) => {
   };
 })();
 
+/* ---- stamps.js ---- */
+/* Axiom visual tools: subject diagram library (editable vector strokes) + "My visuals" */
+'use strict';
+(() => {
+  const G = A.G, D = A.D, R = A.R, B = A.B, M = A.M, h = A.h;
+  const S = A.settings;
+  const V = (A.V = {});
+  const PI = Math.PI;
+
+  /* ---------- tiny single-stroke font for labels (cap height 1, y down) ---------- */
+  const ell = (cx, cy, rx, ry, a0 = 0, a1 = 2 * PI, n = 24) => { const o = []; for (let i = 0; i <= n; i++) { const t = a0 + ((a1 - a0) * i) / n; o.push([cx + rx * Math.cos(t), cy + ry * Math.sin(t)]); } return o; };
+  const GLYPH = {
+    F: [[[0, 1], [0, 0], [0.55, 0]], [[0, 0.48], [0.45, 0.48]]],
+    '2': [[[0.05, 0.25], [0.15, 0.05], [0.35, 0], [0.5, 0.08], [0.55, 0.25], [0.45, 0.45], [0, 1], [0.6, 1]]],
+    '1': [[[0.1, 0.15], [0.3, 0], [0.3, 1]]],
+    '0': [ell(0.28, 0.5, 0.26, 0.5)],
+    O: [ell(0.3, 0.5, 0.3, 0.5)],
+    x: [[[0, 0.4], [0.5, 1]], [[0.5, 0.4], [0, 1]]],
+    y: [[[0, 0.4], [0.27, 0.78]], [[0.55, 0.4], [0.12, 1.15]]],
+    z: [[[0, 0.4], [0.5, 0.4], [0, 1], [0.5, 1]]],
+    v: [[[0, 0.4], [0.25, 1], [0.5, 0.4]]],
+    '+': [[[0.3, 0.3], [0.3, 0.9]], [[0, 0.6], [0.6, 0.6]]],
+    '-': [[[0.05, 0.6], [0.5, 0.6]]],
+    "'": [[[0.12, 0], [0.06, 0.28]]],
+    U: [[[0, 0], [0, 0.7], [0.08, 0.92], [0.25, 1], [0.42, 0.92], [0.5, 0.7], [0.5, 0]]],
+    V: [[[0, 0], [0.28, 1], [0.56, 0]]],
+    M: [[[0, 1], [0, 0], [0.3, 0.6], [0.6, 0], [0.6, 1]]],
+    R: [[[0, 1], [0, 0], [0.35, 0], [0.5, 0.1], [0.5, 0.35], [0.35, 0.45], [0, 0.45]], [[0.25, 0.45], [0.55, 1]]],
+    C: [[[0.55, 0.15], [0.4, 0], [0.2, 0], [0.05, 0.2], [0, 0.5], [0.05, 0.8], [0.2, 1], [0.4, 1], [0.55, 0.85]]],
+    A: [[[0, 1], [0.28, 0], [0.56, 1]], [[0.12, 0.6], [0.44, 0.6]]],
+    B: [[[0, 0], [0, 1], [0.38, 1], [0.52, 0.88], [0.52, 0.66], [0.38, 0.5], [0, 0.5]], [[0, 0], [0.32, 0], [0.46, 0.12], [0.46, 0.36], [0.32, 0.5]]],
+    P: [[[0, 1], [0, 0], [0.38, 0], [0.5, 0.12], [0.5, 0.33], [0.38, 0.45], [0, 0.45]]],
+    N: [[[0, 1], [0, 0], [0.55, 1], [0.55, 0]]],
+    T: [[[0, 0], [0.56, 0]], [[0.28, 0], [0.28, 1]]],
+    m: [[[0, 1], [0, 0.45]], [[0, 0.55], [0.12, 0.42], [0.25, 0.45], [0.28, 1]], [[0.28, 0.55], [0.4, 0.42], [0.53, 0.45], [0.56, 1]]],
+    g: [[[0.45, 0.45], [0.45, 1.1], [0.35, 1.25], [0.1, 1.22]], [[0.45, 0.55], [0.32, 0.42], [0.12, 0.45], [0.02, 0.65], [0.1, 0.85], [0.3, 0.88], [0.45, 0.75]]],
+    k: [[[0, 0], [0, 1]], [[0.45, 0.4], [0, 0.75]], [[0.15, 0.65], [0.5, 1]]],
+    θ: [ell(0.27, 0.5, 0.25, 0.5), [[0.05, 0.5], [0.5, 0.5]]],
+    φ: [[[0.27, 0], [0.27, 1.15]], ell(0.27, 0.62, 0.25, 0.3)],
+    λ: [[[0.05, 0], [0.15, 0], [0.55, 1]], [[0.3, 0.45], [0, 1]]],
+    γ: [[[0, 0.4], [0.28, 0.85]], [[0.55, 0.4], [0.2, 1.2]]],
+    p: [[[0, 0.4], [0, 1.25]], ell(0.25, 0.68, 0.25, 0.28)],
+    q: [[[0.5, 0.4], [0.5, 1.25]], ell(0.25, 0.68, 0.25, 0.28)],
+  };
+
+  /* ---------- primitive builder (stamp space roughly -100..100, y down) ---------- */
+  const mk = () => {
+    const P = [];
+    const b = {
+      P,
+      line: (pts, o = {}) => (P.push(Object.assign({ k: 'line', pts }, o)), b),
+      poly: (pts, o = {}) => b.line(pts.concat([pts[0]]), o),
+      curve: (fn, n = 48, o = {}) => { const pts = []; for (let i = 0; i <= n; i++) pts.push(fn(i / n)); P.push(Object.assign({ k: 'line', pts, smooth: true }, o)); return b; },
+      ellipse: (cx, cy, rx, ry, o = {}, a0 = 0, a1 = 2 * PI, rot = 0) => {
+        const n = Math.max(16, Math.ceil(Math.abs(a1 - a0) * 12));
+        const c = Math.cos(rot), s = Math.sin(rot);
+        return b.curve((t) => { const a = a0 + (a1 - a0) * t, x = rx * Math.cos(a), y = ry * Math.sin(a); return [cx + x * c - y * s, cy + x * s + y * c]; }, n, o);
+      },
+      circle: (cx, cy, r, o = {}) => b.ellipse(cx, cy, r, r, o),
+      arrow: (x1, y1, x2, y2, o = {}) => {
+        b.line([[x1, y1], [x2, y2]], o);
+        const a = Math.atan2(y2 - y1, x2 - x1), L = o.head || 9;
+        b.line([[x2 - L * Math.cos(a - 0.42), y2 - L * Math.sin(a - 0.42)], [x2, y2], [x2 - L * Math.cos(a + 0.42), y2 - L * Math.sin(a + 0.42)]], o);
+        return b;
+      },
+      dash: (pts, o = {}) => b.line(pts, Object.assign({ dash: true }, o)),
+      fill: (pts, o = {}) => (P.push(Object.assign({ k: 'fill', pts }, o)), b),
+      dot: (x, y, r = 2.6, o = {}) => b.fill(ell(x, y, r, r, 0, 2 * PI, 14), Object.assign({ op: 1 }, o)),
+      hatch: (x1, y1, x2, y2, o = {}) => {
+        b.line([[x1, y1], [x2, y2]], o);
+        const L = Math.hypot(x2 - x1, y2 - y1), n = Math.max(2, Math.round(L / 9));
+        const ux = (x2 - x1) / L, uy = (y2 - y1) / L, side = o.side || 1;
+        const nx = -uy * side, ny = ux * side;
+        for (let i = 0; i <= n; i++) {
+          const px = x1 + ux * (L * i) / n, py = y1 + uy * (L * i) / n;
+          b.line([[px, py], [px + (nx - ux) * 7, py + (ny - uy) * 7]], Object.assign({ w: 0.7 }, o));
+        }
+        return b;
+      },
+      text: (str, x, y, size = 12, o = {}) => {
+        let cx = x;
+        for (const ch of String(str)) {
+          const gl = GLYPH[ch];
+          if (gl) for (const s of gl) b.line(s.map(([gx, gy]) => [cx + gx * size, y - size + gy * size]), Object.assign({ w: 0.8 }, o));
+          cx += (ch === "'" ? 0.3 : 0.8) * size;
+        }
+        return b;
+      },
+      wave: (x0, x1, y, amp, periods, o = {}, phase = 0) => b.curve((t) => [x0 + (x1 - x0) * t, y - amp * Math.sin(phase + t * periods * 2 * PI)], Math.ceil(periods * 40), o),
+    };
+    return b;
+  };
+
+  const RAY = '#d64545', VEC = '#2f6fdb', SOFT = '#7fb3d5';
+
+  /* ---------- library ---------- */
+  const L = [];
+  const add = (area, id, name, fn) => L.push({ area, id, name, fn });
+
+  /* Math */
+  add('math', 'axes2d', 'xy axes', (b) => {
+    b.arrow(-95, 0, 95, 0).arrow(0, 75, 0, -75);
+    for (let i = -80; i <= 80; i += 20) if (i) { b.line([[i, -3], [i, 3]], { w: 0.7 }); if (Math.abs(i) <= 60) b.line([[-3, i], [3, i]], { w: 0.7 }); }
+    b.text('x', 88, 18, 11).text('y', 9, -66, 11);
+  });
+  add('math', 'axes3d', 'xyz axes', (b) => {
+    b.arrow(0, 10, 0, -80).arrow(0, 10, 85, 10).arrow(0, 10, -55, 60);
+    b.text('z', 7, -70, 11).text('y', 82, 30, 11).text('x', -66, 66, 11);
+  });
+  add('math', 'unitcircle', 'Unit circle', (b) => {
+    b.arrow(-85, 0, 85, 0, { w: 0.8 }).arrow(0, 80, 0, -80, { w: 0.8 });
+    b.circle(0, 0, 62);
+    const a = -0.75; const px = 62 * Math.cos(a), py = 62 * Math.sin(a);
+    b.line([[0, 0], [px, py]], { c: RAY }).dot(px, py, 2.8, { c: RAY });
+    b.dash([[px, py], [px, 0]]).dash([[px, py], [0, py]]);
+    b.ellipse(0, 0, 16, 16, { w: 0.8 }, a, 0).text('θ', 18, -4, 9);
+  });
+  add('math', 'numberline', 'Number line', (b) => {
+    b.arrow(-95, 0, 95, 0).arrow(95, 0, -95, 0);
+    [-2, -1, 0, 1, 2].forEach((k) => { b.line([[k * 35, -5], [k * 35, 5]]); b.text(String(Math.abs(k)), k * 35 - (k < 0 ? 9 : 3), 22, 10); if (k < 0) b.text('-', k * 35 - 14, 22, 10); });
+  });
+  add('math', 'venn2', 'Venn diagram (2)', (b) => {
+    b.poly([[-95, -65], [95, -65], [95, 65], [-95, 65]], { w: 0.8 });
+    b.circle(-25, 0, 45).circle(25, 0, 45).text('A', -60, -30, 11).text('B', 52, -30, 11);
+  });
+  add('math', 'venn3', 'Venn diagram (3)', (b) => {
+    b.circle(-24, -16, 42).circle(24, -16, 42).circle(0, 24, 42);
+  });
+  add('math', 'triangle', 'Right triangle', (b) => {
+    b.poly([[-70, 45], [70, 45], [70, -45]]);
+    b.line([[58, 45], [58, 33], [70, 33]], { w: 0.8 });
+    b.ellipse(-70, 45, 26, 26, { w: 0.8 }, -0.57, 0).text('θ', -38, 38, 9);
+  });
+  add('math', 'vector', 'Vector components', (b) => {
+    b.arrow(-60, 45, 60, -45, { c: VEC }).dash([[60, -45], [60, 45]]).dash([[-60, 45], [60, 45]]);
+    b.text('v', -6, -12, 11, { c: VEC });
+  });
+  add('math', 'sine', 'Sine graph', (b) => {
+    b.arrow(-95, 0, 95, 0, { w: 0.8 }).arrow(-85, 60, -85, -60, { w: 0.8 });
+    b.wave(-85, 85, 0, 40, 1, { c: VEC });
+  });
+  add('math', 'parabola', 'Parabola', (b) => {
+    b.arrow(-90, 50, 90, 50, { w: 0.8 }).arrow(0, 60, 0, -75, { w: 0.8 });
+    b.curve((t) => { const x = -70 + 140 * t; return [x, 50 - (x * x) / 45]; }, 48, { c: VEC });
+  });
+
+  /* Topology & geometry */
+  add('topo', 'torus', 'Torus', (b) => {
+    b.ellipse(0, 0, 92, 46);
+    b.ellipse(0, -8, 46, 18, {}, 0.12 * PI, 0.88 * PI);
+    b.ellipse(0, 12, 33, 12, {}, 1.15 * PI, 1.85 * PI);
+  });
+  add('topo', 'sphere', 'Sphere', (b) => {
+    b.circle(0, 0, 70).ellipse(0, 0, 70, 18, {}, 0, PI).ellipse(0, 0, 70, 18, { dash: true }, PI, 2 * PI);
+  });
+  add('topo', 'tangentplane', 'Tangent plane', (b) => {
+    b.circle(0, 10, 62).ellipse(0, 10, 62, 16, {}, 0, PI).ellipse(0, 10, 62, 16, { dash: true }, PI, 2 * PI);
+    const px = 30, py = -40;
+    b.fill([[px - 55, py + 8], [px + 15, py - 22], [px + 75, py - 6], [px + 5, py + 24]], { c: SOFT, op: 0.35 });
+    b.poly([[px - 55, py + 8], [px + 15, py - 22], [px + 75, py - 6], [px + 5, py + 24]], { w: 0.8 });
+    b.dot(px + 10, py + 1).arrow(px + 10, py + 1, px + 32, py - 52, { c: VEC }).text('p', px + 2, py + 22, 9);
+  });
+  add('topo', 'mobius', 'Möbius strip', (b) => {
+    const P = (u, v) => { const r = 1 + (v / 2) * Math.cos(u / 2), x = r * Math.cos(u), y = r * Math.sin(u), z = (v / 2) * Math.sin(u / 2); return [x * 62, y * 24 - z * 48]; };
+    b.curve((t) => P(t * 4 * PI, 1), 160);
+    for (let k = 0; k < 14; k++) { const u = (k / 14) * 2 * PI; b.line([P(u, -1), P(u, 1)], { w: 0.5, op: 0.6 }); }
+  });
+  add('topo', 'openset', 'Open set & ball', (b) => {
+    const blob = (t) => { const a = t * 2 * PI, r = 70 + 12 * Math.sin(3 * a) + 7 * Math.cos(5 * a); return [r * Math.cos(a) * 1.15, r * Math.sin(a) * 0.8]; };
+    b.curve(blob, 90, { dash: true });
+    b.dot(10, 5).circle(10, 5, 20, { dash: true, c: VEC }).text('U', -78, -38, 12).text('p', 15, 0, 8);
+  });
+  add('topo', 'chart', 'Chart φ: U → ℝⁿ', (b) => {
+    const blob = (cx, cy, s) => (t) => { const a = t * 2 * PI, r = s * (1 + 0.15 * Math.sin(3 * a)); return [cx + r * Math.cos(a), cy + r * Math.sin(a) * 0.75]; };
+    b.curve(blob(-55, 0, 42), 60).text('M', -92, -32, 11);
+    const inner = []; for (let i = 0; i <= 40; i++) inner.push(blob(-50, 4, 18)(i / 40));
+    b.fill(inner, { c: SOFT, op: 0.5 }).line(inner, { w: 0.7 }).text('U', -56, 10, 8);
+    b.poly([[25, -35], [95, -35], [95, 35], [25, 35]], { w: 0.8 });
+    const img = []; for (let i = 0; i <= 40; i++) img.push(blob(60, 0, 18)(i / 40));
+    b.fill(img, { c: SOFT, op: 0.5 }).line(img, { w: 0.7 });
+    b.curve((t) => [-30 + 75 * t, -18 - 22 * Math.sin(PI * t)], 24, { w: 0.8 });
+    b.line([[38, -24], [45, -18], [36, -13]], { w: 0.8 }).text('φ', 2, -44, 9);
+  });
+  add('topo', 'patch', 'Surface patch', (b) => {
+    const P = (u, v) => { const x = u, y = v, z = 0.35 * (u * u - v * v); return [(x - y) * 52, (x + y) * 22 - z * 55]; };
+    for (let i = 0; i <= 6; i++) { const s = -1 + i / 3; b.curve((t) => P(-1 + 2 * t, s), 30, { w: 0.7 }); b.curve((t) => P(s, -1 + 2 * t), 30, { w: 0.7 }); }
+  });
+  add('topo', 'curvetangent', 'Curve & tangent', (b) => {
+    b.curve((t) => [-85 + 170 * t, 20 - 45 * Math.sin(t * PI * 1.2) + 10 * Math.cos(t * 7)], 80);
+    const t = 0.32, x = -85 + 170 * t, y = 20 - 45 * Math.sin(t * PI * 1.2) + 10 * Math.cos(t * 7);
+    const dx = 170, dy = -45 * PI * 1.2 * Math.cos(t * PI * 1.2) - 70 * Math.sin(t * 7), L = Math.hypot(dx, dy);
+    b.dot(x, y).arrow(x, y, x + (dx / L) * 55, y + (dy / L) * 55, { c: VEC }).text('γ', x - 6, y + 22, 9);
+  });
+  add('topo', 'disk', 'Closed disk', (b) => {
+    const c = []; for (let i = 0; i <= 60; i++) { const a = (i / 60) * 2 * PI; c.push([60 * Math.cos(a), 60 * Math.sin(a)]); }
+    b.fill(c, { c: SOFT, op: 0.35 }).line(c);
+  });
+
+  /* Optics */
+  const axisF = (b) => {
+    b.line([[-100, 0], [100, 0]], { w: 0.7 });
+    [-45, 45].forEach((x) => { b.dot(x, 0, 2.2); b.text('F', x - 4, 18, 9); });
+    [-90, 90].forEach((x) => { b.dot(x, 0, 2.2); b.text('2F', x - 8, 18, 9); });
+  };
+  add('optics', 'convexlens', 'Converging lens', (b) => {
+    b.ellipse(0, 0, 12, 60, {}, 0.5 * PI, 1.5 * PI).ellipse(0, 0, 12, 60, {}, -0.5 * PI, 0.5 * PI); axisF(b);
+  });
+  add('optics', 'concavelens', 'Diverging lens', (b) => {
+    b.line([[-16, -58], [16, -58]]).line([[-16, 58], [16, 58]]);
+    b.curve((t) => { const y = -58 + 116 * t; return [-16 + 11 * Math.cos((y / 58) * (PI / 2)), y]; }, 30);
+    b.curve((t) => { const y = -58 + 116 * t; return [16 - 11 * Math.cos((y / 58) * (PI / 2)), y]; }, 30);
+    axisF(b);
+  });
+  add('optics', 'raydiagram', 'Lens ray diagram', (b) => {
+    b.ellipse(0, 0, 9, 55, {}, 0.5 * PI, 1.5 * PI).ellipse(0, 0, 9, 55, {}, -0.5 * PI, 0.5 * PI);
+    b.line([[-100, 0], [100, 0]], { w: 0.7 });
+    [-35, 35].forEach((x) => { b.dot(x, 0, 2.2); b.text('F', x - 4, 16, 8); });
+    b.arrow(-70, 0, -70, -30, { c: VEC }).arrow(70, 0, 70, 30, { c: VEC, dash: true });
+    b.line([[-70, -30], [0, -30], [80, 34.3]], { c: RAY, w: 0.8 });
+    b.line([[-70, -30], [80, 34.3]], { c: RAY, w: 0.8 });
+    b.line([[-70, -30], [0, 30], [90, 30]], { c: RAY, w: 0.8 });
+  });
+  add('optics', 'concavemirror', 'Concave mirror', (b) => {
+    b.ellipse(150, 0, 150, 150, {}, PI - 0.38, PI + 0.38);
+    for (let k = -5; k <= 5; k++) { const a = PI + k * 0.07; const x = 150 + 150 * Math.cos(a), y = 150 * Math.sin(a); b.line([[x, y], [x - 8, y + 6]], { w: 0.6 }); }
+    b.line([[-100, 0], [100, 0]], { w: 0.7 }); b.dot(75, 0, 2.2).text('F', 71, 18, 9);
+  });
+  add('optics', 'convexmirror', 'Convex mirror', (b) => {
+    b.ellipse(-150, 0, 150, 150, {}, -0.38, 0.38);
+    for (let k = -5; k <= 5; k++) { const a = k * 0.07; const x = -150 + 150 * Math.cos(a), y = 150 * Math.sin(a); b.line([[x, y], [x + 8, y + 6]], { w: 0.6 }); }
+    b.line([[-100, 0], [100, 0]], { w: 0.7 }); b.dot(-75, 0, 2.2).text('F', -79, 18, 9);
+  });
+  add('optics', 'planemirror', 'Plane mirror reflection', (b) => {
+    b.hatch(0, -65, 0, 65, { side: 1 });
+    b.dash([[-80, 0], [0, 0]]);
+    b.arrow(-75, -55, -2, -2, { c: RAY }).arrow(-2, 2, -75, 55, { c: RAY });
+    b.ellipse(0, 0, 22, 22, { w: 0.7 }, PI + 0.2, PI + 0.62).ellipse(0, 0, 22, 22, { w: 0.7 }, PI - 0.62, PI - 0.2);
+  });
+  add('optics', 'prism', 'Prism dispersion', (b) => {
+    b.poly([[-50, 50], [50, 50], [0, -45]]);
+    b.line([[-100, 5], [-24, 0]], { w: 1.2 });
+    b.line([[-24, 0], [24, 8]], { w: 0.8, op: 0.6 });
+    [['#d64545', -6], ['#e8a33a', 2], ['#2f9e6b', 10], ['#3f63d6', 18], ['#8e5bd6', 26]].forEach(([c, d]) => b.line([[24, 8], [100, 18 + d * 1.6]], { c, w: 0.9 }));
+  });
+  add('optics', 'object', 'Object arrow', (b) => { b.arrow(0, 40, 0, -45, { c: VEC, head: 11 }); b.line([[-40, 40], [40, 40]], { w: 0.7 }); });
+  add('optics', 'eye', 'Eye', (b) => {
+    b.curve((t) => [-60 + 120 * t, -30 * Math.sin(PI * t)], 30).curve((t) => [-60 + 120 * t, 30 * Math.sin(PI * t)], 30);
+    b.circle(0, 0, 22).dot(0, 0, 9);
+  });
+
+  /* Mechanics */
+  add('mech', 'incline', 'Incline & block', (b) => {
+    const a = Math.atan2(80, 170);
+    b.poly([[-90, 45], [80, 45], [80, -35]]);
+    const cx = -5, cy = 45 - 85 * Math.tan(a) - 1;
+    const c = Math.cos(-a), s = Math.sin(-a);
+    const blk = [[-18, 0], [18, 0], [18, -26], [-18, -26]].map(([x, y]) => [cx + x * c - y * s, cy + x * s + y * c]);
+    b.poly(blk);
+    b.ellipse(-90, 45, 30, 30, { w: 0.8 }, -a, 0).text('θ', -54, 40, 9);
+  });
+  add('mech', 'inclinefbd', 'Incline free-body', (b) => {
+    const a = Math.atan2(80, 170);
+    b.poly([[-90, 45], [80, 45], [80, -35]], { w: 0.8 });
+    const cx = -5, cy = 45 - 85 * Math.tan(a) - 1, c = Math.cos(-a), s = Math.sin(-a);
+    const T = ([x, y]) => [cx + x * c - y * s, cy + x * s + y * c];
+    b.poly([[-18, 0], [18, 0], [18, -26], [-18, -26]].map(T));
+    const [mx, my] = T([0, -13]);
+    b.arrow(mx, my, mx, my + 55, { c: VEC }).text('mg', mx + 5, my + 58, 8, { c: VEC });
+    const [nx, ny] = T([0, -60]); b.arrow(mx, my, nx, ny, { c: RAY }).text('N', nx - 12, ny, 9, { c: RAY });
+    const [fx, fy] = T([-55, -13]); b.arrow(mx, my, fx, fy, { c: '#2f9e6b' });
+  });
+  add('mech', 'blockground', 'Block & force', (b) => {
+    b.hatch(-90, 40, 90, 40, { side: -1 });
+    b.poly([[-25, 40], [25, 40], [25, 0], [-25, 0]]);
+    b.arrow(25, 20, 80, 20, { c: VEC }).text('F', 82, 12, 9, { c: VEC });
+  });
+  add('mech', 'spring', 'Spring & mass', (b) => {
+    b.hatch(-85, -40, -85, 40, { side: -1 });
+    const pts = [[-85, 0], [-70, 0]]; for (let i = 0; i < 9; i++) pts.push([-64 + i * 9, i % 2 ? 12 : -12]); pts.push([20, 0], [30, 0]);
+    b.line(pts).poly([[30, -22], [75, -22], [75, 22], [30, 22]]).hatch(-90, 26, 90, 26, { side: -1 }).text('k', -30, -22, 9);
+  });
+  add('mech', 'pulley', 'Pulley (Atwood)', (b) => {
+    b.hatch(-50, -80, 50, -80, { side: 1 });
+    b.line([[0, -80], [0, -55]]).circle(0, -40, 15).dot(0, -40, 2);
+    b.line([[-15, -40], [-15, 20]]).line([[15, -40], [15, 40]]);
+    b.poly([[-30, 20], [0, 20], [0, 50], [-30, 50]].map(([x, y]) => [x + 0, y])).poly([[5, 40], [30, 40], [30, 60], [5, 60]]);
+  });
+  add('mech', 'pendulum', 'Pendulum', (b) => {
+    b.hatch(-50, -70, 50, -70, { side: 1 });
+    const a = 0.45, L = 105, x = L * Math.sin(a), y = -70 + L * Math.cos(a);
+    b.dash([[0, -70], [0, 45]]).line([[0, -70], [x, y]]).circle(x, y, 10).dot(x, y, 4);
+    b.ellipse(0, -70, 30, 30, { w: 0.8 }, PI / 2 - a, PI / 2).text('θ', 6, -28, 9);
+  });
+  add('mech', 'fbd', 'Free-body diagram', (b) => {
+    b.poly([[-16, -16], [16, -16], [16, 16], [-16, 16]]);
+    b.arrow(0, -16, 0, -70, { c: RAY }).arrow(0, 16, 0, 70, { c: VEC }).arrow(16, 0, 75, 0, { c: '#2f9e6b' }).arrow(-16, 0, -60, 0, { c: '#d99a22' });
+    b.text('N', 6, -60, 9, { c: RAY }).text('mg', 6, 72, 8, { c: VEC }).text('F', 70, -8, 9, { c: '#2f9e6b' });
+  });
+  add('mech', 'cart', 'Cart', (b) => {
+    b.poly([[-50, -10], [50, -10], [50, 20], [-50, 20]]).circle(-30, 30, 10).circle(30, 30, 10).line([[-95, 40], [95, 40]], { w: 0.8 });
+  });
+  add('mech', 'projectile', 'Projectile motion', (b) => {
+    b.arrow(-90, 50, 95, 50, { w: 0.8 }).arrow(-80, 60, -80, -70, { w: 0.8 });
+    b.curve((t) => [-80 + 160 * t, 50 - 380 * t * (1 - t) * 0.4], 40, { dash: true });
+    b.arrow(-80, 50, -40, 10, { c: VEC }).ellipse(-80, 50, 22, 22, { w: 0.8 }, -PI / 4, 0).text('θ', -54, 44, 8);
+  });
+  add('mech', 'circular', 'Circular motion', (b) => {
+    b.circle(0, 0, 55, { dash: true }).dot(0, 0, 2);
+    const a = -PI / 4, x = 55 * Math.cos(a), y = 55 * Math.sin(a);
+    b.dot(x, y, 6).arrow(x, y, x + 30, y + 30, { c: VEC }).arrow(x, y, x * 0.45, y * 0.45, { c: RAY });
+  });
+
+  /* Circuits */
+  const leads = (b, a, c) => b.line([[-70, 0], [a, 0]]).line([[c, 0], [70, 0]]);
+  add('circuits', 'resistor', 'Resistor', (b) => { leads(b, -30, 30); const p = [[-30, 0]]; for (let i = 0; i < 6; i++) p.push([-25 + i * 10, i % 2 ? 11 : -11]); p.push([30, 0]); b.line(p); });
+  add('circuits', 'capacitor', 'Capacitor', (b) => { leads(b, -6, 6); b.line([[-6, -22], [-6, 22]], { w: 1.4 }).line([[6, -22], [6, 22]], { w: 1.4 }); });
+  add('circuits', 'inductor', 'Inductor', (b) => { leads(b, -36, 36); for (let i = 0; i < 4; i++) b.ellipse(-27 + i * 18, 0, 9, 11, {}, PI, 2 * PI); });
+  add('circuits', 'battery', 'Battery', (b) => { leads(b, -5, 5); b.line([[-5, -24], [-5, 24]]).line([[5, -12], [5, 12]], { w: 2 }); b.text('+', -20, -24, 10).text('-', 9, -24, 10); });
+  add('circuits', 'ac', 'AC source', (b) => { leads(b, -22, 22); b.circle(0, 0, 22).wave(-12, 12, 0, 7, 1); });
+  add('circuits', 'switch', 'Switch', (b) => { leads(b, -20, 20); b.dot(-20, 0, 2.6).dot(20, 0, 2.6).line([[-20, 0], [16, -18]]); });
+  add('circuits', 'ground', 'Ground', (b) => { b.line([[0, -50], [0, 0]]).line([[-24, 0], [24, 0]]).line([[-15, 8], [15, 8]]).line([[-6, 16], [6, 16]]); });
+  add('circuits', 'diode', 'Diode', (b) => { leads(b, -14, 14); b.poly([[-14, -16], [-14, 16], [14, 0]]).line([[14, -16], [14, 16]]); });
+  add('circuits', 'lamp', 'Lamp', (b) => { leads(b, -20, 20); b.circle(0, 0, 20).line([[-14, -14], [14, 14]]).line([[-14, 14], [14, -14]]); });
+  add('circuits', 'ammeter', 'Ammeter', (b) => { leads(b, -20, 20); b.circle(0, 0, 20).text('A', -5, 7, 13); });
+  add('circuits', 'voltmeter', 'Voltmeter', (b) => { leads(b, -20, 20); b.circle(0, 0, 20).text('V', -5, 7, 13); });
+  add('circuits', 'loop', 'Series circuit', (b) => {
+    b.line([[-70, -10], [-70, -50], [-25, -50]]); const p = [[-25, -50]]; for (let i = 0; i < 6; i++) p.push([-20 + i * 9, i % 2 ? -40 : -60]); p.push([30, -50]); b.line(p);
+    b.line([[30, -50], [70, -50], [70, 50], [-70, 50], [-70, 10]]);
+    b.line([[-84, -10], [-56, -10]]).line([[-77, 10], [-63, 10]], { w: 2 });
+  });
+
+  /* Waves & thermo */
+  add('waves', 'wave', 'Wave (λ, A)', (b) => {
+    b.arrow(-95, 0, 95, 0, { w: 0.8 }); b.wave(-85, 85, 0, 35, 2, { c: VEC });
+    b.arrow(-63, -48, 22, -48, { w: 0.7, head: 6 }).arrow(22, -48, -63, -48, { w: 0.7, head: 6 }).text('λ', -26, -54, 9);
+    b.dash([[-63, -35], [90, -35]]).text('A', 82, -40, 8);
+  });
+  add('waves', 'standing', 'Standing wave', (b) => {
+    b.line([[-85, 0], [85, 0]], { w: 0.6 }); b.dot(-85, 0).dot(85, 0);
+    b.curve((t) => [-85 + 170 * t, -35 * Math.sin(t * 3 * PI)], 60, { c: VEC }).curve((t) => [-85 + 170 * t, 35 * Math.sin(t * 3 * PI)], 60, { c: VEC, dash: true });
+  });
+  add('waves', 'pv', 'P–V diagram', (b) => {
+    b.arrow(-80, 60, 90, 60, { w: 0.8 }).arrow(-80, 70, -80, -75, { w: 0.8 }).text('V', 82, 78, 10).text('P', -96, -62, 10);
+    b.curve((t) => { const v = 0.25 + t; return [-80 + v * 130, 60 - 30 / v]; }, 40, { c: VEC });
+  });
+  add('waves', 'carnot', 'Carnot cycle', (b) => {
+    b.arrow(-85, 65, 90, 65, { w: 0.8 }).arrow(-85, 75, -85, -75, { w: 0.8 }).text('V', 82, 82, 10).text('P', -100, -62, 10);
+    const iso = (k, v0, v1) => (t) => { const v = v0 + (v1 - v0) * t; return [-85 + v * 140, 65 - k / v]; };
+    b.curve(iso(30, 0.35, 0.6), 20, { c: RAY }).curve(iso(14, 0.75, 1.1), 20, { c: VEC });
+    b.curve((t) => { const a = iso(30, 0.6, 0.6)(0), c = iso(14, 1.1, 1.1)(0); return [a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * Math.pow(t, 0.7)]; }, 20);
+    b.curve((t) => { const a = iso(30, 0.35, 0.35)(0), c = iso(14, 0.75, 0.75)(0); return [a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * Math.pow(t, 0.7)]; }, 20);
+  });
+  add('waves', 'piston', 'Gas in a piston', (b) => {
+    b.line([[-50, -60], [-50, 60], [50, 60], [50, -60]]).poly([[-48, -20], [48, -20], [48, -32], [-48, -32]]).line([[0, -32], [0, -80]], { w: 1.4 });
+    [[-30, 10], [10, 0], [25, 35], [-15, 40], [-35, 30], [30, 12], [0, 25]].forEach(([x, y]) => b.dot(x, y, 2.4));
+  });
+
+  /* Chemistry */
+  const hex = (cx, cy, r, rot = PI / 6) => { const o = []; for (let i = 0; i < 6; i++) { const a = rot + (i * PI) / 3; o.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); } return o; };
+  add('chem', 'benzene', 'Benzene', (b) => { b.poly(hex(0, 0, 50)).circle(0, 0, 30); });
+  add('chem', 'naphthalene', 'Fused rings', (b) => { b.poly(hex(-36, 0, 42)).poly(hex(37, 0, 42)); });
+  add('chem', 'tetrahedral', 'Tetrahedral (wedge/dash)', (b) => {
+    b.dot(0, 0, 4).line([[0, 0], [0, -60]]).line([[0, 0], [-55, 30]]);
+    b.fill([[0, 0], [58, 20], [52, 34]], { op: 1 });
+    for (let i = 1; i <= 6; i++) { const t = i / 6, px = 14 * t, py = 58 * t, hw = 7 * t; b.line([[px - hw * 0.97, py + hw * 0.24], [px + hw * 0.97, py - hw * 0.24]], { w: 0.8 }); }
+  });
+  add('chem', 'porbital', 'p orbital', (b) => {
+    b.curve((t) => { const a = -PI / 2 + t * PI; const r = 70 * Math.cos(a) ** 2; return [r * Math.sin(a) * 0.6, -r * Math.cos(a)]; }, 40);
+    b.curve((t) => { const a = -PI / 2 + t * PI; const r = 70 * Math.cos(a) ** 2; return [r * Math.sin(a) * 0.6, r * Math.cos(a)]; }, 40);
+    b.dash([[0, -85], [0, 85]]);
+  });
+  add('chem', 'atom', 'Atom (Bohr)', (b) => {
+    b.dot(0, 0, 7).ellipse(0, 0, 75, 26, {}, 0, 2 * PI, 0.5).ellipse(0, 0, 75, 26, {}, 0, 2 * PI, -0.5).ellipse(0, 0, 75, 26, {}, 0, 2 * PI, PI / 2);
+    b.dot(65, 37, 3.5, { c: VEC }).dot(-22, -71, 3.5, { c: VEC });
+  });
+
+  /* Computer science */
+  add('cs', 'bintree', 'Binary tree', (b) => {
+    const N = [[0, -60], [-50, -10], [50, -10], [-75, 45], [-25, 45], [25, 45], [75, 45]];
+    [[0, 1], [0, 2], [1, 3], [1, 4], [2, 5], [2, 6]].forEach(([i, j]) => { const [x1, y1] = N[i], [x2, y2] = N[j], L = Math.hypot(x2 - x1, y2 - y1); b.line([[x1 + ((x2 - x1) / L) * 13, y1 + ((y2 - y1) / L) * 13], [x2 - ((x2 - x1) / L) * 13, y2 - ((y2 - y1) / L) * 13]]); });
+    N.forEach(([x, y]) => b.circle(x, y, 13));
+  });
+  add('cs', 'graph', 'Directed graph', (b) => {
+    const N = []; for (let i = 0; i < 5; i++) { const a = -PI / 2 + (i * 2 * PI) / 5; N.push([60 * Math.cos(a), 60 * Math.sin(a)]); }
+    [[0, 1], [1, 2], [2, 3], [3, 4], [4, 0], [0, 2], [1, 3]].forEach(([i, j]) => { const [x1, y1] = N[i], [x2, y2] = N[j], L = Math.hypot(x2 - x1, y2 - y1); b.arrow(x1 + ((x2 - x1) / L) * 12, y1 + ((y2 - y1) / L) * 12, x2 - ((x2 - x1) / L) * 13, y2 - ((y2 - y1) / L) * 13, { head: 7 }); });
+    N.forEach(([x, y]) => b.circle(x, y, 11));
+  });
+  add('cs', 'array', 'Array', (b) => { for (let i = 0; i < 6; i++) { b.poly([[-90 + i * 30, -15], [-60 + i * 30, -15], [-60 + i * 30, 15], [-90 + i * 30, 15]]); b.text(String(i % 3 === 0 ? 0 : i % 3 === 1 ? 1 : 2), -79 + i * 30, 34, 8); } });
+  add('cs', 'linkedlist', 'Linked list', (b) => { for (let i = 0; i < 3; i++) { const x = -90 + i * 65; b.poly([[x, -15], [x + 40, -15], [x + 40, 15], [x, 15]]).line([[x + 26, -15], [x + 26, 15]]); b.arrow(x + 33, 0, x + 64, 0, { head: 7 }); } });
+  add('cs', 'fsm', 'State machine', (b) => {
+    b.circle(-60, 0, 20).circle(60, 0, 20).circle(60, 0, 15);
+    b.curve((t) => [-42 + 84 * t, -12 - 26 * Math.sin(PI * t)], 24).line([[34, -18], [42, -12], [33, -6]]);
+    b.curve((t) => [42 - 84 * t, 12 + 26 * Math.sin(PI * t)], 24).line([[-34, 18], [-42, 12], [-33, 6]]);
+    b.arrow(-100, 0, -80, 0, { head: 6 });
+  });
+
+  V.areas = [
+    { id: 'math', name: 'Math' }, { id: 'topo', name: 'Topology & geometry' }, { id: 'optics', name: 'Optics' },
+    { id: 'mech', name: 'Mechanics' }, { id: 'circuits', name: 'Circuits' }, { id: 'waves', name: 'Waves & thermo' },
+    { id: 'chem', name: 'Chemistry' }, { id: 'cs', name: 'Computer science' },
+  ];
+  const MAJOR_AREAS = { math: ['math', 'topo'], physics: ['mech', 'optics', 'waves', 'circuits', 'math'], ee: ['circuits', 'waves', 'math'], me: ['mech', 'waves', 'math'], chem: ['chem', 'math'], cs: ['cs', 'math'], bio: ['chem'] };
+  V.orderedAreas = () => {
+    const first = [];
+    (S.majors || []).forEach((m) => (MAJOR_AREAS[m] || []).forEach((a) => { if (!first.includes(a)) first.push(a); }));
+    return first.concat(V.areas.map((a) => a.id).filter((a) => !first.includes(a))).map((id) => V.areas.find((a) => a.id === id));
+  };
+  V.library = L;
+
+  /* ---------- primitives → stroke items ---------- */
+  const flat = (pts) => { const o = []; for (const [x, y] of pts) o.push(x, y, 1); return o; };
+  const dashSplit = (pts, dl, gl) => {
+    const out = []; let cur = [pts[0]], on = true, acc = 0;
+    for (let i = 1; i < pts.length; i++) {
+      let [ax, ay] = pts[i - 1]; const [bx, by] = pts[i];
+      let seg = Math.hypot(bx - ax, by - ay);
+      while (seg > 0) {
+        const lim = on ? dl : gl, step = Math.min(seg, lim - acc);
+        const t = step / seg, nx = ax + (bx - ax) * t, ny = ay + (by - ay) * t;
+        if (on) cur.push([nx, ny]);
+        acc += step; seg -= step; ax = nx; ay = ny;
+        if (acc >= lim - 1e-9) { if (on && cur.length > 1) out.push(cur); on = !on; acc = 0; cur = [[ax, ay]]; }
+      }
+    }
+    if (on && cur.length > 1) out.push(cur);
+    return out;
+  };
+  /* scale: world units per stamp unit; lw: base line width in world units */
+  V.toItems = (prims, { cx = 0, cy = 0, scale = 1, lw = 2, color = '#1a1e26' } = {}) => {
+    const items = [];
+    const T = ([x, y]) => [cx + x * scale, cy + y * scale];
+    for (const p of prims) {
+      const col = p.c || color;
+      if (p.k === 'fill') {
+        items.push(D.makeStroke('fill', col, 1, p.op ?? 0.2, flat(p.pts.map(T)), { sharp: true }));
+        continue;
+      }
+      const pts = p.pts.map(T);
+      const w = lw * (p.w || 1);
+      const parts = p.dash ? dashSplit(pts, 7 * scale, 5 * scale) : [pts];
+      for (const part of parts) items.push(D.makeStroke('fineliner', col, w, p.op ?? 1, flat(part), p.smooth && !p.dash ? {} : { sharp: true }));
+    }
+    return items;
+  };
+  V.build = (stamp) => { const b = mk(); stamp.fn(b); return b.P; };
+
+  /* ---------- insert ---------- */
+  V.insertItems = (items) => {
+    let l = D.active();
+    if (l.locked || !l.visible) l = D.addLayer();
+    D.begin(); D.addItems(items, l); D.commit();
+    A.emit('tool:select');
+    A.SEL.set(items.map((i) => i.id));
+    A.emit('layers:thumbs');
+  };
+  V.insert = (stamp) => {
+    const z = D.doc.view.zoom;
+    const [cx, cy] = R.toWorld(R.w / 2, R.h / 2);
+    const slot = B.slot();
+    const color = B.isDrawing(slot.b) && slot.b !== 'highlighter' && slot.b !== 'marker' ? slot.color : '#1a1e26';
+    const scale = Math.min(R.w, R.h) * 0.0016 / z;
+    V.insertItems(V.toItems(V.build(stamp), { cx, cy, scale, lw: 2 / z, color }));
+  };
+
+  /* ---------- thumbnails ---------- */
+  const thumbCache = new Map();
+  const thumbFor = (key, items) => {
+    if (thumbCache.has(key)) return thumbCache.get(key);
+    let bb = null; items.forEach((it) => (bb = G.bbUnion(bb, it.bb)));
+    if (!bb) return '';
+    const pad = 8, size = Math.max(bb[2] - bb[0], bb[3] - bb[1]) + pad * 2;
+    const cxx = (bb[0] + bb[2]) / 2, cyy = (bb[1] + bb[3]) / 2;
+    const reg = [cxx - size / 2, cyy - size / 2, cxx + size / 2, cyy + size / 2];
+    const fake = { paper: { bg: '#ffffff', grid: { type: 'none' } }, layers: [{ id: 'x', visible: true, opacity: 1, items }], precision: { grid: false } };
+    const c = R.renderRegion(fake, reg, 150 / size, { bg: false });
+    const url = c.toDataURL('image/png');
+    thumbCache.set(key, url);
+    return url;
+  };
+  V.stampThumb = (stamp) => thumbFor('s:' + stamp.id, V.toItems(V.build(stamp), { scale: 1, lw: 2.2 }));
+
+  /* ---------- My visuals (saved from selections) ---------- */
+  V.saveSelection = async () => {
+    const items = A.SEL.items().map((x) => x.it);
+    if (!items.length) return;
+    const name = await A.dialog({ title: 'Save as visual', body: 'Reuse this drawing from the Visuals library, so you never redraw it.', input: 'My visual', okText: 'Save' });
+    if (!name) return;
+    let bb = null; items.forEach((it) => (bb = G.bbUnion(bb, it.bb)));
+    const cx = (bb[0] + bb[2]) / 2, cy = (bb[1] + bb[3]) / 2;
+    const norm = items.map((it) => D.transformItem(it, M.translate(-cx, -cy), false));
+    const id = A.uid();
+    const thumb = thumbFor('v:' + id, norm);
+    await A.store.saveFile('vis_' + id, new Blob([JSON.stringify(norm)], { type: 'application/json' }));
+    S.visuals = (S.visuals || []).concat([{ id, name: name.slice(0, 40), subject: D.doc.subject || null, thumb, added: Date.now() }]);
+    A.saveSettings();
+    A.toast('Saved to My visuals');
+  };
+  V.insertSaved = async (meta) => {
+    const blob = await A.store.loadFile('vis_' + meta.id, 'application/json');
+    if (!blob) return A.toast('That visual could not be loaded');
+    const items = JSON.parse(await blob.text());
+    let bb = null; items.forEach((it) => (bb = G.bbUnion(bb, it.bb)));
+    const [cx, cy] = R.toWorld(R.w / 2, R.h / 2);
+    const z = D.doc.view.zoom, size = Math.max(bb[2] - bb[0], bb[3] - bb[1]) * z;
+    const k = size > Math.min(R.w, R.h) * 0.7 || size < 40 ? (Math.min(R.w, R.h) * 0.35) / size : 1;
+    const T = M.mul(M.translate(cx, cy), M.scale(k));
+    V.insertItems(items.map((it) => D.transformItem(Object.assign({}, it, { id: A.uid() }), T, true)));
+  };
+  V.deleteSaved = async (meta) => {
+    S.visuals = (S.visuals || []).filter((v) => v.id !== meta.id); A.saveSettings();
+    try { await A.store.deleteFile('vis_' + meta.id); } catch (e) { /* ignore */ }
+  };
+
+  /* ---------- library UI ---------- */
+  let lastArea = null;
+  V.open = (anchor) => {
+    const box = h('div', { class: 'vis-lib' });
+    const search = h('input', { type: 'search', class: 'field', id: 'vis-search', placeholder: 'Search visuals', style: { margin: '0 0 10px' } });
+    const tabs = h('div', { class: 'vis-tabs' });
+    const grid = h('div', { class: 'vis-grid' });
+    const areas = V.orderedAreas();
+    const subjName = D.doc && D.doc.subject ? A.SU.name(D.doc.subject) : '';
+    if (!lastArea) lastArea = (S.visuals || []).length ? 'mine' : areas[0].id;
+    const tile = (thumb, name, onclick, onhold) => {
+      const t = h('button', { class: 'vis-tile', title: name }, h('img', { src: thumb, alt: '' }), h('span', null, name));
+      let lp;
+      t.addEventListener('pointerdown', () => { if (onhold) lp = setTimeout(() => { lp = 'fired'; onhold(); }, 600); });
+      t.addEventListener('pointerup', () => { if (lp !== 'fired') clearTimeout(lp); });
+      t.addEventListener('click', () => { if (lp === 'fired') { lp = null; return; } A.closePopovers(); onclick(); });
+      return t;
+    };
+    const draw = () => {
+      tabs.innerHTML = ''; grid.innerHTML = '';
+      const q = search.value.trim().toLowerCase();
+      const tab = (id, name) => tabs.append(h('button', { class: id === lastArea && !q ? 'on' : '', onclick: () => { lastArea = id; search.value = ''; draw(); } }, name));
+      tab('mine', 'My visuals');
+      areas.forEach((a) => tab(a.id, a.name));
+      const mine = (S.visuals || []).filter((v) => !q || v.name.toLowerCase().includes(q));
+      if (q || lastArea === 'mine') {
+        const sorted = mine.slice().sort((a, b) => (b.subject === (D.doc && D.doc.subject)) - (a.subject === (D.doc && D.doc.subject)) || b.added - a.added);
+        sorted.forEach((v) => grid.append(tile(v.thumb, v.name + (v.subject ? ' · ' + A.SU.name(v.subject) : ''), () => V.insertSaved(v), async () => {
+          if (await A.dialog({ title: `Delete “${v.name}”?`, okText: 'Delete', danger: true })) { await V.deleteSaved(v); draw(); }
+        })));
+        if (!q && !sorted.length) grid.append(h('p', { class: 'muted small vis-empty' }, `Select something you drew, then tap the bookmark in the selection bar to save it here${subjName ? ' for ' + subjName : ''}. Lenses, apparatus, recurring diagrams: draw them once.`));
+      }
+      L.filter((s) => (q ? s.name.toLowerCase().includes(q) : s.area === lastArea)).forEach((s) => grid.append(tile(V.stampThumb(s), s.name, () => V.insert(s))));
+    };
+    search.addEventListener('input', draw);
+    box.append(h('div', { class: 'row between' }, h('h4', null, 'Visual tools'), h('button', { class: 'btn small-btn', onclick: () => { A.closePopovers(); A.SU.openSetup(); } }, 'Majors')), search, tabs, grid);
+    draw();
+    A.popover(box, anchor, { side: 'down', cls: 'wide-pop' });
+  };
+})();
+
 /* ---- ui-tools.js ---- */
 /* Axiom tool UI: Tool Bar and Tool Wheel (8 slots, size/opacity/smoothing, color, undo/redo), brush menu */
 'use strict';
@@ -4278,6 +5126,7 @@ A.fmtDate = (t) => {
 
   /* ================= status bar ================= */
   UI.mountStatus = (el) => {
+    const opt = (b) => (b.classList.add('sb-opt'), b);
     const btn = (icon, title, fn, id) => {
       const b = h('button', { class: 'ibtn', title, 'aria-label': title, id, html: A.icon(icon) });
       b.addEventListener('click', fn);
@@ -4290,16 +5139,28 @@ A.fmtDate = (t) => {
     });
     const precBtn = btn('precision', 'Precision (P)', () => togglePrecision(), 'btn-precision');
     const layBtn = btn('layers', 'Layers (L)', () => toggleLayers(), 'btn-layers');
+    const visBtn = btn('shapes', 'Visual tools', (e) => A.V.open(e.currentTarget), 'btn-visuals');
     const left = h('div', { class: 'sb-group panel' },
-      btn('gallery', 'Gallery', () => A.emit('go:gallery')), name, h('div', { class: 'sb-sep' }), precBtn, layBtn);
+      btn('gallery', 'Gallery', () => A.emit('go:gallery')), name, h('div', { class: 'sb-sep' }), precBtn, layBtn, visBtn);
     const readout = h('button', { id: 'readout', class: 'panel', title: 'View options' });
     readout.addEventListener('click', () => viewMenu(readout));
     const right = h('div', { class: 'sb-group panel' },
-      btn('import', 'Import', (e) => importMenu(e.currentTarget)),
-      btn('export', 'Export', () => UI.openExport()),
-      btn('hide', 'Hide interface (H)', () => A.emit('cmd', 'toggleUI')),
+      btn('book', 'Study panel: documents and tutor', () => A.ST.toggle(), 'btn-study'),
+      h('div', { class: 'sb-sep' }),
+      opt(btn('import', 'Import', (e) => importMenu(e.currentTarget))),
+      opt(btn('export', 'Export', () => UI.openExport())),
+      opt(btn('hide', 'Hide interface (H)', () => A.emit('cmd', 'toggleUI'))),
       btn('settings', 'Settings', () => UI.openSettings()),
-      btn('help', 'Help and gestures', () => UI.openHelp()));
+      opt(btn('help', 'Help and gestures', () => UI.openHelp())),
+      (() => { const b = btn('more', 'More', () => {
+        const box = h('div', { class: 'menu' });
+        const it = (icon, label, fn) => { const x = h('button', { onclick: () => { A.closePopovers(); fn(); } }); x.innerHTML = A.icon(icon); x.append(label); box.append(x); };
+        it('import', 'Import', () => importMenu(b));
+        it('export', 'Export', () => UI.openExport());
+        it('hide', 'Hide interface', () => A.emit('cmd', 'toggleUI'));
+        it('help', 'Help and gestures', () => UI.openHelp());
+        A.popover(box, b, { side: 'down' });
+      }); b.classList.add('sb-more'); return b; })());
     el.append(left, readout, right);
     const syncName = () => { name.textContent = D.doc ? D.doc.name : ''; };
     UI.syncName = syncName;
@@ -4483,7 +5344,7 @@ A.fmtDate = (t) => {
       selPop.append(ib('duplicate', 'Duplicate', 'duplicate'), ib('copy', 'Copy', 'copy'), ib('trash', 'Delete', 'delete'),
         h('div', { class: 'sb-sep' }), ib('fliph', 'Flip horizontal', 'flipH'), ib('flipv', 'Flip vertical', 'flipV'),
         ib('recolor', 'Apply current color', 'recolor'), ib('front', 'Bring to front', 'front'), ib('back', 'Send to back', 'back'),
-        ib('moveto', 'Move to layer', 'moveto'));
+        ib('moveto', 'Move to layer', 'moveto'), h('div', { class: 'sb-sep' }), ib('bookmark', 'Save as visual', 'saveVisual'), ib('spark', 'Ask the tutor about this', 'askTutor'));
     }
     const ys = c.map((p) => p[1]), xs = c.map((p) => p[0]);
     const r = selPop.getBoundingClientRect();
@@ -4575,6 +5436,8 @@ A.fmtDate = (t) => {
     resetView() { R.zoomAt(R.w / 2, R.h / 2, 1 / D.doc.view.zoom, -D.doc.view.rot); },
     fit() { R.fitBB(D.allBB()); },
     toggleGrid() { D.doc.precision.grid = !D.doc.precision.grid; D.changed('precision'); R.render(); renderPrecision(); UI.renderLayers(); },
+    saveVisual() { A.V.saveSelection(); },
+    askTutor() { const a = A.AI.shotSelection(); if (a) { A.AI.attach(a); A.ST.showTutor(); } },
     toggleUI() { A.$('#canvas-view').classList.toggle('ui-hidden'); A.closePopovers(); },
     toggleLayers() { toggleLayers(); },
     togglePrecision() { togglePrecision(); },
@@ -4660,6 +5523,7 @@ A.fmtDate = (t) => {
     const it = (icon, label, fn) => { const b = h('button', { onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); box.append(b); };
     it('image', 'Image or photo', async () => { const f = await pickFile('image/*'); if (f) UI.importImageFile(f); });
     it('pdf', 'PDF (problem sheet, notes)', async () => { const f = await pickFile('application/pdf,.pdf'); if (f) UI.importPdf(f); });
+    it('book', 'Open in study panel (PDF or photo)', async () => { const f = await A.ST.pickFile(); if (!f) return; const m = await A.ST.importFile(f); if (m) A.ST.openDoc(m.id); });
     it('paste', 'Paste strokes', () => cmds.paste());
     A.popover(box, anchor, { side: 'down' });
   }
@@ -4899,7 +5763,13 @@ A.fmtDate = (t) => {
         })()),
         row('Canvas rotation', 'Twist with two fingers to rotate', toggleSw(S.allowRotate, (v) => set('allowRotate', v), 's-rot')),
         row('Highlight selection', 'Fade everything that is not selected', toggleSw(S.highlightSelection, (v) => { set('highlightSelection', v); R.render(); }, 's-hl')),
+        h('h5', null, 'Studies'),
+        row('Majors and courses', A.SU.majorNames().join(', ') || 'Not set', h('button', { class: 'btn', onclick: async () => { close(); await A.SU.openSetup(); } }, 'Edit')),
+        h('h5', null, 'Tutor'),
+        row('Anthropic API key', S.aiKey ? 'Connected (stored only on this device)' : 'Not connected. Open the study panel to connect.', S.aiKey ? h('button', { class: 'btn', onclick: () => { S.aiKey = ''; A.saveSettings(); rebuild(); A.toast('API key removed'); } }, 'Remove key') : h('span')),
+        row('Default model', null, sel('aiModel', A.AI.models.map((m) => [m.id, m.name]))),
         h('h5', null, 'This drawing'),
+        row('Course', null, (() => { const b = h('button', { class: 'btn' }, A.SU.name(D.doc.subject) || 'None'); b.addEventListener('click', () => A.SU.pickMenu(b, D.doc.subject, (sid) => { D.doc.subject = sid; D.changed('meta'); rebuild(); })); return b; })()),
         row('Paper', null, (() => {
           const r = h('div', { class: 'bg-row' });
           Object.entries(D.papers).forEach(([k, c]) => r.append(h('button', { class: D.doc.paper.bg === c ? 'on' : '', style: { background: c }, 'aria-label': k, onclick: () => { D.doc.paper.bg = c; D.changed('paper'); R.render(); rebuild(); } })));
@@ -4946,8 +5816,722 @@ A.fmtDate = (t) => {
   };
 })();
 
+/* ---- study.js ---- */
+/* Axiom study panel: docked side panel with the tutor and any number of PDFs / problem photos */
+'use strict';
+(() => {
+  const D = A.D, R = A.R, h = A.h;
+  const S = A.settings;
+  const ST = (A.ST = {});
+  let host, tabsEl, bodyEl, view = null;
+  const views = new Map(); // docId -> DocView (kept alive while the tab is open)
+  const pdfCache = new Map();
+
+  /* ---------- pdf.js loader (bundled copy first, CDN fallback) ---------- */
+  const loadScript = (src) => new Promise((res, rej) => { const s = h('script', { src }); s.onload = res; s.onerror = rej; document.head.append(s); });
+  ST.pdfLib = async () => {
+    if (window.pdfjsLib) return window.pdfjsLib;
+    try {
+      await loadScript('vendor/pdf.min.js');
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js';
+    } catch (e) {
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    return window.pdfjsLib;
+  };
+  ST.loadPdf = async (meta) => {
+    if (pdfCache.has(meta.id)) return pdfCache.get(meta.id);
+    const lib = await ST.pdfLib();
+    const blob = await A.store.loadFile('doc_' + meta.id, 'application/pdf');
+    if (!blob) throw new Error('missing file');
+    const pdf = await lib.getDocument({ data: new Uint8Array(await blob.arrayBuffer()) }).promise;
+    pdfCache.set(meta.id, pdf);
+    if (pdfCache.size > 5) { const k = pdfCache.keys().next().value; try { pdfCache.get(k).destroy(); } catch (e) { /* ignore */ } pdfCache.delete(k); }
+    return pdf;
+  };
+  ST.renderPage = async (meta, n, scale = 2, type = 'image/jpeg') => {
+    const pdf = await ST.loadPdf(meta);
+    const page = await pdf.getPage(n);
+    const vp = page.getViewport({ scale });
+    const c = h('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+    const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    return { canvas: c, url: c.toDataURL(type, 0.86), w1: page.getViewport({ scale: 1 }).width };
+  };
+
+  /* ---------- documents library ---------- */
+  ST.docs = () => S.documents || [];
+  ST.doc = (id) => ST.docs().find((d) => d.id === id);
+  ST.updateDoc = (id, patch) => { const d = ST.doc(id); if (d) { Object.assign(d, patch); A.saveSettings(); } };
+  ST.importFile = async (file, subject) => {
+    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+    const isImg = file.type.startsWith('image/');
+    if (!isPdf && !isImg) { A.toast('Choose a PDF or an image'); return null; }
+    const id = A.uid();
+    A.toast('Adding ' + file.name + '…', 1500);
+    await A.store.saveFile('doc_' + id, file);
+    const meta = { id, name: file.name.replace(/\.(pdf|png|jpe?g|heic|webp)$/i, '').slice(0, 80) || 'Document', type: isPdf ? 'pdf' : 'image', mime: file.type || (isPdf ? 'application/pdf' : 'image/jpeg'), subject: subject ?? (D.doc && D.doc.subject) ?? null, size: file.size, added: Date.now(), lastPage: 1 };
+    S.documents = ST.docs().concat([meta]);
+    A.saveSettings();
+    A.emit('documents');
+    return meta;
+  };
+  ST.deleteDoc = async (id) => {
+    S.documents = ST.docs().filter((d) => d.id !== id); A.saveSettings();
+    try { await A.store.deleteFile('doc_' + id); } catch (e) { /* ignore */ }
+    pdfCache.delete(id); views.delete(id);
+    A.emit('documents');
+  };
+  ST.pickFile = (accept = 'application/pdf,.pdf,image/*') => new Promise((res) => {
+    const inp = h('input', { type: 'file', accept, style: { display: 'none' } });
+    inp.addEventListener('change', () => { res(inp.files && inp.files[0]); inp.remove(); });
+    document.body.append(inp); inp.click();
+  });
+
+  /* ---------- panel open/close/resize ---------- */
+  const cv = () => A.$('#canvas-view');
+  ST.isOpen = () => cv().classList.contains('split');
+  const applyWidth = () => {
+    const max = Math.max(320, innerWidth * 0.7);
+    const w = A.clamp(S.panelW || Math.round(innerWidth * 0.42), 300, max);
+    cv().style.setProperty('--spw', w + 'px');
+  };
+  ST.toggle = (open = !ST.isOpen()) => {
+    if (!D.doc) return;
+    cv().classList.toggle('split', open);
+    host.hidden = !open;
+    D.doc.studyOpen = open;
+    const b = A.$('#btn-study'); if (b) b.classList.toggle('on', open);
+    applyWidth();
+    requestAnimationFrame(() => { R.resize(); R.render(); A.UI.renderTools && A.UI.renderTools(); });
+    if (open) renderTabs();
+  };
+  const bindResize = (grip) => {
+    grip.addEventListener('pointerdown', (e) => {
+      e.preventDefault(); grip.setPointerCapture(e.pointerId);
+      const mv = (ev) => { S.panelW = Math.round(innerWidth - ev.clientX); applyWidth(); };
+      const up = () => { grip.removeEventListener('pointermove', mv); grip.removeEventListener('pointerup', up); A.saveSettings(); R.resize(); R.render(); };
+      grip.addEventListener('pointermove', mv); grip.addEventListener('pointerup', up);
+    });
+  };
+
+  /* ---------- tabs ---------- */
+  const tabState = () => {
+    const doc = D.doc;
+    if (!doc.studyTabs) doc.studyTabs = [];
+    doc.studyTabs = doc.studyTabs.filter((id) => ST.doc(id));
+    if (!doc.studyActive || (doc.studyActive !== 'ai' && !ST.doc(doc.studyActive))) doc.studyActive = 'ai';
+    return doc;
+  };
+  ST.activeDoc = () => { if (!D.doc) return null; const d = tabState(); return d.studyActive !== 'ai' ? ST.doc(d.studyActive) : (d.studyTabs.length ? ST.doc(d.lastDocTab) || ST.doc(d.studyTabs[d.studyTabs.length - 1]) : null); };
+  ST.openDoc = (id) => {
+    const doc = tabState();
+    if (!doc.studyTabs.includes(id)) doc.studyTabs.push(id);
+    doc.studyActive = id; doc.lastDocTab = id;
+    D.changed('meta');
+    if (!ST.isOpen()) ST.toggle(true); else renderTabs();
+  };
+  ST.showTutor = () => { const doc = tabState(); doc.studyActive = 'ai'; if (!ST.isOpen()) ST.toggle(true); else renderTabs(); };
+  const closeTab = (id) => {
+    const doc = tabState();
+    doc.studyTabs = doc.studyTabs.filter((x) => x !== id);
+    views.delete(id);
+    if (doc.studyActive === id) doc.studyActive = doc.studyTabs[doc.studyTabs.length - 1] || 'ai';
+    D.changed('meta');
+    renderTabs();
+  };
+  function renderTabs() {
+    if (!host || host.hidden || !D.doc) return;
+    const doc = tabState();
+    tabsEl.innerHTML = '';
+    const tab = (id, label, icon, closable) => {
+      const t = h('div', { class: 'sp-tab' + (doc.studyActive === id ? ' on' : ''), role: 'tab', tabindex: 0 });
+      t.append(A.iconEl(icon), h('span', { class: 'sp-tab-name' }, label));
+      if (closable) t.append(h('button', { class: 'sp-x', 'aria-label': 'Close ' + label, html: A.icon('close'), onclick: (e) => { e.stopPropagation(); closeTab(id); } }));
+      t.addEventListener('click', () => { doc.studyActive = id; if (id !== 'ai') doc.lastDocTab = id; renderTabs(); });
+      tabsEl.append(t);
+    };
+    tab('ai', 'Tutor', 'spark', false);
+    doc.studyTabs.forEach((id) => { const m = ST.doc(id); tab(id, m.name, m.type === 'pdf' ? 'pdf' : 'image', true); });
+    const plus = h('button', { class: 'ibtn sp-plus', title: 'Open a document', 'aria-label': 'Open a document', html: A.icon('plus') });
+    plus.addEventListener('click', () => openMenu(plus));
+    tabsEl.append(plus);
+    // body
+    if (view && view.detach) view.detach();
+    bodyEl.innerHTML = '';
+    if (doc.studyActive === 'ai') { view = null; A.AI.mount(bodyEl); }
+    else {
+      const meta = ST.doc(doc.studyActive);
+      let v = views.get(meta.id);
+      if (!v) { v = new DocView(meta); views.set(meta.id, v); }
+      view = v;
+      v.attach(bodyEl);
+    }
+  }
+  ST.renderTabs = renderTabs;
+
+  function openMenu(anchor) {
+    const box = h('div', { class: 'menu doc-menu' });
+    const it = (icon, label, fn) => { const b = h('button', { onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); box.append(b); };
+    it('pdf', 'Import PDF or photo…', async () => { const f = await ST.pickFile(); if (!f) return; const m = await ST.importFile(f); if (m) ST.openDoc(m.id); });
+    const subj = D.doc.subject;
+    const docs = ST.docs().slice().sort((a, b) => (b.subject === subj) - (a.subject === subj) || b.added - a.added);
+    if (docs.length) box.append(h('hr'), h('div', { class: 'sub' }, 'Library'));
+    docs.slice(0, 30).forEach((m) => {
+      const b = h('button', { onclick: () => { A.closePopovers(); ST.openDoc(m.id); } });
+      b.innerHTML = A.icon(m.type === 'pdf' ? 'pdf' : 'image');
+      b.append(h('span', { class: 'grow' }, m.name), m.subject ? h('i', { class: 'dot', style: { background: A.SU.color(m.subject) } }) : '');
+      box.append(b);
+    });
+    A.popover(box, anchor, { side: 'down' });
+  }
+
+  /* ---------- document viewer ---------- */
+  class DocView {
+    constructor(meta) {
+      this.meta = meta;
+      this.zoom = 1;
+      this.page = meta.lastPage || 1;
+      this.el = h('div', { class: 'docview' });
+      this.bar = h('div', { class: 'dv-bar' });
+      this.scroller = h('div', { class: 'dv-scroll' });
+      this.inner = h('div', { class: 'dv-inner' });
+      this.scroller.append(this.inner);
+      this.el.append(this.bar, this.scroller);
+      this.pages = [];
+      this.ready = this.init();
+    }
+    attach(parent) {
+      parent.append(this.el);
+      this.ready.then(() => { this.layout(true); });
+    }
+    detach() { this.meta.lastPage = this.page; ST.updateDoc(this.meta.id, { lastPage: this.page }); }
+    async init() {
+      const m = this.meta;
+      const pageLbl = h('input', { class: 'dv-page num', id: 'dv-page-' + m.id, value: String(this.page), inputmode: 'numeric', 'aria-label': 'Page' });
+      this.pageLbl = pageLbl;
+      this.countLbl = h('span', { class: 'muted small num' }, '');
+      pageLbl.addEventListener('change', () => this.goto(parseInt(pageLbl.value, 10) || 1));
+      const ib = (icon, title, fn) => { const b = h('button', { class: 'ibtn', title, 'aria-label': title, html: A.icon(icon) }); b.addEventListener('click', fn); return b; };
+      this.bar.append(
+        m.type === 'pdf' ? h('div', { class: 'row', style: { gap: '4px' } }, ib('chevup', 'Previous page', () => this.goto(this.page - 1)), pageLbl, this.countLbl, ib('chevdown', 'Next page', () => this.goto(this.page + 1))) : h('span', { class: 'muted small' }, 'Photo'),
+        h('div', { class: 'grow' }),
+        ib('minus', 'Zoom out', () => this.setZoom(this.zoom / 1.25)),
+        ib('plus', 'Zoom in', () => this.setZoom(this.zoom * 1.25)),
+        ib('spark', 'Ask the tutor about this page', () => this.askTutor()),
+        ib('more', 'More', (e) => this.more(e.currentTarget)));
+      if (m.type === 'image') {
+        const blob = await A.store.loadFile('doc_' + m.id, m.mime || 'image/jpeg');
+        this.imgUrl = blob ? URL.createObjectURL(blob) : '';
+        const img = h('img', { src: this.imgUrl, class: 'dv-img', alt: m.name });
+        this.inner.append(img);
+        this.imgEl = img;
+        return;
+      }
+      try {
+        this.pdf = await ST.loadPdf(m);
+      } catch (e) {
+        this.inner.append(h('p', { class: 'muted', style: { padding: '20px' } }, 'This PDF could not be opened. ' + (navigator.onLine ? '' : 'You may need to be online the first time.')));
+        return;
+      }
+      const n = this.pdf.numPages;
+      this.countLbl.textContent = '/ ' + n;
+      const p1 = await this.pdf.getPage(1);
+      const vp = p1.getViewport({ scale: 1 });
+      this.aspect = vp.height / vp.width;
+      for (let i = 1; i <= n; i++) {
+        const d = h('div', { class: 'dv-pg', dataset: { n: i } }, h('span', { class: 'dv-pgnum num' }, String(i)));
+        this.inner.append(d);
+        this.pages.push({ el: d, n: i, canvas: null, scale: 0, aspect: this.aspect });
+      }
+      this.io = new IntersectionObserver((ents) => ents.forEach((en) => { const p = this.pages[+en.target.dataset.n - 1]; p.visible = en.isIntersecting; if (en.isIntersecting) this.renderPage(p); }), { root: this.scroller, rootMargin: '800px 0px' });
+      this.pages.forEach((p) => this.io.observe(p.el));
+      this.scroller.addEventListener('scroll', () => this.onScroll(), { passive: true });
+      this.bindPinch();
+    }
+    width() { return Math.max(200, (this.scroller.clientWidth || 400) - 24) * this.zoom; }
+    layout(restore) {
+      if (this.imgEl) { this.imgEl.style.width = this.width() + 'px'; return; }
+      if (!this.pages.length) return;
+      const w = this.width();
+      this.inner.style.width = w + 'px';
+      this.pages.forEach((p) => { p.el.style.width = w + 'px'; p.el.style.height = Math.round(w * p.aspect) + 'px'; if (p.canvas && Math.abs(p.scale - w) > 2) { p.canvas.remove(); p.canvas = null; if (p.visible) this.renderPage(p); } });
+      if (restore) requestAnimationFrame(() => this.goto(this.page, true));
+    }
+    setZoom(z) {
+      const frac = this.scroller.scrollTop / Math.max(1, this.scroller.scrollHeight);
+      this.zoom = A.clamp(z, 0.5, 4);
+      this.layout(false);
+      this.scroller.scrollTop = frac * this.scroller.scrollHeight;
+    }
+    async renderPage(p) {
+      if (!this.pdf || p.busy) return;
+      const w = this.width();
+      if (p.canvas && Math.abs(p.scale - w) < 2) return;
+      p.busy = true;
+      try {
+        const page = await this.pdf.getPage(p.n);
+        const vp1 = page.getViewport({ scale: 1 });
+        p.aspect = vp1.height / vp1.width;
+        p.el.style.height = Math.round(w * p.aspect) + 'px';
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const vp = page.getViewport({ scale: (w / vp1.width) * dpr });
+        const c = h('canvas', { class: 'dv-canvas' });
+        c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+        const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+        await page.render({ canvasContext: ctx, viewport: vp }).promise;
+        if (p.canvas) p.canvas.remove();
+        p.canvas = c; p.scale = w;
+        p.el.append(c);
+        // free far-away pages
+        const near = this.page;
+        this.pages.forEach((q) => { if (q.canvas && Math.abs(q.n - near) > 6) { q.canvas.remove(); q.canvas = null; } });
+      } catch (e) { /* page render failed; keep placeholder */ }
+      p.busy = false;
+    }
+    onScroll() {
+      const mid = this.scroller.scrollTop + this.scroller.clientHeight * 0.35;
+      let n = 1;
+      for (const p of this.pages) { if (p.el.offsetTop <= mid) n = p.n; else break; }
+      if (n !== this.page) { this.page = n; this.pageLbl.value = String(n); clearTimeout(this._st); this._st = setTimeout(() => ST.updateDoc(this.meta.id, { lastPage: n }), 500); }
+    }
+    goto(n, instant) {
+      if (!this.pages.length) return;
+      n = A.clamp(n, 1, this.pages.length);
+      this.page = n; this.pageLbl.value = String(n);
+      this.scroller.scrollTo({ top: this.pages[n - 1].el.offsetTop - 8, behavior: instant ? 'auto' : 'smooth' });
+    }
+    bindPinch() {
+      const pts = new Map(); let d0 = 0, z0 = 1;
+      this.scroller.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'touch') return; pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 2) { const [a, b] = [...pts.values()]; d0 = Math.hypot(a[0] - b[0], a[1] - b[1]); z0 = this.zoom; } });
+      this.scroller.addEventListener('pointermove', (e) => {
+        if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, [e.clientX, e.clientY]);
+        if (pts.size === 2 && d0) { const [a, b] = [...pts.values()]; const k = Math.hypot(a[0] - b[0], a[1] - b[1]) / d0; this.inner.style.transformOrigin = 'top center'; this.inner.style.transform = `scale(${A.clamp(z0 * k, 0.5, 4) / this.zoom})`; this._pz = A.clamp(z0 * k, 0.5, 4); }
+      });
+      const end = (e) => { pts.delete(e.pointerId); if (pts.size < 2 && this._pz) { this.inner.style.transform = ''; this.setZoom(this._pz); this._pz = 0; d0 = 0; } };
+      this.scroller.addEventListener('pointerup', end); this.scroller.addEventListener('pointercancel', end);
+    }
+    async pageImage(scale = 1.6) {
+      if (this.meta.type === 'image') return blobToJpeg(await A.store.loadFile('doc_' + this.meta.id, this.meta.mime), 1600);
+      const r = await ST.renderPage(this.meta, this.page, scale);
+      return r.url;
+    }
+    async askTutor() {
+      const url = await this.pageImage();
+      A.AI.attach({ kind: 'image', label: this.meta.type === 'pdf' ? `${this.meta.name} · p. ${this.page}` : this.meta.name, url });
+      ST.showTutor();
+    }
+    more(anchor) {
+      const box = h('div', { class: 'menu' });
+      const it = (icon, label, fn) => { const b = h('button', { onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); box.append(b); };
+      it('image', 'Put this page on the canvas', async () => {
+        if (this.meta.type === 'pdf') { const r = await ST.renderPage(this.meta, this.page, 2); A.UI.placeImage(r.url, r.canvas.width, r.canvas.height, { width: r.w1 * (96 / 72) }); }
+        else { const url = await this.pageImage(); const im = new Image(); im.onload = () => A.UI.placeImage(url, im.naturalWidth, im.naturalHeight); im.src = url; }
+        A.toast('Page placed on the canvas: write on it with the Pencil');
+      });
+      if (this.meta.type === 'pdf') it('layers', 'Import all pages to annotate', async () => {
+        const blob = await A.store.loadFile('doc_' + this.meta.id, 'application/pdf');
+        A.UI.importPdf(new File([blob], this.meta.name + '.pdf', { type: 'application/pdf' }));
+      });
+      if (this.meta.type === 'pdf') it('spark', 'Give the whole document to the tutor', async () => {
+        if (this.meta.size > 30e6) return A.toast('This PDF is too large to send whole. Ask about single pages instead.');
+        const blob = await A.store.loadFile('doc_' + this.meta.id, 'application/pdf');
+        const b64 = await blobToB64(blob);
+        A.AI.attach({ kind: 'pdf', label: this.meta.name + ' (whole PDF)', b64 });
+        ST.showTutor();
+      });
+      it('moveto', 'Course: ' + (A.SU.name(this.meta.subject) || 'none'), () => A.SU.pickMenu(anchor, this.meta.subject, (sid) => { ST.updateDoc(this.meta.id, { subject: sid }); A.emit('documents'); }));
+      it('rename', 'Rename', async () => { const n = await A.dialog({ title: 'Rename document', input: this.meta.name, okText: 'Rename' }); if (n) { ST.updateDoc(this.meta.id, { name: n.slice(0, 80) }); renderTabs(); } });
+      A.popover(box, anchor, { side: 'down' });
+    }
+  }
+  const blobToB64 = (blob) => new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.readAsDataURL(blob); });
+  const blobToJpeg = (blob, max) => new Promise((res) => {
+    const url = URL.createObjectURL(blob); const im = new Image();
+    im.onload = () => { const k = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight)); const c = h('canvas'); c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.86)); };
+    im.onerror = () => res(null); im.src = url;
+  });
+  ST.blobToB64 = blobToB64;
+
+  /* current page of the most recent document tab (for tutor context) */
+  ST.currentPage = async () => {
+    const m = ST.activeDoc();
+    if (!m) return null;
+    let v = views.get(m.id);
+    if (!v) { v = new DocView(m); views.set(m.id, v); await v.ready; }
+    const url = await v.pageImage();
+    return url ? { kind: 'image', label: m.type === 'pdf' ? `${m.name} · p. ${v.page}` : m.name, url } : null;
+  };
+
+  ST.mount = (el) => {
+    host = el;
+    const grip = h('div', { class: 'sp-grip', title: 'Drag to resize' });
+    bindResize(grip);
+    tabsEl = h('div', { class: 'sp-tabs', role: 'tablist' });
+    const close = h('button', { class: 'ibtn', title: 'Close panel', 'aria-label': 'Close study panel', html: A.icon('close'), onclick: () => ST.toggle(false) });
+    bodyEl = h('div', { class: 'sp-body' });
+    host.append(grip, h('div', { class: 'sp-head' }, tabsEl, close), bodyEl);
+    addEventListener('resize', () => { if (ST.isOpen()) { applyWidth(); if (view) view.layout(false); } });
+    A.on('doc:open', () => {
+      views.clear();
+      const open = !!(D.doc && D.doc.studyOpen);
+      cv().classList.toggle('split', open);
+      host.hidden = !open;
+      const b = A.$('#btn-study'); if (b) b.classList.toggle('on', open);
+      applyWidth();
+      R.resize(); R.render(); // the stage width depends on the panel
+      if (open) renderTabs();
+      if (ST.pendingDoc && ST.doc(ST.pendingDoc)) { const id = ST.pendingDoc; ST.pendingDoc = null; setTimeout(() => ST.openDoc(id), 50); }
+    });
+    A.on('go:gallery', () => { if (view && view.detach) view.detach(); });
+  };
+})();
+
+/* ---- ai.js ---- */
+/* Axiom tutor: Claude inside the study panel. Sees your canvas, selections and document pages on request. */
+'use strict';
+(() => {
+  const D = A.D, R = A.R, h = A.h;
+  const S = A.settings;
+  const AI = (A.AI = {});
+  const SDK_URL = 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.133.0/+esm';
+  const KATEX = 'https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/';
+
+  AI.models = [
+    { id: 'claude-opus-5-5', name: 'Opus 5.5', note: 'Most capable' },
+    { id: 'claude-sonnet-5-5', name: 'Sonnet 5.5', note: 'Faster, lower cost' },
+    { id: 'claude-haiku-5-5', name: 'Haiku 5.5', note: 'Quick answers' },
+  ];
+  AI.modes = [
+    { id: 'explain', name: 'Explain', effort: 'medium' },
+    { id: 'hint', name: 'Hint', effort: 'low' },
+    { id: 'check', name: 'Check my work', effort: 'high' },
+    { id: 'quiz', name: 'Quiz me', effort: 'medium' },
+  ];
+  const MODE_TEXT = {
+    explain: 'Mode: EXPLAIN. Explain clearly and rigorously. Give intuition, then the precise definitions and argument. End by checking understanding with one short question when it helps.',
+    hint: 'Mode: HINT (guided learning). Do not give the full solution or the final answer. Give the smallest useful next hint or a guiding question, and let the student do the work. Reveal more only when the student asks for it.',
+    check: 'Mode: CHECK MY WORK. Read the student\'s handwritten work in the attached images and check it step by step against the problem (and the official solution if one is attached). Say which steps are correct. For the first error, quote the line, explain exactly why it is wrong and how to fix it. Do not rewrite the whole solution unless asked.',
+    quiz: 'Mode: QUIZ. Ask one question at a time about the current material, wait for the student\'s answer, then give precise feedback and the next question. Increase difficulty gradually.',
+  };
+
+  /* ---------- lazy libraries ---------- */
+  let sdkP = null, katexP = null;
+  const sdk = () => (sdkP = sdkP || import(SDK_URL).then((m) => m.default || m.Anthropic));
+  const katex = () => {
+    if (katexP) return katexP;
+    katexP = new Promise((res) => {
+      const css = h('link', { rel: 'stylesheet', href: KATEX + 'katex.min.css' });
+      document.head.append(css);
+      const s = h('script', { src: KATEX + 'katex.min.js' });
+      s.onload = () => res(window.katex); s.onerror = () => res(null);
+      document.head.append(s);
+    });
+    return katexP;
+  };
+
+  /* ---------- markdown + math ---------- */
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  AI.md = (src, kx) => {
+    const math = [];
+    const keep = (tex, display) => { math.push({ tex, display }); return `\u0000${math.length - 1}\u0000`; };
+    let s = String(src || '');
+    const code = [];
+    s = s.replace(/```([\w-]*)\n?([\s\S]*?)(```|$)/g, (_, lang, body) => { code.push(body); return `\u0001${code.length - 1}\u0001`; });
+    s = s.replace(/\$\$([\s\S]+?)\$\$/g, (_, t) => keep(t, true))
+      .replace(/\\\[([\s\S]+?)\\\]/g, (_, t) => keep(t, true))
+      .replace(/\\\(([\s\S]+?)\\\)/g, (_, t) => keep(t, false))
+      .replace(/(^|[^\\$])\$([^\s$](?:[^$\n]*?[^\s$])?)\$(?!\d)/g, (_, pre, t) => pre + keep(t, false));
+    s = esc(s);
+    const inline = (t) => t
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/(^|[^*])\*([^*\s][^*]*?)\*/g, '$1<em>$2</em>')
+      .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    const lines = s.split('\n');
+    const out = [];
+    let list = null, para = [];
+    const flushP = () => { if (para.length) { out.push('<p>' + inline(para.join(' ')) + '</p>'); para = []; } };
+    const flushL = () => { if (list) { out.push(`<${list.t}>` + list.items.map((i) => '<li>' + inline(i) + '</li>').join('') + `</${list.t}>`); list = null; } };
+    for (const raw of lines) {
+      const line = raw.trimEnd();
+      let m;
+      if (!line.trim()) { flushP(); flushL(); continue; }
+      if ((m = line.match(/^(#{1,4})\s+(.*)$/))) { flushP(); flushL(); const n = Math.min(4, m[1].length + 2); out.push(`<h${n}>${inline(m[2])}</h${n}>`); continue; }
+      if ((m = line.match(/^\s*[-*•]\s+(.*)$/))) { flushP(); if (!list || list.t !== 'ul') { flushL(); list = { t: 'ul', items: [] }; } list.items.push(m[1]); continue; }
+      if ((m = line.match(/^\s*\d+[.)]\s+(.*)$/))) { flushP(); if (!list || list.t !== 'ol') { flushL(); list = { t: 'ol', items: [] }; } list.items.push(m[1]); continue; }
+      if (/^\s*---+\s*$/.test(line)) { flushP(); flushL(); out.push('<hr>'); continue; }
+      if (list && /^\s{2,}\S/.test(raw)) { list.items[list.items.length - 1] += ' ' + line.trim(); continue; }
+      flushL(); para.push(line);
+    }
+    flushP(); flushL();
+    let html = out.join('');
+    html = html.replace(/\u0001(\d+)\u0001/g, (_, i) => '<pre><code>' + esc(code[+i]) + '</code></pre>');
+    html = html.replace(/\u0000(\d+)\u0000/g, (_, i) => {
+      const { tex, display } = math[+i];
+      if (kx) { try { return kx.renderToString(tex, { displayMode: display, throwOnError: false, strict: 'ignore' }); } catch (e) { /* fall through */ } }
+      return display ? `<div class="mathraw">${esc(tex)}</div>` : `<code class="mathraw">${esc(tex)}</code>`;
+    });
+    return html;
+  };
+
+  /* ---------- snapshots ---------- */
+  const regionShot = (bb, onlyIds, maxPx = 1500) => {
+    const w = bb[2] - bb[0], hh = bb[3] - bb[1];
+    const scale = Math.min(3, maxPx / Math.max(w, hh));
+    const c = R.renderRegion(D.doc, bb, scale, { bg: true, grid: false, onlyIds });
+    return c.toDataURL('image/jpeg', 0.86);
+  };
+  AI.shotCanvas = () => ({ kind: 'image', label: 'Canvas view', url: regionShot(R.visibleBB(), null) });
+  AI.shotSelection = () => {
+    if (!R.sel.size || !A.SEL.box) return null;
+    const p = 20 / D.doc.view.zoom, b = A.SEL.box;
+    return { kind: 'image', label: `Selection (${R.sel.size})`, url: regionShot([b[0] - p, b[1] - p, b[2] + p, b[3] + p], new Set(R.sel)) };
+  };
+  const shrink = (url, max = 900) => new Promise((res) => {
+    const im = new Image();
+    im.onload = () => { const k = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight)); const c = h('canvas'); c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', 0.82)); };
+    im.onerror = () => res(url); im.src = url;
+  });
+
+  /* ---------- conversation state (saved with the drawing) ---------- */
+  AI.pending = [];
+  const sessionPdf = new Map(); // attachment id -> base64, kept in memory only
+  let mode = 'explain', busy = false, root = null, abortCtl = null;
+  const chats = () => { if (!D.doc.chats) D.doc.chats = []; return D.doc.chats; };
+  const chat = () => {
+    let c = chats().find((x) => x.id === D.doc.chatActive);
+    if (!c) { c = { id: A.uid(), title: 'New conversation', created: Date.now(), msgs: [] }; chats().push(c); D.doc.chatActive = c.id; }
+    return c;
+  };
+  AI.attach = (att) => { if (!att) return; att.id = att.id || A.uid(); AI.pending.push(att); if (root) drawChips(); };
+
+  /* ---------- UI ---------- */
+  let els = {};
+  AI.mount = (container) => {
+    root = h('div', { class: 'tutor' });
+    container.append(root);
+    katex();
+    draw();
+  };
+  const draw = () => {
+    if (!root) return;
+    root.innerHTML = '';
+    if (!S.aiKey) { root.append(setupCard()); return; }
+    const c = chat();
+    const convBtn = h('button', { class: 'conv-btn', title: 'Conversations' }, h('span', { class: 'grow' }, c.title), A.iconEl('chevdown'));
+    convBtn.addEventListener('click', () => convMenu(convBtn));
+    const modeSeg = h('div', { class: 'seg mode-seg' });
+    AI.modes.forEach((m) => modeSeg.append(h('button', { class: m.id === mode ? 'on' : '', onclick: () => { mode = m.id; draw(); } }, m.name)));
+    const model = h('select', { class: 'model-sel', id: 'ai-model', 'aria-label': 'Model' }, ...AI.models.map((m) => h('option', { value: m.id, selected: S.aiModel === m.id }, m.name)));
+    model.addEventListener('change', () => { S.aiModel = model.value; A.saveSettings(); });
+    const list = h('div', { class: 'msgs', 'aria-live': 'polite' });
+    els.list = list;
+    if (!c.msgs.length) list.append(emptyState());
+    c.msgs.forEach((m) => list.append(msgEl(m)));
+    const chipsRow = h('div', { class: 'att-row' });
+    els.chips = chipsRow;
+    const ta = h('textarea', { class: 'composer-in', id: 'ai-input', rows: 1, placeholder: mode === 'check' ? 'What should I check? (your canvas is attached)' : 'Ask about your work, a page, or a concept…' });
+    els.ta = ta;
+    const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(180, ta.scrollHeight) + 'px'; };
+    ta.addEventListener('input', grow);
+    ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); } });
+    const sendBtn = h('button', { class: 'send-btn', 'aria-label': busy ? 'Stop' : 'Send', html: A.icon(busy ? 'close' : 'send') });
+    sendBtn.addEventListener('click', () => (busy ? stop() : send()));
+    els.send = sendBtn;
+    root.append(h('div', { class: 'tutor-head' }, convBtn, model), modeSeg, list, h('div', { class: 'composer' }, chipsRow, h('div', { class: 'composer-row' }, ta, sendBtn)));
+    drawChips();
+    requestAnimationFrame(() => { list.scrollTop = list.scrollHeight; });
+  };
+  const emptyState = () => {
+    const subj = A.SU.name(D.doc.subject);
+    return h('div', { class: 'tutor-empty' },
+      h('div', { class: 'te-mark', html: A.icon('spark') }),
+      h('h4', null, subj ? `Tutor for ${subj}` : 'Your tutor'),
+      h('p', null, 'Ask about a concept, a page of your PDF, or your own handwritten solution. Add your canvas, a selection or the current page with the buttons below, so you never need screenshots.'),
+      h('div', { class: 'te-tips' },
+        ...['Check my solution on the canvas', 'Give me a hint for this problem, not the answer', 'Explain this page more rigorously', 'Quiz me on what I just read'].map((t) => h('button', { class: 'chip ghost', onclick: () => { if (/check/i.test(t)) mode = 'check'; else if (/hint/i.test(t)) mode = 'hint'; else if (/quiz/i.test(t)) mode = 'quiz'; else mode = 'explain'; draw(); els.ta.value = t; els.ta.focus(); } }, t))));
+  };
+  const drawChips = () => {
+    const row = els.chips;
+    if (!row) return;
+    row.innerHTML = '';
+    AI.pending.forEach((a) => {
+      const chip = h('span', { class: 'att-chip' }, a.url ? h('img', { src: a.url, alt: '' }) : A.iconEl('pdf'), h('span', { class: 'att-l' }, a.label),
+        h('button', { class: 'chip-x', 'aria-label': 'Remove ' + a.label, html: A.icon('close'), onclick: () => { AI.pending = AI.pending.filter((x) => x !== a); drawChips(); } }));
+      row.append(chip);
+    });
+    const add = (icon, label, fn) => row.append(h('button', { class: 'att-add', onclick: fn }, A.iconEl(icon), label));
+    add('image', 'Canvas', () => AI.attach(AI.shotCanvas()));
+    if (R.sel.size) add('selectall', 'Selection', () => AI.attach(AI.shotSelection()));
+    if (A.ST.activeDoc()) add('pdf', 'Current page', async () => AI.attach(await A.ST.currentPage()));
+    add('import', 'Photo', async () => {
+      const f = await A.ST.pickFile('image/*');
+      if (!f) return;
+      const url = await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(f); });
+      AI.attach({ kind: 'image', label: f.name.slice(0, 24), url: await shrink(url, 1600) });
+    });
+  };
+  const msgEl = (m) => {
+    if (m.role === 'user') {
+      const atts = (m.att || []).map((a) => (a.url ? h('img', { class: 'msg-img', src: a.url, alt: a.label, title: a.label }) : h('span', { class: 'att-chip small' }, A.iconEl('pdf'), a.label)));
+      return h('div', { class: 'msg user' }, atts.length ? h('div', { class: 'msg-atts' }, ...atts) : null, m.text ? h('div', { class: 'bubble' }, m.text) : null);
+    }
+    const body = h('div', { class: 'md' });
+    body.innerHTML = AI.md(m.text, window.katex);
+    if (!window.katex) katex().then((kx) => { if (kx) body.innerHTML = AI.md(m.text, kx); });
+    const el = h('div', { class: 'msg bot' + (m.error ? ' err' : '') }, body);
+    if (!m.error && m.text) {
+      const copy = h('button', { class: 'msg-act', title: 'Copy', html: A.icon('copy') });
+      copy.addEventListener('click', () => { navigator.clipboard && navigator.clipboard.writeText(m.text).then(() => A.toast('Copied'), () => {}); });
+      el.append(h('div', { class: 'msg-acts' }, copy));
+    }
+    return el;
+  };
+  const convMenu = (anchor) => {
+    const box = h('div', { class: 'menu' });
+    box.append(h('button', { onclick: () => { A.closePopovers(); const c = { id: A.uid(), title: 'New conversation', created: Date.now(), msgs: [] }; chats().push(c); D.doc.chatActive = c.id; D.changed('meta'); draw(); } }, A.iconEl('plus'), 'New conversation'));
+    if (chats().length) box.append(h('hr'));
+    chats().slice().reverse().forEach((c) => box.append(h('button', { class: c.id === D.doc.chatActive ? 'on' : '', onclick: () => { A.closePopovers(); D.doc.chatActive = c.id; draw(); } }, h('span', { class: 'grow' }, c.title), h('span', { class: 'muted small num' }, A.fmtDate(c.created)))));
+    if (chat().msgs.length) box.append(h('hr'), h('button', { class: 'danger', onclick: async () => {
+      A.closePopovers();
+      if (!(await A.dialog({ title: 'Delete this conversation?', okText: 'Delete', danger: true }))) return;
+      D.doc.chats = chats().filter((c) => c.id !== D.doc.chatActive); D.doc.chatActive = null; D.changed('meta'); draw();
+    } }, A.iconEl('trash'), 'Delete conversation'));
+    A.popover(box, anchor, { side: 'down' });
+  };
+  const setupCard = () => {
+    const inp = h('input', { class: 'field', id: 'ai-key', type: 'password', placeholder: 'sk-ant-…', autocomplete: 'off', spellcheck: 'false' });
+    const save = h('button', { class: 'btn primary', onclick: () => { const v = inp.value.trim(); if (!/^sk-ant-/.test(v)) return A.toast('That doesn\'t look like an Anthropic API key (it starts with sk-ant-)'); S.aiKey = v; A.saveSettings(); A.toast('Tutor connected'); draw(); } }, 'Connect');
+    return h('div', { class: 'tutor-setup' },
+      h('div', { class: 'te-mark', html: A.icon('spark') }),
+      h('h4', null, 'Connect the tutor'),
+      h('p', null, 'The tutor runs on Claude using your own Anthropic API key. You pay Anthropic directly for what you use. The key is stored only on this device.'),
+      h('ol', null, h('li', null, 'Go to console.anthropic.com, open API Keys and create a key.'), h('li', null, 'Paste it below.')),
+      inp, h('div', { class: 'row end' }, save),
+      h('p', { class: 'small muted' }, 'You can remove the key any time in Settings › Tutor.'));
+  };
+
+  /* ---------- request ---------- */
+  const systemPrompt = () => {
+    const majors = A.SU.majorNames();
+    const courses = A.SU.list().map((s) => s.name);
+    const cur = A.SU.name(D.doc.subject);
+    return [
+      'You are the tutor built into Axiom, an infinite-canvas notebook for university STEM students. The student writes and draws by hand with Apple Pencil.',
+      majors.length ? `The student studies: ${majors.join(', ')}.` : '',
+      courses.length ? `Their courses: ${courses.join(', ')}.` : '',
+      cur ? `They are working in the course "${cur}" right now.` : '',
+      'Attached images are snapshots of their handwritten canvas, a selection of it, photos, or pages from their problem sheets, solution sets and textbooks. If handwriting is ambiguous, say what you read before relying on it.',
+      'Use precise mathematical language. Do not replace arguments with analogies or metaphors unless the student asks for intuition. Be direct about mistakes and concise; no filler or praise.',
+      'Format with Markdown. Write all mathematics in LaTeX: $...$ inline and $$...$$ for display equations.',
+      MODE_TEXT[mode],
+    ].filter(Boolean).join('\n');
+  };
+  const toBlocks = (m, keepImages) => {
+    const blocks = [];
+    for (const a of m.att || []) {
+      if (a.kind === 'image' && a.url) {
+        if (keepImages.has(a.id)) blocks.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: a.url.split(',')[1] } });
+        else blocks.push({ type: 'text', text: `[Earlier image omitted: ${a.label}]` });
+      } else if (a.kind === 'pdf') {
+        const b64 = a.b64 || sessionPdf.get(a.id);
+        if (b64) blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 }, title: a.label });
+        else blocks.push({ type: 'text', text: `[The PDF "${a.label}" was attached earlier; re-attach it if you need its contents.]` });
+      }
+    }
+    blocks.push({ type: 'text', text: (m.att && m.att.length ? `(Attached: ${m.att.map((a) => a.label).join('; ')})\n\n` : '') + (m.text || '(no message)') });
+    return blocks;
+  };
+  const buildMessages = (c) => {
+    // keep only the 6 most recent images; older ones become notes
+    const ids = [];
+    c.msgs.forEach((m) => (m.att || []).forEach((a) => { if (a.kind === 'image' && a.url) ids.push(a.id); }));
+    const keep = new Set(ids.slice(-6));
+    const out = [];
+    for (const m of c.msgs.filter((x) => !x.error)) {
+      const msg = m.role === 'user' ? { role: 'user', content: toBlocks(m, keep) } : { role: 'assistant', content: [{ type: 'text', text: m.text || '…' }] };
+      const prev = out[out.length - 1];
+      if (prev && prev.role === msg.role) prev.content = prev.content.concat(msg.content); // e.g. after a failed reply
+      else out.push(msg);
+    }
+    return out;
+  };
+
+  async function send() {
+    if (busy) return;
+    const text = els.ta.value.trim();
+    if (!text && !AI.pending.length) return;
+    const c = chat();
+    const att = AI.pending.slice();
+    if (mode === 'check' && !att.some((a) => a.kind === 'image')) att.unshift(AI.shotCanvas()); // checking needs to see the work
+    att.forEach((a) => { a.id = a.id || A.uid(); if (a.kind === 'pdf' && a.b64) sessionPdf.set(a.id, a.b64); });
+    AI.pending = [];
+    const um = { role: 'user', text, att: att.map((a) => ({ id: a.id, kind: a.kind, label: a.label, url: a.url })), t: Date.now() };
+    c.msgs.push(um);
+    if (c.title === 'New conversation') c.title = (text || att[0].label).slice(0, 48);
+    const bm = { role: 'assistant', text: '', t: Date.now() };
+    c.msgs.push(bm);
+    busy = true;
+    draw();
+    const botEl = els.list.lastElementChild;
+    const body = botEl.querySelector('.md');
+    body.innerHTML = '<span class="thinking">Thinking<i>.</i><i>.</i><i>.</i></span>';
+    let raf = 0;
+    const paint = () => { raf = 0; body.innerHTML = AI.md(bm.text, window.katex); if (els.list.scrollHeight - els.list.scrollTop - els.list.clientHeight < 160) els.list.scrollTop = els.list.scrollHeight; };
+    try {
+      const Anthropic = await sdk();
+      const client = new Anthropic({ apiKey: S.aiKey, dangerouslyAllowBrowser: true });
+      const modelId = S.aiModel || 'claude-opus-5-5';
+      const effort = (AI.modes.find((m) => m.id === mode) || {}).effort || 'medium';
+      const params = {
+        model: modelId,
+        max_tokens: 64000,
+        system: systemPrompt(),
+        messages: buildMessages({ msgs: c.msgs.slice(0, -1) }), // without the empty reply placeholder
+        output_config: { effort },
+        cache_control: { type: 'ephemeral' },
+      };
+      if (modelId !== 'claude-haiku-5-5') { params.betas = ['server-side-fallback-2026-07-01']; params.fallbacks = 'default'; }
+      abortCtl = new AbortController();
+      const stream = client.beta.messages.stream(params, { signal: abortCtl.signal });
+      for await (const ev of stream) {
+        if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta') {
+          bm.text += ev.delta.text;
+          if (!raf) raf = requestAnimationFrame(paint);
+        }
+      }
+      const final = await stream.finalMessage();
+      if (final.stop_reason === 'refusal') bm.text += (bm.text ? '\n\n' : '') + '_The tutor declined to answer this request._';
+      if (final.stop_reason === 'max_tokens') bm.text += '\n\n_(The answer was cut off. Ask the tutor to continue.)_';
+      if (!bm.text.trim()) bm.text = '_No answer was returned. Try again._';
+    } catch (err) {
+      const Anthropic = await sdk().catch(() => null);
+      let msg = 'Something went wrong: ' + (err && err.message ? err.message : err);
+      if (err && err.name === 'AbortError' || (Anthropic && err instanceof Anthropic.APIUserAbortError)) msg = bm.text ? '' : '_Stopped._';
+      else if (Anthropic && err instanceof Anthropic.AuthenticationError) msg = 'Your API key was rejected. Check it in Settings › Tutor.';
+      else if (Anthropic && err instanceof Anthropic.PermissionDeniedError) msg = 'This API key does not have access to that model. Pick another model or check your Anthropic account.';
+      else if (Anthropic && err instanceof Anthropic.RateLimitError) msg = 'You have hit your API rate limit. Wait a moment and try again.';
+      else if (Anthropic && err instanceof Anthropic.BadRequestError) msg = 'The request was rejected: ' + (err.message || '') + (/too large|size/i.test(err.message || '') ? ' Try attaching fewer or smaller pages.' : '');
+      else if (Anthropic && err instanceof Anthropic.InternalServerError) msg = 'Anthropic\'s servers had a problem (or are overloaded). Try again in a moment.';
+      else if (Anthropic && err instanceof Anthropic.APIConnectionError || !navigator.onLine) msg = 'The tutor needs an internet connection.';
+      if (msg) { if (bm.text) bm.text += '\n\n' + msg; else { bm.text = msg; bm.error = true; } }
+    }
+    busy = false; abortCtl = null;
+    // keep history light: store smaller copies of images
+    for (const a of um.att) if (a.url) a.url = await shrink(a.url, 900);
+    D.changed('meta');
+    draw();
+  }
+  function stop() { if (abortCtl) abortCtl.abort(); }
+
+  A.on('doc:open', () => { AI.pending = []; sessionPdf.clear(); mode = 'explain'; });
+  A.on('selection', () => { if (root && root.isConnected && els.chips) drawChips(); });
+})();
+
 /* ---- ui-gallery.js ---- */
-/* Axiom gallery: drawings grid, search/sort, new drawing sheet with paper templates, file import */
+/* Axiom gallery: courses sidebar, drawings grid, documents library, new drawing sheet, file import */
 'use strict';
 (() => {
   const D = A.D, R = A.R, h = A.h;
@@ -4972,15 +6556,16 @@ A.fmtDate = (t) => {
     R.drawGrid(ctx, [1, 0, 0, 1, 0, 0], W, H, paper, { dpr: 1 });
   };
 
-  UI.newDrawingSheet = () => new Promise((res) => {
-    const st = { t: UI.templates[1], bg: D.papers.white, name: 'Untitled' };
+  UI.newDrawingSheet = (opts = {}) => new Promise((res) => {
+    const st = { t: UI.templates[1], bg: D.papers.white, name: opts.name || 'Untitled', subject: opts.subject ?? (S.galleryFilter && S.galleryFilter !== 'all' && S.galleryFilter !== 'docs' && S.galleryFilter !== 'none' ? S.galleryFilter : null) };
     const back = h('div', { class: 'modal-back' });
     const close = (v) => { back.remove(); res(v); };
     const grid = h('div', { class: 'paper-grid' });
     const bgRow = h('div', { class: 'bg-row' });
+    const subjRow = h('div', { class: 'chips' });
     const nameIn = h('input', { class: 'field', id: 'new-name', value: st.name, autocomplete: 'off' });
     const draw = () => {
-      grid.innerHTML = ''; bgRow.innerHTML = '';
+      grid.innerHTML = ''; bgRow.innerHTML = ''; subjRow.innerHTML = '';
       UI.templates.forEach((t) => {
         const cv = h('canvas');
         const b = h('button', { class: 'paper-opt' + (t.id === st.t.id ? ' on' : ''), onclick: () => { st.t = t; draw(); } }, cv, t.name);
@@ -4991,13 +6576,17 @@ A.fmtDate = (t) => {
         class: c === st.bg && !st.t.bg ? 'on' : '', style: { background: c }, 'aria-label': k + ' paper', title: k,
         onclick: () => { st.bg = c; if (st.t.bg) st.t = UI.templates.find((x) => x.grid === st.t.grid && !x.bg) || UI.templates[2]; draw(); },
       })));
+      subjRow.append(h('button', { class: 'chip' + (!st.subject ? ' on' : ''), onclick: () => { st.subject = null; draw(); } }, 'No course'));
+      A.SU.list().forEach((s) => subjRow.append(h('button', { class: 'chip' + (st.subject === s.id ? ' on' : ''), onclick: () => { st.subject = s.id; draw(); } }, h('i', { class: 'dot', style: { background: s.color } }), s.name)));
+      subjRow.append(h('button', { class: 'chip ghost', onclick: async () => { const n = await A.dialog({ title: 'New course', input: '', okText: 'Add' }); const s = n && A.SU.add(n); if (s) { st.subject = s.id; draw(); } } }, '+ Course'));
     };
     draw();
-    const create = () => close({ name: nameIn.value.trim() || 'Untitled', t: st.t, bg: st.t.bg || st.bg });
+    const create = () => close({ name: nameIn.value.trim() || 'Untitled', t: st.t, bg: st.t.bg || st.bg, subject: st.subject });
     nameIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') create(); });
     back.append(h('div', { class: 'modal', role: 'dialog', 'aria-label': 'New drawing' },
       h('h3', null, 'New drawing'),
       h('h5', null, 'Name'), nameIn,
+      h('h5', null, 'Course'), subjRow,
       h('h5', null, 'Paper'), grid,
       h('h5', null, 'Background'), bgRow,
       h('div', { class: 'row end gap', style: { marginTop: '22px' } }, h('button', { class: 'btn', onclick: () => close(null) }, 'Cancel'), h('button', { class: 'btn primary', onclick: create }, 'Create'))));
@@ -5010,46 +6599,94 @@ A.fmtDate = (t) => {
     doc.paper.grid.spacing = r.t.spacing || 24;
     doc.paper.grid.divisions = r.t.divisions || 5;
     if (r.t.grid === 'none') { doc.paper.grid.type = 'dot'; doc.precision.grid = false; }
+    doc.subject = r.subject || null;
     return doc;
   };
 
+  /* ---------- gallery ---------- */
+  let onboarded = false;
   async function render() {
+    if (S.majors == null && !onboarded) { onboarded = true; setTimeout(async () => { await A.SU.openSetup(true); render(); }, 300); }
     const metas = (await A.store.listMeta()).filter(Boolean);
-    const sorters = {
-      updated: (a, b) => b.updated - a.updated,
-      created: (a, b) => b.created - a.created,
-      name: (a, b) => a.name.localeCompare(b.name),
-    };
-    metas.sort(sorters[S.sort] || sorters.updated);
-    const q = query.trim().toLowerCase();
-    const shown = q ? metas.filter((m) => m.name.toLowerCase().includes(q)) : metas;
+    const docs = A.ST.docs();
+    const filter = S.galleryFilter || 'all';
     host.innerHTML = '';
-    const search = h('input', { type: 'search', id: 'g-search', placeholder: 'Search drawings', value: query, 'aria-label': 'Search drawings' });
-    search.addEventListener('input', () => { query = search.value; renderGrid(); });
+    const count = (fn) => metas.filter(fn).length;
+
+    // sidebar
+    const side = h('nav', { class: 'g-side', 'aria-label': 'Courses' });
+    const item = (id, label, n, dotColor, icon) => {
+      const b = h('button', { class: 'g-nav' + (filter === id ? ' on' : ''), onclick: () => { S.galleryFilter = id; A.saveSettings(); render(); } },
+        dotColor ? h('i', { class: 'dot', style: { background: dotColor } }) : A.iconEl(icon || 'gallery'), h('span', { class: 'grow' }, label), h('span', { class: 'g-count num' }, String(n)));
+      if (dotColor) b.addEventListener('contextmenu', (e) => { e.preventDefault(); subjectMenu(b, id); });
+      return b;
+    };
+    side.append(item('all', 'All drawings', metas.length, null, 'gallery'), item('docs', 'Documents', docs.length, null, 'book'));
+    const coursesHead = h('div', { class: 'g-side-h' }, h('span', null, 'Courses'), h('button', { class: 'ibtn', title: 'Add a course', 'aria-label': 'Add a course', html: A.icon('plus'), onclick: async () => { const n = await A.dialog({ title: 'New course', input: '', okText: 'Add' }); if (n && A.SU.add(n)) render(); } }));
+    side.append(coursesHead);
+    A.SU.list().forEach((s) => {
+      const b = item(s.id, s.name, count((m) => m.subject === s.id), s.color);
+      const more = h('button', { class: 'g-more', 'aria-label': 'Options for ' + s.name, html: A.icon('more'), onclick: (e) => { e.stopPropagation(); subjectMenu(more, s.id); } });
+      b.append(more);
+      side.append(b);
+    });
+    if (!A.SU.list().length) side.append(h('button', { class: 'g-nav ghost', onclick: async () => { await A.SU.openSetup(); render(); } }, A.iconEl('plus'), 'Add your courses'));
+    const none = count((m) => !m.subject);
+    if (A.SU.list().length && none) side.append(item('none', 'No course', none, 'var(--line-strong)'));
+
+    // main
+    const main = h('main', { class: 'g-main' });
+    const search = h('input', { type: 'search', id: 'g-search', placeholder: filter === 'docs' ? 'Search documents' : 'Search drawings', value: query, 'aria-label': 'Search' });
     const sort = h('select', { class: 'field', id: 'g-sort', style: { margin: 0, width: 'auto', height: '40px' }, 'aria-label': 'Sort' },
       ...[['updated', 'Last edited'], ['created', 'Date created'], ['name', 'Name']].map(([v, l]) => h('option', { value: v, selected: S.sort === v }, l)));
     sort.addEventListener('change', () => { S.sort = sort.value; A.saveSettings(); render(); });
-    const importBtn = h('button', { class: 'btn', onclick: importProject }, A.iconEl('import'), 'Import');
+    const isDocs = filter === 'docs';
+    const importBtn = h('button', { class: 'btn', onclick: isDocs ? importDocs : importProject }, A.iconEl('import'), isDocs ? 'Add PDF or photo' : 'Import');
     const newBtn = h('button', { class: 'btn primary', id: 'g-new', onclick: newDrawing }, A.iconEl('plus'), 'New drawing');
-    const wrap = h('div', { class: 'g-wrap' },
+    const title = filter === 'all' ? 'All drawings' : filter === 'docs' ? 'Documents' : filter === 'none' ? 'No course' : A.SU.name(filter);
+    main.append(
       h('div', { class: 'g-top' },
         h('div', null, h('h1', { class: 'wordmark' }, 'Axiom', h('i', null, '.')), h('p', { class: 'g-sub' }, 'An infinite canvas for scientists and mathematicians')),
-        h('div', { class: 'g-actions' }, h('div', { class: 'g-search' }, A.iconEl('search'), search), sort, importBtn, newBtn)),
-      h('div', { class: 'g-bar' }, h('h2', null, `Drawings · ${metas.length}`)),
+        h('div', { class: 'g-actions' }, h('div', { class: 'g-search' }, A.iconEl('search'), search), isDocs ? null : sort, importBtn, newBtn)),
+      h('div', { class: 'g-bar' }, h('h2', null, title)),
       h('div', { class: 'g-grid', id: 'g-grid' }));
-    host.append(wrap);
+    host.append(h('div', { class: 'g-wrap g-layout' }, side, main));
+
+    const sorters = { updated: (a, b) => b.updated - a.updated, created: (a, b) => b.created - a.created, name: (a, b) => a.name.localeCompare(b.name) };
     const renderGrid = () => {
-      const qq = query.trim().toLowerCase();
-      const list = qq ? metas.filter((m) => m.name.toLowerCase().includes(qq)) : metas;
+      const q = query.trim().toLowerCase();
       const grid = A.$('#g-grid', host);
       grid.innerHTML = '';
-      const nc = h('button', { class: 'card new', onclick: newDrawing, 'aria-label': 'New drawing' }, h('span', { class: 'thumb', html: A.icon('plus') }), h('div', { class: 'meta' }, h('div', { class: 't' }, h('div', { class: 'name' }, 'New drawing'), h('div', { class: 'date' }, 'Choose a paper'))));
-      if (!qq) grid.append(nc);
+      if (isDocs) {
+        const list = docs.filter((d) => !q || d.name.toLowerCase().includes(q)).sort((a, b) => b.added - a.added);
+        list.forEach((d) => grid.append(docCard(d)));
+        if (!list.length) grid.append(h('div', { class: 'empty-note g-empty' }, h('p', null, q ? `No documents match “${query}”.` : 'Add problem sheets, solution sets, lecture notes and textbook chapters as PDFs or photos. Open them in the study panel beside your canvas, and the tutor can read them.'), q ? null : h('button', { class: 'btn primary', onclick: importDocs }, 'Add PDF or photo')));
+        return;
+      }
+      let list = metas.filter((m) => filter === 'all' || (filter === 'none' ? !m.subject : m.subject === filter));
+      list = list.filter((m) => !q || m.name.toLowerCase().includes(q)).sort(sorters[S.sort] || sorters.updated);
+      if (!q) grid.append(h('button', { class: 'card new', onclick: newDrawing, 'aria-label': 'New drawing' }, h('span', { class: 'thumb', html: A.icon('plus') }), h('div', { class: 'meta' }, h('div', { class: 't' }, h('div', { class: 'name' }, 'New drawing'), h('div', { class: 'date' }, 'Choose a paper')))));
       list.forEach((m) => grid.append(card(m)));
-      if (!list.length && qq) grid.append(h('p', { class: 'empty-note' }, `No drawings match “${query}”.`));
+      if (!list.length && q) grid.append(h('p', { class: 'empty-note' }, `No drawings match “${query}”.`));
     };
+    search.addEventListener('input', () => { query = search.value; renderGrid(); });
     renderGrid();
-    void shown;
+  }
+
+  function subjectMenu(anchor, id) {
+    const s = A.SU.get(id);
+    if (!s) return;
+    const box = h('div', { class: 'menu' });
+    box.append(h('div', { class: 'sub' }, s.name));
+    box.append(h('button', { onclick: async () => { A.closePopovers(); const n = await A.dialog({ title: 'Rename course', input: s.name, okText: 'Rename' }); if (n) { A.SU.rename(id, n); render(); } } }, A.iconEl('rename'), 'Rename'));
+    const colors = h('div', { class: 'bg-row', style: { padding: '6px 10px' } });
+    A.SU.colors.forEach((c) => colors.append(h('button', { class: c === s.color ? 'on' : '', style: { background: c, width: '28px', height: '28px' }, 'aria-label': 'Color', onclick: () => { s.color = c; A.saveSettings(); A.closePopovers(); render(); } })));
+    box.append(colors, h('hr'), h('button', { class: 'danger', onclick: async () => {
+      A.closePopovers();
+      if (!(await A.dialog({ title: `Remove the course “${s.name}”?`, body: 'Its drawings and documents stay; they just won\'t belong to a course.', okText: 'Remove', danger: true }))) return;
+      A.SU.remove(id); if (S.galleryFilter === id) S.galleryFilter = 'all'; render();
+    } }, A.iconEl('trash'), 'Remove course'));
+    A.popover(box, anchor, { side: 'down' });
   }
 
   function card(m) {
@@ -5058,7 +6695,9 @@ A.fmtDate = (t) => {
     const open = h('button', { class: 'card-open', style: { display: 'contents' }, onclick: () => A.emit('open', m.id), 'aria-label': 'Open ' + m.name }, thumb);
     const more = h('button', { class: 'ibtn', 'aria-label': 'More for ' + m.name, html: A.icon('more') });
     more.addEventListener('click', (e) => { e.stopPropagation(); cardMenu(m, more); });
-    const el = h('div', { class: 'card' }, open, h('div', { class: 'meta' }, h('div', { class: 't' }, h('div', { class: 'name' }, m.name), h('div', { class: 'date' }, A.fmtDate(m.updated))), more));
+    const subj = m.subject && A.SU.get(m.subject);
+    const el = h('div', { class: 'card' }, open, h('div', { class: 'meta' }, h('div', { class: 't' }, h('div', { class: 'name' }, m.name),
+      h('div', { class: 'date' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, (subj ? subj.name + ' · ' : '') + A.fmtDate(m.updated))), more));
     let lp;
     thumb.addEventListener('pointerdown', () => { lp = setTimeout(() => { lp = 'fired'; cardMenu(m, thumb); }, 550); });
     thumb.addEventListener('pointerup', () => { if (lp !== 'fired') clearTimeout(lp); });
@@ -5071,6 +6710,10 @@ A.fmtDate = (t) => {
     const box = h('div', { class: 'menu' });
     const it = (icon, label, fn, cls) => { const b = h('button', { class: cls || '', onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); box.append(b); };
     it('chev', 'Open', () => A.emit('open', m.id));
+    it('folder', 'Course: ' + (A.SU.name(m.subject) || 'none'), () => A.SU.pickMenu(anchor, m.subject, async (sid) => {
+      const doc = await A.store.loadDoc(m.id); if (!doc) return;
+      doc.subject = sid; await A.store.saveDoc(doc, m.thumb); render();
+    }));
     it('rename', 'Rename', async () => {
       const n = await A.dialog({ title: 'Rename drawing', input: m.name, okText: 'Rename' });
       if (!n || !n.trim()) return;
@@ -5098,6 +6741,49 @@ A.fmtDate = (t) => {
       if (ok) { await A.store.deleteDoc(m.id); render(); }
     }, 'danger');
     A.popover(box, anchor, { side: 'down' });
+  }
+
+  /* ---------- documents ---------- */
+  const fmtSize = (n) => (n > 1e6 ? (n / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1e3)) + ' KB');
+  function docCard(d) {
+    const subj = d.subject && A.SU.get(d.subject);
+    const thumb = h('span', { class: 'thumb doc-thumb' }, A.iconEl(d.type === 'pdf' ? 'pdf' : 'image'), h('span', { class: 'doc-kind' }, d.type === 'pdf' ? 'PDF' : 'Photo'));
+    const open = h('button', { class: 'card-open', style: { display: 'contents' }, onclick: () => studyDoc(d), 'aria-label': 'Study ' + d.name }, thumb);
+    const more = h('button', { class: 'ibtn', 'aria-label': 'More for ' + d.name, html: A.icon('more') });
+    more.addEventListener('click', (e) => { e.stopPropagation(); docMenu(d, more); });
+    return h('div', { class: 'card' }, open, h('div', { class: 'meta' }, h('div', { class: 't' }, h('div', { class: 'name' }, d.name),
+      h('div', { class: 'date' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, (subj ? subj.name + ' · ' : '') + fmtSize(d.size || 0) + (d.lastPage > 1 ? ' · p. ' + d.lastPage : ''))), more));
+  }
+  function docMenu(d, anchor) {
+    const box = h('div', { class: 'menu' });
+    const it = (icon, label, fn, cls) => { const b = h('button', { class: cls || '', onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); box.append(b); };
+    it('book', 'Study beside a drawing', () => studyDoc(d));
+    it('folder', 'Course: ' + (A.SU.name(d.subject) || 'none'), () => A.SU.pickMenu(anchor, d.subject, (sid) => { A.ST.updateDoc(d.id, { subject: sid }); render(); }));
+    it('rename', 'Rename', async () => { const n = await A.dialog({ title: 'Rename document', input: d.name, okText: 'Rename' }); if (n) { A.ST.updateDoc(d.id, { name: n.slice(0, 80) }); render(); } });
+    box.append(h('hr'));
+    it('trash', 'Delete', async () => { if (await A.dialog({ title: `Delete “${d.name}”?`, body: 'The file is removed from Axiom on this device.', okText: 'Delete', danger: true })) { await A.ST.deleteDoc(d.id); render(); } }, 'danger');
+    A.popover(box, anchor, { side: 'down' });
+  }
+  /* open the document next to the most recent drawing of its course (or a new one) */
+  async function studyDoc(d) {
+    const metas = (await A.store.listMeta()).filter(Boolean);
+    let target = metas.filter((m) => (d.subject ? m.subject === d.subject : true)).sort((a, b) => b.updated - a.updated)[0];
+    if (!target || !d.subject) {
+      const r = await UI.newDrawingSheet({ name: 'Notes · ' + d.name.slice(0, 40), subject: d.subject });
+      if (!r) return;
+      const doc = UI.createFromSheet(r);
+      await A.store.saveDoc(doc, null);
+      target = { id: doc.id };
+    }
+    A.ST.pendingDoc = d.id;
+    A.emit('open', target.id);
+  }
+  async function importDocs() {
+    const f = await A.ST.pickFile();
+    if (!f) return;
+    const sid = S.galleryFilter && !['all', 'docs', 'none'].includes(S.galleryFilter) ? S.galleryFilter : null;
+    await A.ST.importFile(f, sid);
+    render();
   }
 
   async function newDrawing() {
@@ -5132,7 +6818,7 @@ A.fmtDate = (t) => {
     render();
   };
 
-  UI.mountGallery = (el) => { host = el; };
+  UI.mountGallery = (el) => { host = el; A.on('subjects', () => { if (!host.hidden && !D.doc) render(); }); };
   UI.renderGallery = render;
 })();
 
@@ -5273,6 +6959,7 @@ A.fmtDate = (t) => {
     UI.mountPrecision(A.$('#precision'));
     UI.mountSelection(A.$('#selmenu'), A.$('#selpopup'));
     UI.mountGallery(A.$('#gallery-view'));
+    A.ST.mount(A.$('#studypanel'));
     A.$('#restore-ui').innerHTML = A.icon('eye');
     A.$('#restore-ui').addEventListener('click', () => A.emit('cmd', 'toggleUI'));
     A.on('selmenu:show', () => {});
