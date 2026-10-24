@@ -10,18 +10,161 @@
 
   D.newLayer = (name) => ({ id: A.uid(), name: name || 'Layer', visible: true, locked: false, opacity: 1, items: [] });
 
-  D.create = ({ name = 'Untitled', bg = D.papers.white, grid = 'dot' } = {}) => {
+  /* page formats (world units are CSS px at 96 dpi, so 1 mm = 3.7795 units) */
+  D.MM = 96 / 25.4;
+  D.formats = {
+    a4: { name: 'A4', w: 210, h: 297 }, letter: { name: 'US Letter', w: 215.9, h: 279.4 }, a5: { name: 'A5', w: 148, h: 210 },
+    a3: { name: 'A3', w: 297, h: 420 }, legal: { name: 'US Legal', w: 215.9, h: 355.6 }, square: { name: 'Square', w: 210, h: 210 },
+    wide: { name: '16:9 Slide', w: 338.7, h: 190.5 }, card: { name: 'Index card', w: 127, h: 76.2 },
+  };
+  D.formatSize = (fmt, orient = 'portrait') => {
+    const f = D.formats[fmt] || D.formats.a4;
+    const w = f.w * D.MM, h = f.h * D.MM;
+    return orient === 'landscape' ? [Math.max(w, h), Math.min(w, h)] : [Math.min(w, h), Math.max(w, h)];
+  };
+  D.PAGE_GAP = 28;
+
+  D.create = ({ name = 'Untitled', bg = D.papers.white, grid = 'dot', kind = 'canvas', page = null } = {}) => {
     const now = Date.now();
     const l = D.newLayer('Layer 1');
-    return {
-      id: A.uid(), name, created: now, updated: now, v: 1,
+    const doc = {
+      id: A.uid(), name, created: now, updated: now, v: 1, kind,
       layers: [l], activeLayerId: l.id, layerMode: 'manual', focusLayerId: null,
       view: { tx: 0, ty: 0, zoom: 1, rot: 0 },
       paper: { bg, grid: { type: grid, spacing: 24, divisions: 5, opacity: 1 } },
       precision: { grid: grid !== 'none', snap: false, snapMode: 'grid', connect: true, measure: false, units: 'mm', scale: 1, guide: false, guideType: 'line', recog: true },
       guides: {},
+      artboards: [],
     };
+    if (kind === 'notebook') {
+      doc.page = Object.assign({ size: 'a4', orient: 'portrait', template: 'lined', color: bg, scroll: 'vertical' }, page || {});
+      doc.paper.bg = doc.page.color;
+      doc.paper.grid.type = 'none';
+      doc.precision.grid = false;
+      doc.precision.recog = false;
+      doc.pages = [{ id: A.uid() }];
+    }
+    return doc;
   };
+
+  /* ---------- notebook pages ---------- */
+  D.isNotebook = (doc = D.doc) => !!doc && doc.kind === 'notebook';
+  D.pageSize = (doc = D.doc) => D.formatSize(doc.page.size, doc.page.orient);
+  D.pageRect = (doc, i) => {
+    const [w, h] = D.pageSize(doc);
+    return doc.page.scroll === 'horizontal' ? [i * (w + D.PAGE_GAP), 0, i * (w + D.PAGE_GAP) + w, h] : [0, i * (h + D.PAGE_GAP), w, i * (h + D.PAGE_GAP) + h];
+  };
+  D.pageRects = (doc = D.doc) => doc.pages.map((p, i) => D.pageRect(doc, i));
+  D.pagesBB = (doc = D.doc) => { const r = D.pageRects(doc); return [r[0][0], r[0][1], r[r.length - 1][2], r[r.length - 1][3]]; };
+  D.pageAt = (doc, x, y) => {
+    const [w, h] = D.pageSize(doc);
+    const horiz = doc.page.scroll === 'horizontal';
+    const i = Math.floor((horiz ? x : y) / ((horiz ? w : h) + D.PAGE_GAP));
+    return A.clamp(i, 0, doc.pages.length - 1);
+  };
+  D.pageTemplate = (doc, i) => (doc.pages[i] && doc.pages[i].template) || doc.page.template;
+  D.pageColor = (doc, i) => (doc.pages[i] && doc.pages[i].color) || doc.page.color;
+  const itemPage = (doc, it) => D.pageAt(doc, (it.bb[0] + it.bb[2]) / 2, (it.bb[1] + it.bb[3]) / 2);
+  const shiftItem = (it, dx, dy) => D.transformItem(it, A.M.translate(dx, dy), false);
+  /* move every item on page `from` by whole page steps; used by insert, delete and reorder */
+  const remapPages = (doc, fn) => {
+    const [w, h] = D.pageSize(doc);
+    const horiz = doc.page.scroll === 'horizontal';
+    const step = (horiz ? w : h) + D.PAGE_GAP;
+    for (const l of doc.layers) {
+      const out = [];
+      for (const it of l.items) {
+        const p = itemPage(doc, it), q = fn(p);
+        if (q == null) continue;
+        out.push(q === p ? it : shiftItem(it, horiz ? (q - p) * step : 0, horiz ? 0 : (q - p) * step));
+      }
+      l.items = out;
+    }
+  };
+  D.insertPage = (at, props = {}) => {
+    const doc = D.doc;
+    D.begin();
+    remapPages(doc, (p) => (p >= at ? p + 1 : p));
+    doc.pages.splice(at, 0, Object.assign({ id: A.uid() }, props));
+    D.commit('all');
+    A.emit('pages');
+  };
+  D.deletePage = (i) => {
+    const doc = D.doc;
+    D.begin();
+    if (doc.pages.length === 1) { for (const l of doc.layers) l.items = []; }
+    else { remapPages(doc, (p) => (p === i ? null : p > i ? p - 1 : p)); doc.pages.splice(i, 1); }
+    D.commit('all');
+    A.emit('pages');
+  };
+  D.duplicatePage = (i) => {
+    const doc = D.doc;
+    D.begin();
+    remapPages(doc, (p) => (p > i ? p + 1 : p));
+    const [w, h] = D.pageSize(doc);
+    const horiz = doc.page.scroll === 'horizontal';
+    const step = (horiz ? w : h) + D.PAGE_GAP;
+    for (const l of doc.layers) {
+      const copies = l.items.filter((it) => itemPage(doc, it) === i).map((it) => shiftItem(it, horiz ? step : 0, horiz ? 0 : step));
+      l.items = l.items.concat(copies);
+    }
+    doc.pages.splice(i + 1, 0, Object.assign({}, doc.pages[i], { id: A.uid() }));
+    D.commit('all');
+    A.emit('pages');
+  };
+  D.movePage = (from, to) => {
+    const doc = D.doc;
+    if (from === to) return;
+    D.begin();
+    remapPages(doc, (p) => {
+      if (p === from) return to;
+      if (from < to && p > from && p <= to) return p - 1;
+      if (from > to && p >= to && p < from) return p + 1;
+      return p;
+    });
+    const [pg] = doc.pages.splice(from, 1);
+    doc.pages.splice(to, 0, pg);
+    D.commit('all');
+    A.emit('pages');
+  };
+  D.setPage = (i, props) => { D.begin(); Object.assign(D.doc.pages[i], props); D.commit('all'); A.emit('pages'); };
+  /* keep one blank page at the end so writing never runs out of paper */
+  D.ensureTrailingPage = () => {
+    const doc = D.doc;
+    if (!D.isNotebook(doc)) return;
+    const last = doc.pages.length - 1;
+    const used = doc.layers.some((l) => l.items.some((it) => itemPage(doc, it) === last));
+    if (used) {
+      doc.pages.push({ id: A.uid(), template: doc.pages[last].template, color: doc.pages[last].color });
+      A.emit('pages');
+    }
+  };
+
+  /* ---------- artboards (fixed-size frames on an infinite canvas) ---------- */
+  D.addArtboard = (fmt = 'a4', orient = 'portrait', at = null) => {
+    const doc = D.doc;
+    const [w, h] = D.formatSize(fmt, orient);
+    let x, y;
+    if (at) { x = at[0] - w / 2; y = at[1] - h / 2; }
+    else {
+      const bbs = (doc.artboards || []).map((a) => [a.x, a.y, a.x + a.w, a.y + a.h]);
+      const last = bbs[bbs.length - 1];
+      x = last ? last[2] + 60 : -w / 2; y = last ? last[1] : -h / 2;
+    }
+    D.begin();
+    const ab = { id: A.uid(), name: (D.formats[fmt] || {}).name + ' ' + ((doc.artboards || []).length + 1), fmt, orient, x, y, w, h };
+    doc.artboards = (doc.artboards || []).concat([ab]);
+    D.commit('all');
+    A.emit('artboards');
+    return ab;
+  };
+  D.updateArtboard = (id, props, record = true) => {
+    if (record) D.begin();
+    D.doc.artboards = D.doc.artboards.map((a) => (a.id === id ? Object.assign({}, a, props) : a));
+    if (record) D.commit('all'); else D.changed('all');
+    A.emit('artboards');
+  };
+  D.deleteArtboard = (id) => { D.begin(); D.doc.artboards = D.doc.artboards.filter((a) => a.id !== id); D.commit('all'); A.emit('artboards'); };
 
   /* normalise a loaded document (older/foreign files) */
   D.normalize = (doc) => {
@@ -32,10 +175,16 @@
     doc.view = Object.assign(base.view, doc.view || {});
     doc.guides = doc.guides || {};
     doc.layerMode = doc.layerMode || 'manual';
+    doc.kind = doc.kind === 'notebook' ? 'notebook' : 'canvas';
+    doc.artboards = Array.isArray(doc.artboards) ? doc.artboards : [];
+    if (doc.kind === 'notebook') {
+      doc.page = Object.assign({ size: 'a4', orient: 'portrait', template: 'lined', color: doc.paper.bg, scroll: 'vertical' }, doc.page || {});
+      if (!Array.isArray(doc.pages) || !doc.pages.length) doc.pages = [{ id: A.uid() }];
+    }
     if (!Array.isArray(doc.layers) || !doc.layers.length) doc.layers = base.layers;
     for (const l of doc.layers) {
       l.items = (l.items || []).filter(Boolean).map((it) => {
-        if (it.t === 'i' && !it.bb) it.bb = B.imageBB(it);
+        if ((it.t === 'i' || it.t === 'x') && !it.bb) it.bb = B.imageBB(it);
         if (it.t === 's' && !it.bb) it.bb = D.strokeBB(it);
         return it;
       });
@@ -65,7 +214,7 @@
     return n;
   };
   D.transformItem = (it, M, scaleWidth = true) => {
-    if (it.t === 'i') {
+    if (it.t === 'i' || it.t === 'x') {
       const n = Object.assign({}, it, { id: A.uid(), m: A.M.mul(M, it.m) });
       n.bb = B.imageBB(n);
       return n;
@@ -99,10 +248,14 @@
   const snap = () => ({
     layers: D.doc.layers.map((l) => Object.assign({}, l, { items: l.items.slice() })),
     active: D.doc.activeLayerId,
+    pages: D.doc.pages ? D.doc.pages.map((p) => Object.assign({}, p)) : null,
+    artboards: (D.doc.artboards || []).slice(),
   });
   const restore = (s) => {
     D.doc.layers = s.layers.map((l) => Object.assign({}, l, { items: l.items.slice() }));
     D.doc.activeLayerId = s.active;
+    if (s.pages) { D.doc.pages = s.pages.map((p) => Object.assign({}, p)); A.emit('pages'); }
+    if (s.artboards) { D.doc.artboards = s.artboards.slice(); A.emit('artboards'); }
   };
   D.resetHistory = () => { H.undo = []; H.redo = []; H.pending = null; A.emit('history'); };
   D.begin = () => { if (!H.pending) H.pending = snap(); };

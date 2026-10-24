@@ -7,6 +7,13 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
     private var webView: WKWebView!
     private let store = DrawingStore()
     private var schemeHandler: AppSchemeHandler?
+    private lazy var audio: AudioBridge = {
+        let a = AudioBridge(filesDir: { [store] in store.filesDir })
+        a.onTick = { [weak self] json in self?.runJS("window.__axiomAudio && __axiomAudio(\(json))") }
+        return a
+    }()
+    /// nil = follow the device; otherwise the orientations Axiom is locked to
+    private var orientationLock: UIInterfaceOrientationMask?
 
     // MARK: - Setup
 
@@ -14,7 +21,9 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         let content = WKUserContentController()
         content.addScriptMessageHandler(self, contentWorld: .page, name: "axiom")
         let settings = store.loadSettings() ?? "null"
-        let boot = "window.AXIOM_NATIVE = { pen: true, platform: 'ios' }; window.AXIOM_SETTINGS = \(settings);"
+        let locked = UserDefaults.standard.object(forKey: "orientationLock") as? Int
+        if let m = locked { orientationLock = UIInterfaceOrientationMask(rawValue: UInt(m)) }
+        let boot = "window.AXIOM_NATIVE = { pen: true, platform: 'ios', audio: true, orientationLock: \(locked != nil) }; window.AXIOM_SETTINGS = \(settings);"
         content.addUserScript(WKUserScript(source: boot, injectionTime: .atDocumentStart, forMainFrameOnly: true))
 
         let config = WKWebViewConfiguration()
@@ -62,6 +71,28 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         super.viewDidAppear(animated)
         setNeedsUpdateOfScreenEdgesDeferringSystemGestures()
         setNeedsUpdateOfHomeIndicatorAutoHidden()
+    }
+
+    override var supportedInterfaceOrientations: UIInterfaceOrientationMask { orientationLock ?? .all }
+
+    private func setOrientationLock(_ on: Bool) {
+        if on, let scene = view.window?.windowScene {
+            switch scene.interfaceOrientation {
+            case .portrait: orientationLock = .portrait
+            case .portraitUpsideDown: orientationLock = .portraitUpsideDown
+            case .landscapeLeft: orientationLock = .landscapeLeft
+            case .landscapeRight: orientationLock = .landscapeRight
+            default: orientationLock = .all
+            }
+            UserDefaults.standard.set(Int(orientationLock!.rawValue), forKey: "orientationLock")
+        } else {
+            orientationLock = nil
+            UserDefaults.standard.removeObject(forKey: "orientationLock")
+        }
+        setNeedsUpdateOfSupportedInterfaceOrientations()
+        if let scene = view.window?.windowScene {
+            scene.requestGeometryUpdate(.iOS(interfaceOrientations: orientationLock ?? .all)) { _ in }
+        }
     }
 
     override var prefersStatusBarHidden: Bool { true }
@@ -119,6 +150,29 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
             share(body)
             replyHandler(true, nil)
             return
+        }
+        switch op {
+        case "orientation":
+            setOrientationLock(body["lock"] as? Bool ?? false)
+            replyHandler(orientationLock != nil, nil)
+            return
+        case "keepAwake":
+            UIApplication.shared.isIdleTimerDisabled = body["on"] as? Bool ?? false
+            replyHandler(true, nil)
+            return
+        case "audioStart":
+            audio.start(id: body["id"] as? String ?? "") { ok, err in replyHandler(ok, err) }
+            return
+        case "audioStop": replyHandler(audio.stop(), nil); return
+        case "audioPlay":
+            let err = audio.play(id: body["id"] as? String ?? "", at: body["at"] as? Double ?? 0)
+            replyHandler(err == nil, err); return
+        case "audioPause": audio.pause(); replyHandler(true, nil); return
+        case "audioSeek": audio.seek(body["at"] as? Double ?? 0); replyHandler(true, nil); return
+        case "audioRate": audio.setRate(Float(body["rate"] as? Double ?? 1)); replyHandler(true, nil); return
+        case "audioDuration": replyHandler(audio.duration(id: body["id"] as? String ?? ""), nil); return
+        case "audioDelete": audio.delete(id: body["id"] as? String ?? ""); replyHandler(true, nil); return
+        default: break
         }
         let store = self.store
         DispatchQueue.global(qos: .userInitiated).async {

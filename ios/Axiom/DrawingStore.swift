@@ -48,7 +48,7 @@ final class DrawingStore {
         try? fm.removeItem(at: metaURL(id))
     }
 
-    private var filesDir: URL {
+    var filesDir: URL {
         let d = dir.deletingLastPathComponent().appendingPathComponent("Files", isDirectory: true)
         try? fm.createDirectory(at: d, withIntermediateDirectories: true)
         return d

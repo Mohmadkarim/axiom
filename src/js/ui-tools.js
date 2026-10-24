@@ -33,6 +33,10 @@
   const isEraser = (b) => b === 'slice' || b === 'eraser' || b === 'mask' || b === 'softmask';
   A.on('pencil:tap', (action) => {
     if (!D.doc) return;
+    if (action && action.forced) action = action.forced;
+    else if (S.pencilTap && S.pencilTap !== 'system') action = S.pencilTap;
+    if (action === 'undo') { D.undo(); return; }
+    if (action === 'toggleUI') { A.emit('cmd', 'toggleUI'); return; }
     const cur = S.activeSlot;
     if (action === 'switchEraser') {
       if (isEraser(S.slots[cur].b)) UI.setSlot(S.prevSlot != null && !isEraser(S.slots[S.prevSlot].b) ? S.prevSlot : 0);
@@ -53,6 +57,9 @@
   /* Apple Pencil Pro squeeze: brush menu where the Pencil is hovering */
   A.on('pencil:squeeze', (pt) => {
     if (!D.doc) return;
+    if (S.pencilSqueeze === 'undo') { D.undo(); return; }
+    if (S.pencilSqueeze === 'eraser') { A.emit('pencil:tap', { forced: 'switchEraser' }); return; }
+    if (S.pencilSqueeze === 'palette') { const c = host && host.querySelector('.colorbtn, .wcenter'); if (c) UI.openColor(c); return; }
     UI.openBrushMenu(pt ? { x: pt.x, y: pt.y } : slotEl(S.activeSlot), S.activeSlot);
   });
   A.on('slot:size', (f) => {

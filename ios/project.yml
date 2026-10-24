@@ -42,3 +42,7 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         ITSAppUsesNonExemptEncryption: false
+        UIRequiresFullScreen: true
+        NSMicrophoneUsageDescription: Axiom records lectures in your notebooks so you can replay them alongside your handwriting.
+        NSCameraUsageDescription: Axiom can photograph problem sheets and pages to add them to your notes.
+        NSPhotoLibraryAddUsageDescription: Axiom saves exported drawings to your photo library when you ask it to.

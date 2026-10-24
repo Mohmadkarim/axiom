@@ -118,6 +118,55 @@ axiom/
 - **Handwriting on PDF pages (built):** a Write tool with 4 pens, 3 widths, a stroke eraser and undo, stored as page-relative vector strokes. Handwriting is included in the region images sent to the tutor.
 - **Gallery:** the section is now named **Books**, with a Books button on Home and the version and build shown in the sidebar.
 
+## 4e. Three sections: Books, Notebooks, Canvases (built Oct 24 2026)
+Source: a frame-by-frame review of the user's screen recording (169 frames), plus the official Concepts manual and the Notability help centre.
+
+**Notebooks (Notability model)**
+- Pages: A4, Letter, A5 or A3 sizes in portrait or landscape, with seamless vertical scroll or single pages side by side.
+  - 14 paper templates: blank, lined, narrow, wide, grid 5 mm, grid 4 mm, graph, dot, Cornell, engineering, isometric, music, polar, checklist.
+  - Paper colours; a template can be set for one page or all pages.
+  - A blank page is always kept at the end; pages auto-append.
+- Tool rail (writing tools only): 3 pen presets, highlighter, eraser, text, lasso.
+  - The flyout holds pen type, colours, 3 sizes, eraser mode, selection mode and fonts.
+  - "+" holds photo, camera, sticky note, PDF pages, new page and diagrams, plus the laser pointer, tape and ruler.
+- Top bar: undo, redo, record, Learn, pages and "…".
+  - "…" menu: export, paper and page, study session, version history, favourite, finger drawing, settings.
+- Page counter (current/total with up and down). Page sidebar: thumbnails, bookmarks, filter for all or bookmarked pages, and per-page actions (insert, duplicate, move, paper, export, clear, delete).
+- Lecture recording (native AVAudioRecorder, or MediaRecorder on the web):
+  - strokes and text are time-stamped to the recording
+  - replay dims ink that hasn't been written yet
+  - tap a stroke to jump the audio to it
+  - playback speed and multiple recordings
+- Tape for active recall: tap with a finger to reveal; cover or reveal all.
+- Laser pointer: a fading trail; nothing is saved.
+- Text boxes and sticky notes, with font, size, bold and colour.
+- Study timer: focus/break rounds.
+- Version history: 15 local snapshots that can be restored.
+- Learn: chat with your notes (page images attached), smart notes, interactive multiple-choice practice (```quiz JSON), flip flashcards (```flashcards JSON), check this page.
+- PDF import adds real pages; a photo or scan becomes a page.
+
+**Canvases (Concepts model)**
+- Measurement popover: zoom and rotation fields, each with a lock padlock. Presets are 10/100/350/1600% and 0/90/180/270°. The readout shows the locks.
+- Artboards (A4, Letter, A3, A5, square, 16:9, screen) on the infinite canvas:
+  - a label shows the name and size in cm
+  - drag the label to move the artboard; tap it to rename, swap orientation, resize, export or delete
+- Export panel: format, Region (screenshot, entire drawing, each artboard, selection, all pages, this page), background and grid toggles, and 72/150/300/600 ppi with the resulting pixel size. Multi-page PDF.
+- Settings in sections:
+  - Workspace: theme, tool palette, handedness, background, grid, artboards, drawing scale, units.
+  - Interaction: finger action, rotation and zoom on two fingers, tap+hold, draw & hold time, 2- and 3-finger taps, Pencil double-tap and squeeze actions, pressure, hover.
+  - iPad: lock screen rotation, keep the iPad awake.
+  - Notebooks, Tutor, Studies, Recently Deleted (30 days).
+
+**Books (Apple Books touches):** mark as finished, a Finished shelf, and a daily reading goal ring with a tracked reading time.
+
+**Library:** Home, Books, Notebooks, Canvases, Favorites and courses. One "New" button opens Notebook, Canvas, Book or PDF, or Import.
+
+**Native shell:**
+- The app is served from axiom://app/ by a WKURLSchemeHandler, so large PDFs stream as raw bytes. This fixed "This PDF could not be opened" for textbooks.
+- Audio bridge, orientation lock and idle-timer bridge.
+
+**Design rule (from user feedback):** show only the primary actions; everything secondary goes behind one "+" or "…". No rows of text chips where a segmented control or a menu will do.
+
 ## 5. Stage 2 roadmap: STEM study features (Notability and beyond)
 1. **PDF workspace:** a page view with a thumbnail rail and annotation directly on top. The split view beside your work is done; see 4c.
 2. **Math typesetting:** LaTeX blocks (KaTeX) and handwriting-to-LaTeX conversion.

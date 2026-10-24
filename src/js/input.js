@@ -37,7 +37,7 @@
     },
     computeBox() {
       let bb = null;
-      for (const { it } of SEL.items()) bb = G.bbUnion(bb, it.t === 'i' ? B.imageBB(it) : G.bbox(it.pts, it.t === 's' ? Math.min(it.w * (it.mm || 1) / 2, 40) : 0));
+      for (const { it } of SEL.items()) bb = G.bbUnion(bb, B.isBox(it) ? B.imageBB(it) : G.bbox(it.pts, it.t === 's' ? Math.min(it.w * (it.mm || 1) / 2, 40) : 0));
       return bb;
     },
     box: null,
@@ -91,7 +91,7 @@
       if (!l.visible || l.locked || (IN.selLayerOnly && l.id !== D.doc.activeLayerId)) continue;
       for (let i = l.items.length - 1; i >= 0; i--) {
         const it = l.items[i];
-        if (it.t === 'i' ? B.imageHit(it, wx, wy) : (!B.catalog[it.b].mask && G.strokeHitCircle(it, wx, wy, tolW))) return it;
+        if (B.isBox(it) ? B.imageHit(it, wx, wy) : (!B.catalog[it.b].mask && G.strokeHitCircle(it, wx, wy, tolW))) return it;
       }
     }
     return null;
@@ -301,6 +301,8 @@
       const extra = {};
       if (sharp) extra.sharp = true;
       if (closed) extra.closed = true;
+      const stamp = IN.stamp && IN.stamp();
+      if (stamp) Object.assign(extra, stamp);
       const item = D.makeStroke(this.slot.b, this.slot.color, this.slot.size, this.slot.opacity, pts, extra);
       D.begin();
       D.addItems([item], layer);
@@ -460,7 +462,7 @@
       for (const l of targetLayers(IN.selLayerOnly)) {
         for (const it of l.items) {
           if (!G.bbHit(it.bb, pbb)) continue;
-          if (it.t === 'i') {
+          if (B.isBox(it)) {
             const cs = B.imageCorners(it);
             const inside = cs.filter(([x, y]) => G.pointInPoly(x, y, poly)).length;
             if (IN.selPartial ? inside > 0 : inside === 4) found.push(it.id);
@@ -584,11 +586,11 @@
         R.render();
         return;
       }
-      if (!this.rotUnlocked && Math.abs(dr) > 0.18 && A.settings.allowRotate) this.rotUnlocked = true;
+      if (!this.rotUnlocked && Math.abs(dr) > 0.18 && A.settings.allowRotate && !A.settings.rotLock && !D.isNotebook()) this.rotUnlocked = true;
       let rot = this.v0.rot + (this.rotUnlocked ? dr : 0);
       const near = Math.round(rot / (Math.PI / 2)) * (Math.PI / 2);
       if (this.rotUnlocked && Math.abs(rot - near) < A.rad(4)) rot = near;
-      const zoom = A.clamp(this.v0.zoom * sc, R.ZMIN, R.ZMAX);
+      const zoom = A.settings.zoomLock ? this.v0.zoom : A.clamp(this.v0.zoom * sc, R.ZMIN, R.ZMAX);
       const c = Math.cos(rot) * zoom, s = Math.sin(rot) * zoom;
       const [wx, wy] = this.w0;
       R.setView({ zoom, rot, tx: mid[0] - (c * wx - s * wy), ty: mid[1] - (s * wx + c * wy) });
@@ -602,6 +604,135 @@
       else { R.gesturing = false; R.render(); }
     }
     cancel() { this.end(); }
+  }
+
+  /* ---- text tool: tap to type, tap a text box to edit it, drag to set the box width ---- */
+  class TextAction {
+    constructor(rec, s) { this.start = s; this.cur = s; IN.textDrag = null; }
+    move(e, rect) {
+      const r = samplesOf(e, rect).pop();
+      this.cur = r;
+      if (hyp(r.x - this.start.x, r.y - this.start.y) > 10) { IN.textDrag = { x0: this.start.x, y0: this.start.y, x1: r.x, y1: r.y }; R.renderOverlay(); }
+    }
+    up() {
+      const drag = IN.textDrag;
+      IN.textDrag = null; R.renderOverlay();
+      const [wx, wy] = R.toWorld(this.start.x, this.start.y);
+      if (!drag) {
+        const hit = pickItem(wx, wy, 6 / D.doc.view.zoom);
+        if (hit && hit.t === 'x') return A.TE.edit(hit);
+      }
+      const width = drag ? Math.abs(drag.x1 - drag.x0) / D.doc.view.zoom : null;
+      const [ax, ay] = drag ? R.toWorld(Math.min(drag.x0, drag.x1), Math.min(drag.y0, drag.y1)) : [wx, wy];
+      A.TE.create(ax, ay, width);
+    }
+    cancel() { IN.textDrag = null; R.renderOverlay(); }
+  }
+  /* ---- laser pointer: a glowing trail that fades, nothing is saved ---- */
+  IN.laser = [];
+  class LaserAction {
+    constructor(rec, s) { this.color = B.slot().color || '#ff3b30'; this.trail = { pts: [{ x: s.x, y: s.y, t: performance.now() }], color: this.color, end: 0 }; IN.laser.push(this.trail); IN.tickLaser(); }
+    move(e, rect) { for (const s of samplesOf(e, rect)) this.trail.pts.push({ x: s.x, y: s.y, t: performance.now() }); R.renderOverlay(); }
+    up() { this.trail.end = performance.now(); IN.tickLaser(); }
+    cancel() { this.up(); }
+  }
+  IN.tickLaser = () => {
+    if (IN._laserRaf) return;
+    const step = () => {
+      const now = performance.now();
+      IN.laser = IN.laser.filter((tr) => !tr.end || now - tr.end < 1400);
+      R.renderOverlay();
+      IN._laserRaf = IN.laser.length ? requestAnimationFrame(step) : 0;
+    };
+    IN._laserRaf = requestAnimationFrame(step);
+  };
+  R.painters.push((ctx) => {
+    if (!IN.laser.length) return;
+    const now = performance.now();
+    for (const tr of IN.laser) {
+      const p = tr.pts;
+      if (p.length < 1) continue;
+      const fade = tr.end ? Math.max(0, 1 - (now - tr.end) / 1400) : 1;
+      ctx.save();
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.shadowColor = tr.color; ctx.shadowBlur = 14;
+      for (const [w, a, col] of [[9, 0.35, tr.color], [3.2, 1, '#ffffff']]) {
+        ctx.globalAlpha = a * fade; ctx.strokeStyle = col; ctx.lineWidth = w;
+        ctx.beginPath();
+        // only the last ~1.5 s of the trail stays bright while drawing
+        let started = false;
+        for (const q of p) { if (!tr.end && now - q.t > 1500) continue; if (!started) { ctx.moveTo(q.x, q.y); started = true; } else ctx.lineTo(q.x, q.y); }
+        if (p.length === 1) ctx.lineTo(p[0].x + 0.1, p[0].y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  });
+  R.painters.push((ctx) => {
+    const d = IN.textDrag;
+    if (!d) return;
+    ctx.save();
+    ctx.strokeStyle = R.accent(); ctx.setLineDash([5, 4]); ctx.lineWidth = 1.2;
+    ctx.strokeRect(Math.min(d.x0, d.x1), Math.min(d.y0, d.y1), Math.abs(d.x1 - d.x0), Math.max(28, Math.abs(d.y1 - d.y0)));
+    ctx.restore();
+  });
+  /* tap a strip of tape to hide or reveal what is under it */
+  IN.toggleTapeAt = (sx, sy) => {
+    const [wx, wy] = R.toWorld(sx, sy);
+    const zoom = D.doc.view.zoom;
+    for (let li = D.doc.layers.length - 1; li >= 0; li--) {
+      const l = D.doc.layers[li];
+      if (!l.visible) continue;
+      for (let i = l.items.length - 1; i >= 0; i--) {
+        const it = l.items[i];
+        if (it.b === 'tape' && G.strokeHitCircle(it, wx, wy, 4 / zoom)) {
+          const n = Object.assign({}, it, { rv: !it.rv });
+          l.items = l.items.slice(); l.items[i] = n;
+          D.changed('items'); R.render();
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  /* ---- artboards: labels above each frame; drag a label to move the artboard, tap it for options ---- */
+  const abLabels = () => {
+    if (!D.doc || D.isNotebook() || !(D.doc.artboards || []).length) return [];
+    const out = [];
+    for (const a of D.doc.artboards) {
+      const [sx, sy] = R.toScreen(a.x, a.y);
+      const txt = `${a.name}  ${(a.w / D.MM / 10).toFixed(1)} × ${(a.h / D.MM / 10).toFixed(1)} cm`;
+      out.push({ a, x: sx, y: sy - 24, w: Math.min(260, 14 + txt.length * 6.6), h: 20, txt });
+    }
+    return out;
+  };
+  R.painters.push((ctx) => {
+    for (const L of abLabels()) {
+      ctx.save();
+      ctx.font = '600 11.5px -apple-system, system-ui, sans-serif';
+      ctx.fillStyle = R.darkActive() ? 'rgba(255,255,255,0.62)' : 'rgba(30,40,60,0.62)';
+      ctx.fillText(L.txt, L.x + 2, L.y + 14);
+      ctx.restore();
+    }
+  });
+  IN.artboardLabelHit = (x, y) => abLabels().find((L) => x >= L.x - 6 && x <= L.x + L.w && y >= L.y - 6 && y <= L.y + L.h + 4);
+  class ArtboardAction {
+    constructor(rec, s, L) { this.L = L; this.start = s; this.a0 = Object.assign({}, L.a); this.moved = 0; }
+    move(e, rect) {
+      const r = samplesOf(e, rect).pop();
+      this.moved = Math.max(this.moved, hyp(r.x - this.start.x, r.y - this.start.y));
+      if (this.moved < 6) return;
+      const [w0x, w0y] = R.toWorld(this.start.x, this.start.y), [w1x, w1y] = R.toWorld(r.x, r.y);
+      if (!this.begun) { D.begin(); this.begun = true; }
+      D.doc.artboards = D.doc.artboards.map((a) => (a.id === this.a0.id ? Object.assign({}, a, { x: this.a0.x + w1x - w0x, y: this.a0.y + w1y - w0y }) : a));
+      R.render();
+    }
+    up() {
+      if (this.begun) { D.commit('all'); return; }
+      A.UI.artboardOptions(this.L.a, { x: this.L.x + 40, y: this.L.y + 20 });
+    }
+    cancel() { if (this.begun) D.cancel(); }
   }
 
   /* ---- one finger: drag pans; long-press then move = lasso; long-press and lift = context menu ---- */
@@ -642,7 +773,11 @@
       this.ended = true;
       clearTimeout(this.timer);
       IN.holdRing = null;
-      if (!this.held) { R.gesturing = false; R.render(); return; }
+      if (!this.held) {
+        R.gesturing = false; R.render();
+        if (this.moved < 8) { if (!IN.toggleTapeAt(this.start.x, this.start.y)) A.emit('canvas:tap', this.start); }
+        return;
+      }
       if (this.lasso.moved >= 8 && this.lasso.poly.length >= 8) { this.lasso.up(e, rect); return; }
       this.lasso.cancel();
       A.emit('canvas:menu', { x: this.holdPt.x, y: this.holdPt.y });
@@ -728,16 +863,22 @@
       const hit = SEL.hit(s.x, s.y);
       if (hit) return new SelTransformAction(rec, s, hit);
     }
+    const abl = IN.artboardLabelHit(s.x, s.y);
+    if (abl) return new ArtboardAction(rec, s, abl);
     let tool = B.slot().b;
     if (isFinger) {
       const fm = fingerMode();
       if (fm === 'pan') return new FingerAction(rec, s);
+      if (fm === 'none') return null;
       if (fm === 'select') tool = 'select';
     }
     if (tool !== 'select' && R.sel.size) SEL.clear();
     if (tool === 'select') return new LassoAction(rec, s);
     if (tool === 'slice' || tool === 'eraser') return new EraseAction(rec, s, tool);
     if (tool === 'nudge') return new NudgeAction(rec, s);
+    if (tool === 'text') return new TextAction(rec, s);
+    if (tool === 'laser') return new LaserAction(rec, s);
+    if (tool === 'pan') return new PanAction(rec);
     if (B.isDrawing(tool) || B.catalog[tool].mask) {
       const l = D.doc.layerMode === 'auto' ? null : D.active();
       if (l && l.locked) { A.toast('This layer is locked'); return null; }

@@ -24,15 +24,19 @@
   };
 
   UI.newDrawingSheet = (opts = {}) => new Promise((res) => {
-    const st = { t: UI.templates[1], bg: D.papers.white, name: opts.name || 'Untitled', subject: opts.subject ?? (S.galleryFilter && S.galleryFilter !== 'all' && S.galleryFilter !== 'docs' && S.galleryFilter !== 'none' ? S.galleryFilter : null) };
+    const st = { artboard: 'none', abOrient: 'portrait', t: UI.templates[1], bg: D.papers.white, name: opts.name || 'Untitled canvas', subject: opts.subject ?? (S.galleryFilter && S.galleryFilter !== 'all' && S.galleryFilter !== 'docs' && S.galleryFilter !== 'none' ? S.galleryFilter : null) };
     const back = h('div', { class: 'modal-back' });
     const close = (v) => { back.remove(); res(v); };
     const grid = h('div', { class: 'paper-grid' });
     const bgRow = h('div', { class: 'bg-row' });
     const subjRow = h('div', { class: 'chips' });
     const nameIn = h('input', { class: 'field', id: 'new-name', value: st.name, autocomplete: 'off' });
+    const abRow = h('div', { class: 'row gap wrap' });
     const draw = () => {
-      grid.innerHTML = ''; bgRow.innerHTML = ''; subjRow.innerHTML = '';
+      grid.innerHTML = ''; bgRow.innerHTML = ''; subjRow.innerHTML = ''; abRow.innerHTML = '';
+      const seg1 = h('div', { class: 'seg' }, ...[['none', 'None'], ['a4', 'A4'], ['letter', 'Letter'], ['wide', '16:9']].map(([v, l]) => h('button', { class: st.artboard === v ? 'on' : '', onclick: () => { st.artboard = v; draw(); } }, l)));
+      abRow.append(seg1);
+      if (st.artboard !== 'none') abRow.append(h('div', { class: 'seg' }, ...[['portrait', 'Portrait'], ['landscape', 'Landscape']].map(([v, l]) => h('button', { class: st.abOrient === v ? 'on' : '', onclick: () => { st.abOrient = v; draw(); } }, l))));
       UI.templates.forEach((t) => {
         const cv = h('canvas');
         const b = h('button', { class: 'paper-opt' + (t.id === st.t.id ? ' on' : ''), onclick: () => { st.t = t; draw(); } }, cv, t.name);
@@ -48,21 +52,90 @@
       subjRow.append(h('button', { class: 'chip ghost', onclick: async () => { const n = await A.dialog({ title: 'New course', input: '', okText: 'Add' }); const s = n && A.SU.add(n); if (s) { st.subject = s.id; draw(); } } }, '+ Course'));
     };
     draw();
-    const create = () => close({ name: nameIn.value.trim() || 'Untitled', t: st.t, bg: st.t.bg || st.bg, subject: st.subject });
+    const create = () => close({ kind: 'canvas', name: nameIn.value.trim() || 'Untitled canvas', t: st.t, bg: st.t.bg || st.bg, subject: st.subject, artboard: st.artboard, abOrient: st.abOrient });
     nameIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') create(); });
-    back.append(h('div', { class: 'modal', role: 'dialog', 'aria-label': 'New drawing' },
-      h('h3', null, 'New drawing'),
+    back.append(h('div', { class: 'modal', role: 'dialog', 'aria-label': 'New canvas' },
+      h('h3', null, 'New canvas'),
       h('h5', null, 'Name'), nameIn,
       h('h5', null, 'Course'), subjRow,
-      h('h5', null, 'Paper'), grid,
+      h('h5', null, 'Grid'), grid,
       h('h5', null, 'Background'), bgRow,
+      h('h5', null, 'Artboard'), abRow,
       h('div', { class: 'row end gap', style: { marginTop: '22px' } }, h('button', { class: 'btn', onclick: () => close(null) }, 'Cancel'), h('button', { class: 'btn primary', onclick: create }, 'Create'))));
     back.addEventListener('pointerdown', (e) => { if (e.target === back) close(null); });
     document.body.append(back);
   });
 
+  /* "New notebook": paper template, colour, size, orientation, scrolling */
+  UI.notebookPapers = ['#ffffff', '#fbf8ef', '#f4efe1', '#eef3f8', '#f0f4ec', '#fdf1f1', '#2a2e36', '#15171c'];
+  const drawPageThumb = (cv, tpl, color, fmt, orient) => {
+    const [pw, ph] = D.formatSize(fmt, orient);
+    const H = 150, W = Math.round((H * pw) / ph);
+    cv.width = W * 2; cv.height = H * 2;
+    const ctx = cv.getContext('2d');
+    const k = (H * 2) / ph;
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    ctx.fillStyle = color; ctx.fillRect(0, 0, pw, ph);
+    R.drawTemplate(ctx, [0, 0, pw, ph], tpl, color, 1.2 / k);
+  };
+  UI.newNotebookSheet = (opts = {}) => new Promise((res) => {
+    const last = S.lastNotebook || {};
+    const st = { tpl: last.tpl || 'lined', color: last.color || '#ffffff', size: last.size || 'a4', orient: last.orient || 'portrait', scroll: last.scroll || 'vertical', name: opts.name || 'Untitled notebook', subject: opts.subject ?? (A.SU.get(S.galleryFilter) ? S.galleryFilter : null) };
+    const back = h('div', { class: 'modal-back' });
+    const close = (v) => { back.remove(); res(v); };
+    const grid = h('div', { class: 'paper-grid tpl-grid' });
+    const colorRow = h('div', { class: 'bg-row' });
+    const subjRow = h('div', { class: 'chips' });
+    const sizeRow = h('div', { class: 'seg' });
+    const orientSeg = h('div', { class: 'seg' });
+    const scrollSeg = h('div', { class: 'seg' });
+    const nameIn = h('input', { class: 'field', id: 'nb-name', value: st.name, autocomplete: 'off' });
+    const draw = () => {
+      [grid, colorRow, subjRow, sizeRow, orientSeg, scrollSeg].forEach((e) => (e.innerHTML = ''));
+      const COMMON = ['blank', 'lined', 'grid', 'dot', 'graph', 'cornell'];
+      R.templates.filter((t) => st.more || COMMON.includes(t.id) || t.id === st.tpl).forEach((t) => {
+        const cv = h('canvas');
+        drawPageThumb(cv, t.id, st.color, st.size, st.orient);
+        grid.append(h('button', { class: 'paper-opt page' + (t.id === st.tpl ? ' on' : ''), onclick: () => { st.tpl = t.id; draw(); } }, cv, t.name));
+      });
+      if (!st.more) grid.append(h('button', { class: 'paper-opt page more', onclick: () => { st.more = true; draw(); } }, h('span', { class: 'more-ic', html: A.icon('more') }), 'More papers'));
+      UI.notebookPapers.forEach((c) => colorRow.append(h('button', { class: c === st.color ? 'on' : '', style: { background: c }, 'aria-label': 'Paper ' + c, onclick: () => { st.color = c; draw(); } })));
+      ['a4', 'letter', 'a5'].forEach((f) => sizeRow.append(h('button', { class: st.size === f ? 'on' : '', onclick: () => { st.size = f; draw(); } }, D.formats[f].name.replace('US ', ''))));
+      [['portrait', 'Portrait'], ['landscape', 'Landscape']].forEach(([v, l]) => orientSeg.append(h('button', { class: st.orient === v ? 'on' : '', onclick: () => { st.orient = v; draw(); } }, l)));
+      subjRow.append(h('button', { class: 'chip' + (!st.subject ? ' on' : ''), onclick: () => { st.subject = null; draw(); } }, 'None'));
+      A.SU.list().forEach((sj) => subjRow.append(h('button', { class: 'chip' + (st.subject === sj.id ? ' on' : ''), onclick: () => { st.subject = sj.id; draw(); } }, h('i', { class: 'dot', style: { background: sj.color } }), sj.name)));
+      subjRow.append(h('button', { class: 'chip ghost', onclick: async () => { const n = await A.dialog({ title: 'New course', input: '', okText: 'Add' }); const sj = n && A.SU.add(n); if (sj) { st.subject = sj.id; draw(); } } }, '+ Course'));
+    };
+    draw();
+    const create = () => {
+      S.lastNotebook = { tpl: st.tpl, color: st.color, size: st.size, orient: st.orient, scroll: st.scroll }; A.saveSettings();
+      close({ kind: 'notebook', name: nameIn.value.trim() || 'Untitled notebook', tpl: st.tpl, bg: st.color, size: st.size, orient: st.orient, scroll: st.scroll, subject: st.subject });
+    };
+    nameIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') create(); });
+    back.append(h('div', { class: 'modal wide', role: 'dialog', 'aria-label': 'New notebook' },
+      h('h3', null, 'New notebook'),
+      h('div', { class: 'nb-form' },
+        h('div', null, h('h5', null, 'Name'), nameIn, h('h5', null, 'Course'), subjRow),
+        h('div', null, h('h5', null, 'Page'), h('div', { class: 'row gap wrap' }, sizeRow, orientSeg))),
+      h('h5', null, 'Paper'), grid,
+      h('h5', null, 'Paper colour'), colorRow,
+      h('div', { class: 'row end gap', style: { marginTop: '22px' } }, h('button', { class: 'btn', onclick: () => close(null) }, 'Cancel'), h('button', { class: 'btn primary', onclick: create }, 'Create notebook'))));
+    back.addEventListener('pointerdown', (e) => { if (e.target === back) close(null); });
+    document.body.append(back);
+    setTimeout(() => nameIn.select(), 50);
+  });
+
   UI.createFromSheet = (r) => {
+    if (r.kind === 'notebook') {
+      const doc = D.create({ name: r.name, bg: r.bg, kind: 'notebook', page: { template: r.tpl, color: r.bg, size: r.size, orient: r.orient, scroll: r.scroll } });
+      doc.subject = r.subject || null;
+      return doc;
+    }
     const doc = D.create({ name: r.name, bg: r.bg, grid: r.t.grid });
+    if (r.artboard && r.artboard !== 'none') {
+      const [w, hh] = D.formatSize(r.artboard, r.abOrient || 'portrait');
+      doc.artboards = [{ id: A.uid(), name: D.formats[r.artboard].name + ' 1', fmt: r.artboard, orient: r.abOrient || 'portrait', x: -w / 2, y: -hh / 2, w, h: hh }];
+    }
     doc.paper.grid.spacing = r.t.spacing || 24;
     doc.paper.grid.divisions = r.t.divisions || 5;
     if (r.t.grid === 'none') { doc.paper.grid.type = 'dot'; doc.precision.grid = false; }
@@ -78,7 +151,10 @@
     const docs = A.ST.docs();
     let filter = S.galleryFilter || 'home';
     if (filter === 'docs') filter = 'library';
-    if (!['home', 'all', 'library', 'none'].includes(filter) && !A.SU.get(filter)) filter = 'home';
+    if (filter === 'all') filter = 'canvases';
+    if (!['home', 'notebooks', 'canvases', 'favorites', 'library', 'none'].includes(filter) && !A.SU.get(filter)) filter = 'home';
+    const isNb = (m) => m.kind === 'notebook';
+    const notebooks = metas.filter(isNb), canvases = metas.filter((m) => !isNb(m));
     host.innerHTML = '';
     const count = (fn) => metas.filter(fn).length;
     const go = (id) => { S.galleryFilter = id; A.saveSettings(); query = ''; render(); };
@@ -91,7 +167,8 @@
         dotColor ? h('i', { class: 'dot', style: { background: dotColor } }) : A.iconEl(icon || 'gallery'), h('span', { class: 'grow' }, label), n != null ? h('span', { class: 'g-count num' }, String(n)) : null);
       return b;
     };
-    side.append(item('home', 'Home', null, null, 'spark'), item('all', 'Drawings', metas.length, null, 'gallery'), item('library', 'Books', docs.length, null, 'book'));
+    side.append(item('home', 'Home', null, null, 'spark'), item('library', 'Books', docs.length, null, 'book'), item('notebooks', 'Notebooks', notebooks.length, null, 'notebook'), item('canvases', 'Canvases', canvases.length, null, 'canvas'));
+    if (metas.some((m) => m.fav)) side.append(item('favorites', 'Favorites', metas.filter((m) => m.fav).length, null, 'fav'));
     side.append(h('div', { class: 'g-side-h' }, h('span', null, 'Courses'), h('button', { class: 'ibtn', title: 'Add a course', 'aria-label': 'Add a course', html: A.icon('plus'), onclick: async () => { const n = await A.dialog({ title: 'New course', input: '', okText: 'Add' }); if (n && A.SU.add(n)) render(); } })));
     A.SU.list().forEach((s) => {
       const b = item(s.id, s.name, count((m) => m.subject === s.id) + docs.filter((d) => d.subject === s.id).length, s.color);
@@ -106,7 +183,33 @@
 
     const main = h('main', { class: 'g-main' });
     host.append(h('div', { class: 'g-wrap g-layout' }, side, main));
-    const newBtn = () => h('button', { class: 'btn primary', onclick: newDrawing }, A.iconEl('plus'), 'New drawing');
+    const newBtn = () => h('button', { class: 'btn', onclick: newDrawing }, A.iconEl('canvas'), 'New canvas');
+    const newNbBtn = () => h('button', { class: 'btn primary', onclick: newNotebook }, A.iconEl('plus'), 'New notebook');
+    /* one primary "New" with the choices behind it */
+    const newMenuBtn = (label = 'New') => {
+      const b = h('button', { class: 'btn primary' }, A.iconEl('plus'), label);
+      b.addEventListener('click', () => {
+        const box = h('div', { class: 'menu' });
+        const it = (icon, l, sub, fn) => box.append(h('button', { onclick: () => { A.closePopovers(); fn(); } }, A.iconEl(icon), h('span', { class: 'grow' }, l, h('small', null, sub))));
+        it('notebook', 'Notebook', 'Pages to write on', newNotebook);
+        it('canvas', 'Canvas', 'Infinite space to think', newDrawing);
+        it('book', 'Book or PDF', 'Read with the tutor', importDocs);
+        box.append(h('hr'));
+        it('import', 'Import Axiom file', '.axiom project', importProject);
+        A.popover(box, b, { side: 'down' });
+      });
+      return b;
+    };
+    const sortBtn = () => {
+      const labels = { updated: 'Last edited', created: 'Date created', name: 'Name' };
+      const b = h('button', { class: 'btn ghost-btn', title: 'Sort' }, A.iconEl('chevdown'), labels[S.sort] || labels.updated);
+      b.addEventListener('click', () => {
+        const box = h('div', { class: 'menu' });
+        Object.entries(labels).forEach(([v, l]) => box.append(h('button', { class: (S.sort || 'updated') === v ? 'on' : '', onclick: () => { A.closePopovers(); S.sort = v; A.saveSettings(); render(); } }, A.iconEl((S.sort || 'updated') === v ? 'check' : 'minus'), l)));
+        A.popover(box, b, { side: 'down' });
+      });
+      return b;
+    };
     const addDocBtn = () => h('button', { class: 'btn', onclick: importDocs }, A.iconEl('import'), 'Add book or PDF');
     const sorters = { updated: (a, b) => b.updated - a.updated, created: (a, b) => b.created - a.created, name: (a, b) => a.name.localeCompare(b.name) };
     const section = (title, actions, content) => h('section', { class: 'g-sec' }, h('div', { class: 'g-sec-h' }, h('h2', null, title), actions || null), content);
@@ -119,68 +222,96 @@
         h('div', null, h('p', { class: 'home-date' }, new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })),
           h('h1', { class: 'home-greet' }, greet + '.'),
           h('p', { class: 'home-sub' }, metas.length || docs.length ? 'Pick up where you left off.' : 'Start a drawing, or add a book or problem set to your library.')),
-        h('div', { class: 'g-actions' }, h('button', { class: 'btn', onclick: () => go('library') }, A.iconEl('book'), 'Books'), addDocBtn(), newBtn())));
-      const lastDraw = metas.slice().sort(sorters.updated)[0];
+        h('div', { class: 'g-actions' }, newMenuBtn())));
+      const lastNb = notebooks.slice().sort(sorters.updated)[0];
+      const lastCv = canvases.slice().sort(sorters.updated)[0];
       const lastBook = docs.filter((d) => d.lastRead).sort((a, b) => b.lastRead - a.lastRead)[0];
-      if (lastDraw || lastBook) {
+      if (lastNb || lastCv || lastBook) {
         const row = h('div', { class: 'cont-row' });
         if (lastBook) row.append(continueBook(lastBook));
-        if (lastDraw) row.append(continueDrawing(lastDraw));
+        if (lastNb) row.append(continueDrawing(lastNb));
+        if (lastCv && row.childElementCount < 3) row.append(continueDrawing(lastCv));
         main.append(section('Continue', null, row));
       }
-      const recent = metas.slice().sort(sorters.updated).slice(0, 4);
-      if (recent.length) { const g = h('div', { class: 'g-grid' }); recent.forEach((m) => g.append(card(m))); main.append(section('Recent drawings', h('button', { class: 'link-btn', onclick: () => go('all') }, 'See all'), g)); }
+      const recentNb = notebooks.slice().sort(sorters.updated).slice(0, 5);
+      main.append(section('Notebooks', h('button', { class: 'link-btn', onclick: () => go('notebooks') }, recentNb.length ? 'See all' : ''),
+        recentNb.length ? (() => { const g = h('div', { class: 'g-grid nb-grid' }); recentNb.forEach((m) => g.append(card(m))); return g; })()
+          : h('div', { class: 'lib-empty slim' }, h('div', { class: 'lib-empty-art', html: A.icon('notebook') }), h('div', null, h('h3', null, 'Take notes like on paper'), h('p', null, 'Notebooks are pages you scroll through: lined, grid, dot, Cornell and more, with lecture recording, tape for active recall, text boxes and the tutor.')), newNbBtn())));
+      const recentCv = canvases.slice().sort(sorters.updated).slice(0, 4);
+      if (recentCv.length) { const g = h('div', { class: 'g-grid' }); recentCv.forEach((m) => g.append(card(m))); main.append(section('Canvases', h('button', { class: 'link-btn', onclick: () => go('canvases') }, 'See all'), g)); }
       const shelfDocs = docs.slice().sort((a, b) => (b.lastRead || b.added) - (a.lastRead || a.added)).slice(0, 8);
       main.append(section('Books', h('button', { class: 'link-btn', onclick: () => go('library') }, shelfDocs.length ? 'Open Books' : ''), shelfDocs.length ? shelf(shelfDocs) : emptyLibrary()));
       if (A.SU.list().length) {
         const cg = h('div', { class: 'course-grid' });
         A.SU.list().forEach((s) => cg.append(h('button', { class: 'course-tile', style: { '--c': s.color }, onclick: () => go(s.id) },
           h('span', { class: 'ct-band', style: { background: s.color } }), h('span', { class: 'ct-name' }, s.name),
-          h('span', { class: 'ct-meta num' }, `${count((m) => m.subject === s.id)} drawings · ${docs.filter((d) => d.subject === s.id).length} documents`))));
+          h('span', { class: 'ct-meta num' }, `${count((m) => m.subject === s.id && isNb(m))} notebooks · ${count((m) => m.subject === s.id && !isNb(m))} canvases · ${docs.filter((d) => d.subject === s.id).length} books`))));
         main.append(section('Courses', null, cg));
       }
       return;
     }
 
     if (filter === 'library') {
-      main.append(h('header', { class: 'page-hero' }, h('div', null, h('h1', { class: 'page-title' }, 'Books'), h('p', { class: 'home-sub' }, 'Textbooks, problem sets and notes (PDF or EPUB). Open one to read with the tutor beside you.')), h('div', { class: 'g-actions' }, addDocBtn())));
+      main.append(h('header', { class: 'page-hero' }, h('div', null, h('h1', { class: 'page-title' }, 'Books'), h('p', { class: 'home-sub' }, 'Textbooks, problem sets and notes (PDF or EPUB). Open one to read with the tutor beside you.')), h('div', { class: 'g-actions' }, goalRing(), h('button', { class: 'btn primary', onclick: importDocs }, A.iconEl('plus'), 'Add'))));
       if (!docs.length) { main.append(emptyLibrary()); return; }
-      const reading = docs.filter((d) => d.lastRead && ((d.lastPage || 1) > 1 || d.progress > 0.01)).sort((a, b) => b.lastRead - a.lastRead);
+      const reading = docs.filter((d) => !d.finished && d.lastRead && ((d.lastPage || 1) > 1 || d.progress > 0.01)).sort((a, b) => b.lastRead - a.lastRead);
       if (reading.length) main.append(section('Continue reading', null, shelf(reading.slice(0, 8))));
-      const books = docs.filter((d) => (d.kind || 'book') === 'book').sort((a, b) => a.name.localeCompare(b.name));
-      const sheets = docs.filter((d) => d.kind === 'sheet').sort((a, b) => b.added - a.added);
+      const books = docs.filter((d) => !d.finished && (d.kind || 'book') === 'book').sort((a, b) => a.name.localeCompare(b.name));
+      const sheets = docs.filter((d) => !d.finished && d.kind === 'sheet').sort((a, b) => b.added - a.added);
+      const done = docs.filter((d) => d.finished).sort((a, b) => b.finished - a.finished);
       if (books.length) main.append(section('Books', null, shelf(books, true)));
       if (sheets.length) main.append(section('Problem sets & notes', null, shelf(sheets, true)));
+      if (done.length) main.append(section('Finished', null, shelf(done, true)));
       return;
     }
 
-    // drawings (all / course / none)
+    // notebooks / canvases / favorites / course / no course
     const subj = A.SU.get(filter);
-    const title = filter === 'all' ? 'Drawings' : filter === 'none' ? 'No course' : subj.name;
-    const search = h('input', { type: 'search', id: 'g-search', placeholder: 'Search drawings', value: query, 'aria-label': 'Search' });
-    const sort = h('select', { class: 'field', id: 'g-sort', style: { margin: 0, width: 'auto', height: '40px' }, 'aria-label': 'Sort' },
-      ...[['updated', 'Last edited'], ['created', 'Date created'], ['name', 'Name']].map(([v, l]) => h('option', { value: v, selected: S.sort === v }, l)));
-    sort.addEventListener('change', () => { S.sort = sort.value; A.saveSettings(); render(); });
+    const title = { notebooks: 'Notebooks', canvases: 'Canvases', favorites: 'Favorites', none: 'No course' }[filter] || subj.name;
+    const search = h('input', { type: 'search', id: 'g-search', placeholder: 'Search ' + (filter === 'notebooks' ? 'notebooks' : filter === 'canvases' ? 'canvases' : 'notebooks and canvases'), value: query, 'aria-label': 'Search' });
+    const acts = filter === 'notebooks' ? [h('button', { class: 'btn primary', onclick: newNotebook }, A.iconEl('plus'), 'New')] : filter === 'canvases' ? [h('button', { class: 'btn primary', onclick: newDrawing }, A.iconEl('plus'), 'New')] : [newMenuBtn()];
     main.append(h('header', { class: 'page-hero' },
       h('div', null, h('h1', { class: 'page-title' }, subj ? h('i', { class: 'dot big', style: { background: subj.color } }) : null, title)),
-      h('div', { class: 'g-actions' }, h('div', { class: 'g-search' }, A.iconEl('search'), search), sort, h('button', { class: 'btn', onclick: importProject }, A.iconEl('import'), 'Import'), newBtn())));
-    const grid = h('div', { class: 'g-grid', id: 'g-grid' });
-    main.append(grid);
+      h('div', { class: 'g-actions' }, ...acts)));
+    main.append(h('div', { class: 'g-tools' }, h('div', { class: 'g-search' }, A.iconEl('search'), search), sortBtn()));
+    const body = h('div');
+    main.append(body);
     const renderGrid = () => {
       const q = query.trim().toLowerCase();
-      grid.innerHTML = '';
-      let list = metas.filter((m) => filter === 'all' || (filter === 'none' ? !m.subject : m.subject === filter));
+      body.innerHTML = '';
+      let list = metas.filter((m) => filter === 'notebooks' ? isNb(m) : filter === 'canvases' ? !isNb(m) : filter === 'favorites' ? m.fav : filter === 'none' ? !m.subject : m.subject === filter);
       list = list.filter((m) => !q || m.name.toLowerCase().includes(q)).sort(sorters[S.sort] || sorters.updated);
-      if (!q) grid.append(h('button', { class: 'card new', onclick: newDrawing, 'aria-label': 'New drawing' }, h('span', { class: 'thumb', html: A.icon('plus') }), h('div', { class: 'meta' }, h('div', { class: 't' }, h('div', { class: 'name' }, 'New drawing'), h('div', { class: 'date' }, 'Choose a paper')))));
-      list.forEach((m) => grid.append(card(m)));
-      if (!list.length && q) grid.append(h('p', { class: 'empty-note' }, `No drawings match “${query}”.`));
+      const grid = (items, nb, withNew) => {
+        const g = h('div', { class: 'g-grid' + (nb ? ' nb-grid' : ''), id: 'g-grid' });
+        if (withNew && !q && !items.length) g.append(h('button', { class: 'card new' + (nb ? ' nbcard' : ''), onclick: nb ? newNotebook : newDrawing, 'aria-label': nb ? 'New notebook' : 'New canvas' }, h('span', { class: 'thumb', html: A.icon('plus') }), h('div', { class: 'meta' }, h('div', { class: 't' }, h('div', { class: 'name' }, nb ? 'New notebook' : 'New canvas'), h('div', { class: 'date' }, nb ? 'Choose a paper' : 'Infinite canvas')))));
+        items.forEach((m) => g.append(card(m)));
+        return g;
+      };
+      if (filter === 'notebooks' || filter === 'canvases') body.append(grid(list, filter === 'notebooks', true));
+      else {
+        const nbs = list.filter(isNb), cvs = list.filter((m) => !isNb(m));
+        if (nbs.length || subj) body.append(section('Notebooks', null, grid(nbs, true, !!subj)));
+        if (cvs.length || subj) body.append(section('Canvases', null, grid(cvs, false, !!subj)));
+      }
+      if (!list.length && q) body.append(h('p', { class: 'empty-note' }, `Nothing matches “${query}”.`));
     };
     search.addEventListener('input', () => { query = search.value; renderGrid(); });
     renderGrid();
     if (subj) {
       const cd = docs.filter((d) => d.subject === subj.id);
-      main.append(section('Library for ' + subj.name, addDocBtn(), cd.length ? shelf(cd) : h('p', { class: 'muted small' }, 'No books or problem sets in this course yet.')));
+      main.append(section('Books for ' + subj.name, addDocBtn(), cd.length ? shelf(cd) : h('p', { class: 'muted small' }, 'No books or problem sets in this course yet.')));
     }
+  }
+  /* daily reading goal ring (minutes read today vs goal) */
+  function goalRing() {
+    const day = new Date().toISOString().slice(0, 10);
+    const mins = Math.round(((S.readLog || {})[day] || 0) + (S.readStart ? (Date.now() - S.readStart) / 60000 : 0));
+    const goal = S.readGoal || 15;
+    const p = Math.min(1, mins / goal), R0 = 15, C = 2 * Math.PI * R0;
+    const b = h('button', { class: 'goal', title: 'Daily reading goal (tap to change)', onclick: async () => { const v = await A.dialog({ title: 'Daily reading goal (minutes)', input: String(goal), okText: 'Save' }); const n = parseInt(v, 10); if (n > 0) { S.readGoal = Math.min(600, n); A.saveSettings(); render(); } } });
+    b.innerHTML = `<svg viewBox="0 0 36 36" width="36" height="36"><circle cx="18" cy="18" r="${R0}" fill="none" stroke="var(--line-strong)" stroke-width="3.5"/><circle cx="18" cy="18" r="${R0}" fill="none" stroke="${p >= 1 ? 'var(--ok)' : 'var(--accent)'}" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="${(C * p).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 18 18)"/></svg>`;
+    b.append(h('span', null, h('b', { class: 'num' }, `${mins} min`), h('small', null, `of your ${goal}-minute goal today`)));
+    return b;
   }
   const emptyLibrary = () => h('div', { class: 'lib-empty' },
     h('div', { class: 'lib-empty-art', html: A.icon('book') }),
@@ -205,13 +336,17 @@
   }
 
   function card(m) {
+    const nb = m.kind === 'notebook';
     const thumb = h('span', { class: 'thumb', style: { background: m.paper || '#fff' } });
     if (m.thumb) thumb.append(h('img', { src: m.thumb, alt: '' }));
+    if (m.fav) thumb.append(h('i', { class: 'fav-badge', html: A.icon('fav') }));
+    if (nb && m.pages) thumb.append(h('span', { class: 'pg-badge num' }, m.pages + (m.pages === 1 ? ' page' : ' pages')));
+    if (m.rec) thumb.append(h('span', { class: 'rec-badge', html: A.icon('mic') }));
     const open = h('button', { class: 'card-open', style: { display: 'contents' }, onclick: () => A.emit('open', m.id), 'aria-label': 'Open ' + m.name }, thumb);
     const more = h('button', { class: 'ibtn', 'aria-label': 'More for ' + m.name, html: A.icon('more') });
     more.addEventListener('click', (e) => { e.stopPropagation(); cardMenu(m, more); });
     const subj = m.subject && A.SU.get(m.subject);
-    const el = h('div', { class: 'card' }, open, h('div', { class: 'meta' }, h('div', { class: 't' }, h('div', { class: 'name' }, m.name),
+    const el = h('div', { class: 'card' + (nb ? ' nbcard' : '') }, open, h('div', { class: 'meta' }, h('div', { class: 't' }, h('div', { class: 'name' }, m.name),
       h('div', { class: 'date' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, (subj ? subj.name + ' · ' : '') + A.fmtDate(m.updated))), more));
     let lp;
     thumb.addEventListener('pointerdown', () => { lp = setTimeout(() => { lp = 'fired'; cardMenu(m, thumb); }, 550); });
@@ -225,6 +360,7 @@
     const box = h('div', { class: 'menu' });
     const it = (icon, label, fn, cls) => { const b = h('button', { class: cls || '', onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); box.append(b); };
     it('chev', 'Open', () => A.emit('open', m.id));
+    it('fav', m.fav ? 'Remove from favourites' : 'Add to favourites', async () => { const doc = await A.store.loadDoc(m.id); if (!doc) return; doc.fav = !m.fav; await A.store.saveDoc(doc, m.thumb); render(); });
     it('folder', 'Course: ' + (A.SU.name(m.subject) || 'none'), () => A.SU.pickMenu(anchor, m.subject, async (sid) => {
       const doc = await A.store.loadDoc(m.id); if (!doc) return;
       doc.subject = sid; await A.store.saveDoc(doc, m.thumb); render();
@@ -252,8 +388,8 @@
     });
     box.append(h('hr'));
     it('trash', 'Delete', async () => {
-      const ok = await A.dialog({ title: `Delete “${m.name}”?`, body: 'This drawing is removed from this device. This cannot be undone.', okText: 'Delete', danger: true });
-      if (ok) { await A.store.deleteDoc(m.id); render(); }
+      const ok = await A.dialog({ title: `Delete “${m.name}”?`, body: 'It moves to Recently Deleted in Settings, where you can restore it for 30 days.', okText: 'Delete', danger: true });
+      if (ok) { await UI.trashDoc(m); render(); }
     }, 'danger');
     A.popover(box, anchor, { side: 'down' });
   }
@@ -277,7 +413,7 @@
       h('button', { class: 'book-open', onclick: () => A.emit('read', d.id), 'aria-label': 'Read ' + d.name }, cover(d)),
       h('div', { class: 'book-meta' },
         h('div', { class: 'grow' }, h('div', { class: 'book-title' }, d.name),
-          h('div', { class: 'book-sub' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, d.type === 'epub' ? (d.progress ? `${Math.round(d.progress * 100)}% read` : (d.author || 'EPUB')) : d.pages ? (d.lastRead && (d.lastPage || 1) > 1 ? `Page ${d.lastPage} of ${d.pages}` : `${d.pages} page${d.pages === 1 ? '' : 's'}`) : fmtSize(d.size || 0))),
+          h('div', { class: 'book-sub' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, d.finished ? '✓ Finished' : d.type === 'epub' ? (d.progress ? `${Math.round(d.progress * 100)}% read` : (d.author || 'EPUB')) : d.pages ? (d.lastRead && (d.lastPage || 1) > 1 ? `Page ${d.lastPage} of ${d.pages}` : `${d.pages} page${d.pages === 1 ? '' : 's'}`) : fmtSize(d.size || 0))),
         more),
       p > 0 && d.lastRead ? h('div', { class: 'book-progress' }, h('span', { style: { width: Math.round(p * 100) + '%' } })) : null);
     return el;
@@ -292,10 +428,10 @@
         h('span', { class: 'cont-cta' }, 'Continue reading', A.iconEl('chev'))));
   }
   function continueDrawing(m) {
-    const thumb = h('span', { class: 'cont-thumb', style: { background: m.paper || '#fff' } });
+    const thumb = h('span', { class: 'cont-thumb' + (m.kind === 'notebook' ? ' nb' : ''), style: { background: m.paper || '#fff' } });
     if (m.thumb) thumb.append(h('img', { src: m.thumb, alt: '' }));
     return h('button', { class: 'cont-card cont-draw', onclick: () => A.emit('open', m.id) }, thumb,
-      h('div', { class: 'cont-info' }, h('span', { class: 'cont-kicker' }, 'Drawing'), h('span', { class: 'cont-title' }, m.name),
+      h('div', { class: 'cont-info' }, h('span', { class: 'cont-kicker' }, m.kind === 'notebook' ? 'Notebook' : 'Canvas'), h('span', { class: 'cont-title' }, m.name),
         h('span', { class: 'cont-sub' }, (A.SU.name(m.subject) ? A.SU.name(m.subject) + ' · ' : '') + 'edited ' + A.fmtDate(m.updated)),
         h('span', { class: 'cont-cta' }, 'Open', A.iconEl('chev'))));
   }
@@ -305,6 +441,7 @@
     it('book', 'Read', () => A.emit('read', d.id));
     it('rename', 'Work on it beside a drawing', () => studyDoc(d));
     it('folder', 'Course: ' + (A.SU.name(d.subject) || 'none'), () => A.SU.pickMenu(anchor, d.subject, (sid) => { A.ST.updateDoc(d.id, { subject: sid }); render(); }));
+    it('check', d.finished ? 'Mark as unfinished' : 'Mark as finished', () => { A.ST.updateDoc(d.id, { finished: d.finished ? null : Date.now() }); render(); });
     it('layers', d.kind === 'sheet' ? 'Show under Books' : 'Show under Problem sets', () => { A.ST.updateDoc(d.id, { kind: d.kind === 'sheet' ? 'book' : 'sheet' }); render(); });
     it('rename', 'Rename', async () => { const n = await A.dialog({ title: 'Rename', input: d.name, okText: 'Rename' }); if (n) { A.ST.updateDoc(d.id, { name: n.slice(0, 80) }); render(); } });
     box.append(h('hr'));
@@ -335,6 +472,41 @@
     render();
   }
 
+  async function newNotebook() {
+    const r = await UI.newNotebookSheet();
+    if (!r) return;
+    const doc = UI.createFromSheet(r);
+    await A.store.saveDoc(doc, null);
+    A.emit('open', doc.id);
+  }
+  UI.newNotebook = newNotebook;
+  /* Recently Deleted: drawings are kept for 30 days before they are removed */
+  UI.trashDoc = async (m) => {
+    const doc = await A.store.loadDoc(m.id);
+    if (doc) {
+      const blob = new Blob([JSON.stringify(doc)], { type: 'application/json' });
+      await A.store.saveFile('trash_' + m.id, blob);
+      S.trash = (S.trash || []).filter((t) => t.id !== m.id).concat([{ id: m.id, name: m.name, kind: m.kind, deleted: Date.now(), thumb: m.thumb }]);
+      A.saveSettings();
+    }
+    await A.store.deleteDoc(m.id);
+  };
+  UI.restoreDoc = async (id) => {
+    const b = await A.store.loadFile('trash_' + id, 'application/json');
+    if (!b) return false;
+    const doc = JSON.parse(await b.text());
+    await A.store.saveDoc(doc, (S.trash.find((t) => t.id === id) || {}).thumb || null);
+    await A.store.deleteFile('trash_' + id);
+    S.trash = S.trash.filter((t) => t.id !== id); A.saveSettings();
+    return true;
+  };
+  UI.purgeTrash = async (all = false) => {
+    const keep = [];
+    for (const t of S.trash || []) {
+      if (all || Date.now() - t.deleted > 30 * 864e5) { try { await A.store.deleteFile('trash_' + t.id); } catch (e) { /* ignore */ } } else keep.push(t);
+    }
+    S.trash = keep; A.saveSettings();
+  };
   async function newDrawing() {
     const r = await UI.newDrawingSheet();
     if (!r) return;

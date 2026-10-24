@@ -3,7 +3,7 @@
    and what happens when the tutor cites a line ([[p12:L3-L5]]). */
 'use strict';
 (() => {
-  const D = A.D, R = A.R, h = A.h;
+  const D = A.D, R = A.R, G = A.G, h = A.h;
   const S = A.settings;
   const AI = (A.AI = {});
   const SDK_URL = 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.133.0/+esm';
@@ -48,7 +48,7 @@
     const math = [], code = [], cites = [];
     const keep = (tex, display) => { math.push({ tex, display }); return `\u0000${math.length - 1}\u0000`; };
     let s = String(src || '');
-    s = s.replace(/```([\w-]*)\n?([\s\S]*?)(```|$)/g, (_, lang, body) => { code.push(body); return `\u0001${code.length - 1}\u0001`; });
+    s = s.replace(/```([\w-]*)\n?([\s\S]*?)(```|$)/g, (_, lang, body, end) => { code.push({ lang, body, done: !!end }); return `\u0001${code.length - 1}\u0001`; });
     s = s.replace(/\[\[p(\d+):L(\d+)(?:\s*[-–]\s*L?(\d+))?\]\]/g, (_, p, a, b) => { cites.push([+p, +a, +(b || a)]); return `\u0002${cites.length - 1}\u0002`; });
     s = s.replace(/\$\$([\s\S]+?)\$\$/g, (_, t) => keep(t, true))
       .replace(/\\\[([\s\S]+?)\\\]/g, (_, t) => keep(t, true))
@@ -78,7 +78,7 @@
     }
     flushP(); flushL();
     let html = out.join('');
-    html = html.replace(/\u0001(\d+)\u0001/g, (_, i) => '<pre><code>' + esc(code[+i]) + '</code></pre>');
+    html = html.replace(/\u0001(\d+)\u0001/g, (_, i) => studyBlock(code[+i], kx) || '<pre><code>' + esc(code[+i].body) + '</code></pre>');
     html = html.replace(/\u0002(\d+)\u0002/g, (_, i) => { const [p, a, b] = cites[+i]; return `<button class="cite" data-p="${p}" data-a="${a}" data-b="${b}" title="Show in the book">p. ${p}${a ? ` · ${a === b ? 'line ' + a : 'lines ' + a + '–' + b}` : ''}</button>`; });
     html = html.replace(/\u0000(\d+)\u0000/g, (_, i) => {
       const { tex, display } = math[+i];
@@ -87,6 +87,36 @@
     });
     return html;
   };
+
+  /* interactive study blocks: ```quiz [{q, options, answer, explain}]``` and ```flashcards [{front, back}]``` */
+  const studyBlock = (c, kx) => {
+    if (c.lang !== 'quiz' && c.lang !== 'flashcards') return null;
+    if (!c.done) return `<div class="study-wait">${c.lang === 'quiz' ? 'Writing practice questions…' : 'Making flashcards…'}</div>`;
+    let data;
+    try { data = JSON.parse(c.body); } catch (e) { return null; }
+    if (!Array.isArray(data)) return null;
+    const md = (t) => AI.md(String(t || ''), kx).replace(/^<p>|<\/p>$/g, '');
+    if (c.lang === 'quiz') {
+      return '<div class="quiz">' + data.map((q, qi) => `<div class="qz" data-ans="${+q.answer || 0}"><div class="qz-n">Question ${qi + 1} of ${data.length}</div><div class="qz-q">${md(q.q)}</div>` +
+        (q.options || []).map((o, oi) => `<button class="qz-o" data-i="${oi}"><span class="qz-l">${String.fromCharCode(65 + oi)}</span><span>${md(o)}</span></button>`).join('') +
+        `<div class="qz-ex" hidden>${md(q.explain || '')}</div></div>`).join('') + '</div>';
+    }
+    return '<div class="fc-deck">' + data.map((f, i) => `<button class="fc" aria-label="Flashcard ${i + 1}"><span class="fc-k">${i + 1} / ${data.length}</span><span class="fc-f">${md(f.front)}</span><span class="fc-b">${md(f.back)}</span></button>`).join('') + '</div>';
+  };
+  document.addEventListener('click', (e) => {
+    const o = e.target.closest && e.target.closest('.qz-o');
+    if (o) {
+      const q = o.closest('.qz');
+      if (q.classList.contains('done')) return;
+      const ans = +q.dataset.ans;
+      q.classList.add('done');
+      q.querySelectorAll('.qz-o').forEach((b) => { const i = +b.dataset.i; if (i === ans) b.classList.add('right'); else if (b === o) b.classList.add('wrong'); });
+      const ex = q.querySelector('.qz-ex'); if (ex && ex.textContent.trim()) ex.hidden = false;
+      return;
+    }
+    const f = e.target.closest && e.target.closest('.fc');
+    if (f) f.classList.toggle('flip');
+  });
 
   /* ---------- canvas snapshots ---------- */
   const regionShot = (bb, onlyIds, maxPx = 1500) => {
@@ -117,12 +147,35 @@
     emptyTitle: () => (A.SU.name(D.doc.subject) ? `Tutor for ${A.SU.name(D.doc.subject)}` : 'Your tutor'),
     emptyText: 'Ask about a concept, a page of your PDF, or your own handwritten solution. Add your canvas, a selection or the current page with the buttons below, so you never need screenshots.',
     attachButtons: () => {
+      if (D.isNotebook()) {
+        const b = [{ icon: 'template', label: 'This page', fn: () => AI.attach(AI.shotPage(R.currentPage())) }, { icon: 'pages', label: 'All pages', fn: () => AI.shotPages().forEach(AI.attach) }];
+        if (R.sel.size) b.push({ icon: 'selectall', label: 'Selection', fn: () => AI.attach(AI.shotSelection()) });
+        return b;
+      }
       const b = [{ icon: 'image', label: 'Canvas', fn: () => AI.attach(AI.shotCanvas()) }];
       if (R.sel.size) b.push({ icon: 'selectall', label: 'Selection', fn: () => AI.attach(AI.shotSelection()) });
       if (A.ST.activeDoc()) b.push({ icon: 'pdf', label: 'Current page', fn: async () => AI.attach(await A.ST.currentPage()) });
       return b;
     },
-    autoAttach: (mode, atts) => { if (mode === 'check' && !atts.some((a) => a.kind === 'image')) atts.unshift(AI.shotCanvas()); },
+    autoAttach: (mode, atts) => { if (mode === 'check' && !atts.some((a) => a.kind === 'image')) atts.unshift(D.isNotebook() ? AI.shotPage(R.currentPage()) : AI.shotCanvas()); },
+    get tips() {
+      return D.isNotebook() ? ['Summarize this notebook as smart notes', 'Make 5 practice questions from my notes', 'Make flashcards from my notes', 'Check my work on this page'] : undefined;
+    },
+    systemExtra: () => (D.isNotebook() ? `They are in a notebook called "${D.doc.name}" with ${D.doc.pages.length} pages of handwritten notes (page images are attached when relevant).` : ''),
+  };
+  /* notebook pages as images for the tutor */
+  AI.shotPage = (i) => {
+    const rc = D.pageRect(D.doc, i);
+    return { kind: 'image', label: `Page ${i + 1}`, url: regionShot(rc, null, 1400) };
+  };
+  AI.notePages = () => {
+    const doc = D.doc;
+    return D.pageRects(doc).map((rc, i) => i).filter((i) => doc.layers.some((l) => l.items.some((it) => G.bbHit(it.bb, D.pageRect(doc, i)))));
+  };
+  AI.shotPages = (max = 12) => {
+    let pages = AI.notePages();
+    if (pages.length > max) { const cur = R.currentPage(); pages = pages.sort((a, b) => Math.abs(a - cur) - Math.abs(b - cur)).slice(0, max).sort((a, b) => a - b); }
+    return pages.map((i) => Object.assign(AI.shotPage(i), { keep: false }));
   };
 
   /* ---------- conversation state ---------- */
@@ -273,6 +326,7 @@
       'When page text with line ids is provided (lines like "L12: …" under a page header "p. 34"), cite the exact places you refer to with markers like [[p34:L12-L14]] or [[p34:L7]] placed right after the claim. The app turns them into links that highlight those lines. Only cite line ids you were given.',
       'Use precise mathematical language. Do not replace arguments with analogies or metaphors unless the student asks for intuition. Be direct about mistakes and concise; no filler or praise.',
       'Format with Markdown. Write all mathematics in LaTeX: $...$ inline and $$...$$ for display equations.',
+      'When the student asks for practice questions or a quiz, give them as a fenced block with the language "quiz" containing a JSON array: [{"q": "...", "options": ["...", "..."], "answer": <index of the correct option>, "explain": "..."}]. When they ask for flashcards, use a fenced block with the language "flashcards" containing [{"front": "...", "back": "..."}]. Inside those JSON strings write LaTeX with escaped backslashes (\\\\frac). The app renders them as interactive cards; you may add a short sentence before the block.',
       MODE_TEXT[mode],
     ].filter(Boolean).join('\n');
   };

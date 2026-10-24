@@ -22,9 +22,21 @@
 
   /* ---------- views ---------- */
   const gallery = () => A.$('#gallery-view'), canvasView = () => A.$('#canvas-view');
+  /* reading time for the daily goal on the Books page */
+  const endReading = () => {
+    if (!S.readStart) return;
+    const mins = Math.min(240, (Date.now() - S.readStart) / 60000);
+    const day = new Date().toISOString().slice(0, 10);
+    S.readLog = S.readLog || {};
+    S.readLog[day] = (S.readLog[day] || 0) + mins;
+    for (const k of Object.keys(S.readLog)) if (k < new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10)) delete S.readLog[k];
+    S.readStart = null; A.saveSettings();
+  };
+  A.on('app:background', endReading);
   async function showGallery() {
+    endReading();
     A.closePopovers();
-    if (D.doc) { autosave.cancel(); await save(); }
+    if (D.doc) { autosave.cancel(); await save(); A.emit('doc:close'); }
     A.IN.cancelAll();
     D.doc = null;
     if (A.RD.isOpen()) A.RD.close();
@@ -35,21 +47,28 @@
     await UI.renderGallery();
   }
   async function openDoc(id) {
+    endReading();
     const raw = await A.store.loadDoc(id);
     if (!raw) { A.toast('That drawing could not be found'); return showGallery(); }
     if (A.RD.isOpen()) A.RD.close();
     A.$('#reader-view').hidden = true;
     const doc = D.normalize(raw);
+    if (D.doc) A.emit('doc:close');
     D.doc = doc;
     D.resetHistory();
     A.emit('selection:clear');
+    B.useToolset(D.isNotebook(doc) ? 'notebook' : 'canvas');
     gallery().hidden = true;
     canvasView().hidden = false;
     canvasView().classList.remove('ui-hidden');
+    canvasView().classList.toggle('nb-mode', D.isNotebook(doc));
     R.resize();
     const v = doc.view;
-    if (!v.tx && !v.ty) {
-      const bb = D.allBB();
+    if (D.isNotebook(doc)) {
+      if (!v.tx && !v.ty) { v.zoom = R.fitPageZoom(); v.rot = 0; v.ty = 1e9; }
+      R.constrainNotebook();
+    } else if (!v.tx && !v.ty) {
+      const bb = D.allBB() || (doc.artboards.length ? [doc.artboards[0].x, doc.artboards[0].y, doc.artboards[0].x + doc.artboards[0].w, doc.artboards[0].y + doc.artboards[0].h] : null);
       if (bb) R.fitBB(bb); else { v.tx = R.w / 2; v.ty = R.h / 2; }
     }
     A.emit('doc:open');
@@ -67,6 +86,7 @@
     canvasView().hidden = true;
     gallery().hidden = true;
     updateChrome();
+    S.readStart = Date.now();
     A.RD.open(meta);
   });
   A.on('app:background', () => { if (D.doc) autosave.flush(); });
@@ -149,7 +169,14 @@
     UI.mountSelection(A.$('#selmenu'), A.$('#selpopup'));
     UI.mountGallery(A.$('#gallery-view'));
     A.ST.mount(A.$('#studypanel'));
+    A.NB.mount(A.$('#nb-ui'));
+    A.TE.mount(A.$('#stage'));
     A.RD.mount(A.$('#reader-view'));
+    UI.purgeTrash().catch(() => {});
+    if (window.AXIOM_NATIVE && A.native) {
+      S.orientationLock = !!window.AXIOM_NATIVE.orientationLock;
+      if (S.keepAwake) A.native.post({ op: 'keepAwake', on: true }).catch(() => {});
+    }
     if (!S.homeSeen) { S.homeSeen = true; S.galleryFilter = 'home'; A.saveSettings(); }
     A.$('#restore-ui').innerHTML = A.icon('eye');
     A.$('#restore-ui').addEventListener('click', () => A.emit('cmd', 'toggleUI'));

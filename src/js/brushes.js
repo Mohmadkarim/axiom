@@ -22,8 +22,13 @@
     softmask:    { name: 'Soft Mask',    icon: 'b-softmask',    kind: 'var',  size: 36,  opacity: 0.6,  smoothing: 0.3, min: 4, max: 400, mask: true, soft: true },
     select:      { name: 'Selection',    icon: 'b-select',      kind: 'tool', size: 1,   opacity: 1,    smoothing: 0, min: 1, max: 1 },
     nudge:       { name: 'Nudge',        icon: 'b-nudge',       kind: 'tool', size: 40,  opacity: 1,    smoothing: 0, min: 5, max: 400 },
+    fountain:    { name: 'Fountain Pen', icon: 'b-brushpen',    kind: 'var',  size: 3.5, opacity: 1,    smoothing: 0.35, min: 0.3, max: 60, taper: 2, group: 'ink' },
+    tape:        { name: 'Tape',         icon: 'b-marker',      kind: 'line', size: 22,  opacity: 1,    smoothing: 0.6, min: 8, max: 120, cap: 'butt', tape: true, group: 'marker' },
+    text:        { name: 'Text',         icon: 'text',          kind: 'tool', size: 20,  opacity: 1,    smoothing: 0, min: 8, max: 120 },
+    laser:       { name: 'Laser Pointer',icon: 'laser',         kind: 'tool', size: 6,   opacity: 1,    smoothing: 0, min: 2, max: 30 },
+    pan:         { name: 'Pan',          icon: 'hand',          kind: 'tool', size: 1,   opacity: 1,    smoothing: 0, min: 1, max: 1 },
   };
-  B.order = ['pencil', 'pen', 'brushpen', 'fineliner', 'wire', 'dotted', 'marker', 'highlighter', 'airbrush', 'fill', 'slice', 'eraser', 'mask', 'softmask', 'select', 'nudge'];
+  B.order = ['pencil', 'pen', 'fountain', 'brushpen', 'fineliner', 'wire', 'dotted', 'marker', 'highlighter', 'tape', 'airbrush', 'fill', 'slice', 'eraser', 'mask', 'softmask', 'select', 'nudge', 'text', 'laser', 'pan'];
   B.isDrawing = (id) => { const k = B.catalog[id].kind; return k === 'var' || k === 'line' || k === 'fill'; };
 
   const mkSlot = (b, color) => { const c = B.catalog[b]; return { b, color, size: c.size, opacity: c.opacity, smoothing: c.smoothing }; };
@@ -37,9 +42,31 @@
     mkSlot('slice', '#000000'),
     mkSlot('select', '#000000'),
   ];
-  if (!Array.isArray(A.settings.slots) || A.settings.slots.length !== 8 || A.settings.slots.some((s) => !s || !B.catalog[s.b])) {
-    A.settings.slots = B.defaultSlots();
-  }
+  /* notebooks keep their own tool set (Notability-style rail); canvases keep the 8-slot wheel */
+  B.notebookSlots = () => [
+    mkSlot('pen', '#16181d'), mkSlot('pen', '#1f4fbf'), mkSlot('fountain', '#c0392b'),
+    Object.assign(mkSlot('highlighter', '#ffd84d'), { size: 18 }), mkSlot('eraser', '#000000'),
+    mkSlot('text', '#16181d'), mkSlot('select', '#000000'), Object.assign(mkSlot('laser', '#ff3b30')),
+    Object.assign(mkSlot('tape', '#f7c6d0')),
+  ];
+  const validSlots = (list, n) => Array.isArray(list) && list.length === n && list.every((s) => s && B.catalog[s.b]);
+  if (!validSlots(A.settings.slots, 8) && !validSlots(A.settings.slots, 9)) A.settings.slots = B.defaultSlots();
+  A.settings.toolsets = A.settings.toolsets || {};
+  B.toolset = A.settings.slots.length === 9 ? 'notebook' : 'canvas';
+  /* swap the active tool set when moving between canvases and notebooks */
+  B.useToolset = (kind) => {
+    const S = A.settings;
+    if (B.toolset === kind) return;
+    S.toolsets[B.toolset] = { slots: S.slots, active: S.activeSlot, prev: S.prevSlot };
+    const ts = S.toolsets[kind];
+    const n = kind === 'notebook' ? 9 : 8;
+    S.slots = ts && validSlots(ts.slots, n) ? ts.slots : kind === 'notebook' ? B.notebookSlots() : B.defaultSlots();
+    S.activeSlot = ts ? Math.min(ts.active || 0, n - 1) : 0;
+    S.prevSlot = ts ? ts.prev : null;
+    B.toolset = kind;
+    A.saveSettings();
+    A.emit('slot');
+  };
   B.slot = () => A.settings.slots[A.settings.activeSlot] || A.settings.slots[0];
 
   /* ---------- input → width multiplier ---------- */
@@ -118,6 +145,7 @@
 
   /* ---------- render one stroke (ctx already holds the world transform) ---------- */
   B.render = (ctx, item, alphaMul = 1) => {
+    if (item.b === 'tape' && item.rv) alphaMul *= 0.16;
     const c = B.catalog[item.b] || B.catalog.pen;
     const path = B.path(item);
     const a = item.o * alphaMul;
@@ -168,7 +196,66 @@
     }
     return im;
   };
+  /* text boxes and sticky notes: {t:'x', text, fs, font, c, bg?, bold?, iw, ih, m} in local box units */
+  B.FONTS = {
+    sans: '-apple-system, "SF Pro Text", system-ui, sans-serif',
+    serif: '"Iowan Old Style", "New York", Georgia, serif',
+    mono: 'ui-monospace, "SF Mono", Menlo, monospace',
+    round: '"SF Pro Rounded", ui-rounded, -apple-system, system-ui, sans-serif',
+  };
+  const mctx = document.createElement('canvas').getContext('2d');
+  B.textFont = (it) => `${it.bold ? 700 : 400} ${it.fs}px ${B.FONTS[it.font] || B.FONTS.sans}`;
+  B.textPad = (it) => (it.bg ? Math.max(10, it.fs * 0.6) : 2);
+  B.layoutText = (it) => {
+    mctx.font = B.textFont(it);
+    const pad = B.textPad(it), maxW = Math.max(20, it.iw - pad * 2);
+    const lines = [];
+    for (const para of String(it.text || '').split('\n')) {
+      const words = para.split(/(\s+)/);
+      let cur = '';
+      for (const w of words) {
+        const next = cur + w;
+        if (cur && mctx.measureText(next.trimEnd()).width > maxW) { lines.push(cur.trimEnd()); cur = w.trimStart(); }
+        else cur = next;
+        while (mctx.measureText(cur).width > maxW && cur.length > 1) { // break very long words
+          let k = cur.length - 1;
+          while (k > 1 && mctx.measureText(cur.slice(0, k)).width > maxW) k--;
+          lines.push(cur.slice(0, k)); cur = cur.slice(k);
+        }
+      }
+      lines.push(cur);
+    }
+    const lh = it.fs * 1.36;
+    return { lines, lh, pad, h: Math.max(lh, lines.length * lh) + pad * 2 };
+  };
+  B.makeText = (props) => {
+    const it = Object.assign({ id: A.uid(), t: 'x', text: '', fs: 20, font: 'sans', c: '#1b1d22', o: 1, iw: 320, ih: 30, m: [1, 0, 0, 1, 0, 0] }, props);
+    it.ih = B.layoutText(it).h;
+    it.bb = B.imageBB(it);
+    return it;
+  };
+  B.renderText = (ctx, item, alphaMul = 1) => {
+    const L = B.layoutText(item);
+    ctx.save();
+    ctx.globalAlpha = (item.o ?? 1) * alphaMul;
+    ctx.transform(...item.m);
+    if (item.bg) {
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.18)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 3;
+      ctx.fillStyle = item.bg;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(0, 0, item.iw, item.ih, 6); else ctx.rect(0, 0, item.iw, item.ih);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.font = B.textFont(item);
+    ctx.fillStyle = item.bg ? '#2a2620' : B.col(item.c);
+    ctx.textBaseline = 'alphabetic';
+    L.lines.forEach((ln, i) => ctx.fillText(ln, L.pad, L.pad + i * L.lh + item.fs * 1.02));
+    ctx.restore();
+  };
   B.renderImage = (ctx, item, alphaMul = 1, onload) => {
+    if (item.t === 'x') return B.renderText(ctx, item, alphaMul);
     const im = B.image(item.src, onload);
     if (!im.complete || !im.naturalWidth) return;
     ctx.save();
@@ -186,6 +273,7 @@
     const xs = cs.map((p) => p[0]), ys = cs.map((p) => p[1]);
     return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
   };
+  B.isBox = (it) => it.t === 'i' || it.t === 'x';
   B.imageHit = (item, x, y) => {
     const inv = A.M.inv(item.m);
     const [u, v] = A.M.apply(inv, x, y);
@@ -195,6 +283,13 @@
   /* ---------- SVG ---------- */
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   B.itemSvg = (item, defs) => {
+    if (item.t === 'x') {
+      const L = B.layoutText(item);
+      const rect = item.bg ? `<rect width="${item.iw}" height="${item.ih}" rx="6" fill="${item.bg}"/>` : '';
+      const fam = esc(B.FONTS[item.font] || B.FONTS.sans);
+      const spans = L.lines.map((ln, i) => `<tspan x="${L.pad}" y="${(L.pad + i * L.lh + item.fs * 1.02).toFixed(2)}">${esc(ln) || ' '}</tspan>`).join('');
+      return `<g transform="matrix(${item.m.map((v) => +v.toFixed(4)).join(' ')})" opacity="${item.o ?? 1}">${rect}<text font-family="${fam}" font-size="${item.fs}" font-weight="${item.bold ? 700 : 400}" fill="${item.bg ? '#2a2620' : item.c}" xml:space="preserve">${spans}</text></g>`;
+    }
     if (item.t === 'i') {
       return `<image href="${esc(item.src)}" width="${item.iw}" height="${item.ih}" transform="matrix(${item.m.map((v) => +v.toFixed(4)).join(' ')})" opacity="${item.o ?? 1}"/>`;
     }
