@@ -424,18 +424,6 @@
         return { kind: 'arc', pts: toPts(arc, m), closed: false };
       }
     }
-    // open polyline with sharp corners (e.g. an angle or zig-zag)
-    const simp = rdpXY(P, diag * 0.06);
-    if (simp.length >= 3 && simp.length <= 5) {
-      let err = 0;
-      for (const [x, y] of P) {
-        let d = Infinity;
-        for (let i = 0; i < simp.length - 1; i++) d = Math.min(d, G.distToSeg(x, y, simp[i][0], simp[i][1], simp[i + 1][0], simp[i + 1][1]));
-        err += d;
-      }
-      err /= P.length * diag;
-      if (err < 0.02) return { kind: 'polyline', pts: toPts(densify(simp, step), m), closed: false, sharp: true };
-    }
     return null;
   };
 

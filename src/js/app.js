@@ -109,6 +109,7 @@
 
   /* ---------- boot ---------- */
   async function boot() {
+    try { if (navigator.standalone || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches) document.documentElement.classList.add('standalone'); } catch (e) { /* ignore */ }
     UI.applyTheme();
     if (matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => UI.applyTheme());
     R.init(A.$('#main'), A.$('#overlay'));

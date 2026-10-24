@@ -91,7 +91,7 @@
     if (p) return p;
     const c = B.catalog[item.b] || B.catalog.pen;
     p = new Path2D();
-    if (c.kind === 'var') G.buildVar(p, item.sharp ? item.pts : G.spline(item.pts, Math.max(1.1, item.w * 0.4), 1400), item.w, c.taper || 0);
+    if (c.kind === 'var') G.buildVar(p, item.sharp ? item.pts : G.spline(item.pts, item.live ? Math.max(2, item.w * 0.6) : Math.max(1.1, item.w * 0.4), item.live ? 700 : 1400), item.w, c.taper || 0);
     else if (c.kind === 'fill') (item.sharp ? G.buildPoly : G.buildLine)(p, item.pts, true);
     else (item.sharp ? G.buildPoly : G.buildLine)(p, item.pts, !!item.closed);
     geo.set(item, p);

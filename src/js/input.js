@@ -117,6 +117,8 @@
       this.shape = null;
       this.hold = { x: s.x, y: s.y, t: s.t };
       this.lengthScreen = 0;
+      this.t0 = performance.now(); this.holdAt = this.t0;
+      this.nSamples = 0; this.coalesced = false; this.tFirst = s.t; this.tLast = s.t;
       if (this.guide) this.gctx = GU.begin(this.guide, ...R.toWorld(s.x, s.y));
       this.add(s);
       this.armHold();
@@ -138,6 +140,11 @@
         return;
       }
       if (!D.doc.precision.recog || this.guide || this.cat.mask) return;
+      const need = Math.max(700, (A.settings.holdTime || 500) + 200);
+      const still = performance.now() - (this.holdAt || this.t0);
+      if (still < need) { clearTimeout(this.holdTimer); this.holdTimer = setTimeout(() => this.onHold(), need - still); return; }
+      const bb = G.bbox(this.pts), z = D.doc.view.zoom;
+      if (this.lengthScreen < 70 || Math.hypot(bb[2] - bb[0], bb[3] - bb[1]) * z < 45) return; // handwriting-sized: leave it alone
       const r = G.recognize(this.pts);
       if (r) {
         this.shape = r;
@@ -181,6 +188,7 @@
     }
     move(e, rect) {
       const ss = samplesOf(e, rect);
+      this.nSamples += ss.length; if (ss.length > 1) this.coalesced = true; this.tLast = ss[ss.length - 1].t;
       if (this.shape) {
         const s = ss[ss.length - 1];
         const [x, y] = R.toWorld(s.x, s.y);
@@ -195,7 +203,7 @@
       }
       for (const s of ss) this.add(s);
       const s = ss[ss.length - 1];
-      if (hyp(s.x - this.hold.x, s.y - this.hold.y) > 4) { this.hold = { x: s.x, y: s.y, t: s.t }; this.armHold(); }
+      if (hyp(s.x - this.hold.x, s.y - this.hold.y) > 3) { this.hold = { x: s.x, y: s.y, t: s.t }; this.holdAt = performance.now(); this.armHold(); }
       // predicted samples for lower perceived latency
       this.predicted = null;
       if (e.getPredictedEvents) {
@@ -274,7 +282,7 @@
       if (cat.mask) {
         return { t: 's', b: cat.soft ? 'airbrush' : 'pen', c: R.displayBg(), raw: true, w: this.slot.size, o: 0.92, pts, sharp, closed };
       }
-      return { t: 's', b: this.slot.b, c: this.slot.color, w: this.slot.size, o: this.slot.opacity, pts, sharp, closed };
+      return { t: 's', b: this.slot.b, c: this.slot.color, w: this.slot.size, o: this.slot.opacity, pts, sharp, closed, live: true };
     }
     up(e, rect) {
       if (this.done) return;
@@ -283,6 +291,8 @@
       IN.liveDraw = null;
       if (e && !this.shape) for (const s of samplesOf(e, rect)) this.add(s);
       const { pts, sharp, closed } = this.finalPts(false);
+      const dur = (this.tLast - this.tFirst) / 1000;
+      if (dur > 0.3 && this.rec.type === 'pen') IN.inputStats = { rate: Math.round(this.nSamples / dur), coalesced: this.coalesced };
       R.renderOverlay();
       if (this.cat.kind === 'fill' && G.count(pts) < 3) return;
       const layer = D.targetLayerFor(this.slot.b);

@@ -666,7 +666,8 @@
         ...g('⌘Z / ⇧⌘Z', 'Undo / redo'), ...g('1 – 8', 'Choose a tool slot'), ...g('[ and ]', 'Brush size'),
         ...g('⌘A ⌘C ⌘V ⌘D', 'Select all, copy, paste, duplicate'), ...g('Delete', 'Delete selection'),
         ...g('Space + drag', 'Pan (mouse)'), ...g('0 / F', 'Reset view / fit drawing'), ...g('G  P  L  H', 'Grid, precision, layers, hide interface')),
-      h('p', { class: 'small muted', style: { marginTop: '18px' } }, 'Axiom is in Stage 1: the infinite-canvas foundation. Next come PDF study sets, LaTeX, plots and an AI tutor that can read your work.')));
+      h('p', { class: 'small muted num', style: { marginTop: '18px' } }, A.IN.inputStats ? `Pencil input on this device: ${A.IN.inputStats.rate} samples per second · high-frequency samples ${A.IN.inputStats.coalesced ? 'available' : 'not available'}` : 'Draw a stroke with the Pencil, then reopen Help to see your input rate.'),
+      h('p', { class: 'small muted', style: { marginTop: '6px' } }, 'Axiom is in Stage 1: the infinite-canvas foundation. Next come PDF study sets, LaTeX, plots and an AI tutor that can read your work.')));
     back.addEventListener('pointerdown', (e) => { if (e.target === back) close(); });
     document.body.append(back);
   };

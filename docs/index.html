@@ -80,6 +80,10 @@ input, select, textarea { font: inherit; color: inherit; -webkit-user-select: te
 .row.between { justify-content: space-between; }
 .grow { flex: 1; min-width: 0; }
 #app { position: fixed; inset: 0; }
+/* Home Screen app under the clock: iPadOS reports a shorter viewport, so size by the full screen */
+.standalone #app { inset: auto; top: 0; left: 0; right: 0; height: 100vh; }
+@supports (height: 100lvh) { .standalone #app { height: 100lvh; } }
+.standalone, .standalone body { background: var(--bg); }
 
 /* ---------- buttons & fields ---------- */
 .btn {
@@ -1276,18 +1280,6 @@ A.fmtDate = (t) => {
         return { kind: 'arc', pts: toPts(arc, m), closed: false };
       }
     }
-    // open polyline with sharp corners (e.g. an angle or zig-zag)
-    const simp = rdpXY(P, diag * 0.06);
-    if (simp.length >= 3 && simp.length <= 5) {
-      let err = 0;
-      for (const [x, y] of P) {
-        let d = Infinity;
-        for (let i = 0; i < simp.length - 1; i++) d = Math.min(d, G.distToSeg(x, y, simp[i][0], simp[i][1], simp[i + 1][0], simp[i + 1][1]));
-        err += d;
-      }
-      err /= P.length * diag;
-      if (err < 0.02) return { kind: 'polyline', pts: toPts(densify(simp, step), m), closed: false, sharp: true };
-    }
     return null;
   };
 
@@ -1419,7 +1411,7 @@ A.fmtDate = (t) => {
     if (p) return p;
     const c = B.catalog[item.b] || B.catalog.pen;
     p = new Path2D();
-    if (c.kind === 'var') G.buildVar(p, item.sharp ? item.pts : G.spline(item.pts, Math.max(1.1, item.w * 0.4), 1400), item.w, c.taper || 0);
+    if (c.kind === 'var') G.buildVar(p, item.sharp ? item.pts : G.spline(item.pts, item.live ? Math.max(2, item.w * 0.6) : Math.max(1.1, item.w * 0.4), item.live ? 700 : 1400), item.w, c.taper || 0);
     else if (c.kind === 'fill') (item.sharp ? G.buildPoly : G.buildLine)(p, item.pts, true);
     else (item.sharp ? G.buildPoly : G.buildLine)(p, item.pts, !!item.closed);
     geo.set(item, p);
@@ -2566,6 +2558,8 @@ A.fmtDate = (t) => {
       this.shape = null;
       this.hold = { x: s.x, y: s.y, t: s.t };
       this.lengthScreen = 0;
+      this.t0 = performance.now(); this.holdAt = this.t0;
+      this.nSamples = 0; this.coalesced = false; this.tFirst = s.t; this.tLast = s.t;
       if (this.guide) this.gctx = GU.begin(this.guide, ...R.toWorld(s.x, s.y));
       this.add(s);
       this.armHold();
@@ -2587,6 +2581,11 @@ A.fmtDate = (t) => {
         return;
       }
       if (!D.doc.precision.recog || this.guide || this.cat.mask) return;
+      const need = Math.max(700, (A.settings.holdTime || 500) + 200);
+      const still = performance.now() - (this.holdAt || this.t0);
+      if (still < need) { clearTimeout(this.holdTimer); this.holdTimer = setTimeout(() => this.onHold(), need - still); return; }
+      const bb = G.bbox(this.pts), z = D.doc.view.zoom;
+      if (this.lengthScreen < 70 || Math.hypot(bb[2] - bb[0], bb[3] - bb[1]) * z < 45) return; // handwriting-sized: leave it alone
       const r = G.recognize(this.pts);
       if (r) {
         this.shape = r;
@@ -2630,6 +2629,7 @@ A.fmtDate = (t) => {
     }
     move(e, rect) {
       const ss = samplesOf(e, rect);
+      this.nSamples += ss.length; if (ss.length > 1) this.coalesced = true; this.tLast = ss[ss.length - 1].t;
       if (this.shape) {
         const s = ss[ss.length - 1];
         const [x, y] = R.toWorld(s.x, s.y);
@@ -2644,7 +2644,7 @@ A.fmtDate = (t) => {
       }
       for (const s of ss) this.add(s);
       const s = ss[ss.length - 1];
-      if (hyp(s.x - this.hold.x, s.y - this.hold.y) > 4) { this.hold = { x: s.x, y: s.y, t: s.t }; this.armHold(); }
+      if (hyp(s.x - this.hold.x, s.y - this.hold.y) > 3) { this.hold = { x: s.x, y: s.y, t: s.t }; this.holdAt = performance.now(); this.armHold(); }
       // predicted samples for lower perceived latency
       this.predicted = null;
       if (e.getPredictedEvents) {
@@ -2723,7 +2723,7 @@ A.fmtDate = (t) => {
       if (cat.mask) {
         return { t: 's', b: cat.soft ? 'airbrush' : 'pen', c: R.displayBg(), raw: true, w: this.slot.size, o: 0.92, pts, sharp, closed };
       }
-      return { t: 's', b: this.slot.b, c: this.slot.color, w: this.slot.size, o: this.slot.opacity, pts, sharp, closed };
+      return { t: 's', b: this.slot.b, c: this.slot.color, w: this.slot.size, o: this.slot.opacity, pts, sharp, closed, live: true };
     }
     up(e, rect) {
       if (this.done) return;
@@ -2732,6 +2732,8 @@ A.fmtDate = (t) => {
       IN.liveDraw = null;
       if (e && !this.shape) for (const s of samplesOf(e, rect)) this.add(s);
       const { pts, sharp, closed } = this.finalPts(false);
+      const dur = (this.tLast - this.tFirst) / 1000;
+      if (dur > 0.3 && this.rec.type === 'pen') IN.inputStats = { rate: Math.round(this.nSamples / dur), coalesced: this.coalesced };
       R.renderOverlay();
       if (this.cat.kind === 'fill' && G.count(pts) < 3) return;
       const layer = D.targetLayerFor(this.slot.b);
@@ -4867,7 +4869,8 @@ A.fmtDate = (t) => {
         ...g('⌘Z / ⇧⌘Z', 'Undo / redo'), ...g('1 – 8', 'Choose a tool slot'), ...g('[ and ]', 'Brush size'),
         ...g('⌘A ⌘C ⌘V ⌘D', 'Select all, copy, paste, duplicate'), ...g('Delete', 'Delete selection'),
         ...g('Space + drag', 'Pan (mouse)'), ...g('0 / F', 'Reset view / fit drawing'), ...g('G  P  L  H', 'Grid, precision, layers, hide interface')),
-      h('p', { class: 'small muted', style: { marginTop: '18px' } }, 'Axiom is in Stage 1: the infinite-canvas foundation. Next come PDF study sets, LaTeX, plots and an AI tutor that can read your work.')));
+      h('p', { class: 'small muted num', style: { marginTop: '18px' } }, A.IN.inputStats ? `Pencil input on this device: ${A.IN.inputStats.rate} samples per second · high-frequency samples ${A.IN.inputStats.coalesced ? 'available' : 'not available'}` : 'Draw a stroke with the Pencil, then reopen Help to see your input rate.'),
+      h('p', { class: 'small muted', style: { marginTop: '6px' } }, 'Axiom is in Stage 1: the infinite-canvas foundation. Next come PDF study sets, LaTeX, plots and an AI tutor that can read your work.')));
     back.addEventListener('pointerdown', (e) => { if (e.target === back) close(); });
     document.body.append(back);
   };
@@ -5175,6 +5178,7 @@ A.fmtDate = (t) => {
 
   /* ---------- boot ---------- */
   async function boot() {
+    try { if (navigator.standalone || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches) document.documentElement.classList.add('standalone'); } catch (e) { /* ignore */ }
     UI.applyTheme();
     if (matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => UI.applyTheme());
     R.init(A.$('#main'), A.$('#overlay'));
