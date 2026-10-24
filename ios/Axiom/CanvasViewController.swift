@@ -7,6 +7,9 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
     private var webView: WKWebView!
     private let store = DrawingStore()
     private var schemeHandler: AppSchemeHandler?
+    #if DEBUG
+    private var debugBridge: DebugBridge?
+    #endif
     private lazy var audio: AudioBridge = {
         let a = AudioBridge(filesDir: { [store] in store.filesDir })
         a.onTick = { [weak self] json in self?.runJS("window.__axiomAudio && __axiomAudio(\(json))") }
@@ -56,6 +59,9 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         webView.addGestureRecognizer(capture)
 
         view = webView
+        #if DEBUG
+        debugBridge = DebugBridge(webView: webView)
+        #endif
     }
 
     override func viewDidLoad() {

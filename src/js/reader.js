@@ -681,7 +681,9 @@
     // reading chrome: hide while scrolling down, show on scroll up
     const y = st.main.scrollTop, dy = y - (st._lastY || 0);
     st._lastY = y;
-    if (Math.abs(dy) > 6 && !st.tool.startsWith('w')) host.classList.toggle('chrome-hidden', dy > 0 && y > 120 && !host.querySelector('.rd-actions'));
+    // only the reader's own scrolling hides the bars: layout changes (pages rendering, zoom, restoring the position) must not
+    const byUser = performance.now() - (st._touchAt || 0) < 1600;
+    if (byUser && Math.abs(dy) > 6 && !st.tool.startsWith('w')) host.classList.toggle('chrome-hidden', dy > 0 && y > 120 && !host.querySelector('.rd-actions'));
     if (n !== st.page) {
       st.page = n;
       setPageLabel(n);
@@ -1074,6 +1076,8 @@
     st.io = new IntersectionObserver((ents) => ents.forEach((en) => { const p = st.pages[+en.target.dataset.n - 1]; if (!p) return; p.visible = en.isIntersecting; if (en.isIntersecting) { renderPage(p); drawOverlays(p.n); } }), { root: main, rootMargin: '1200px 0px' });
     st.pages.forEach((p) => st.io.observe(p.el));
     main.addEventListener('scroll', onScroll, { passive: true });
+    const touched = () => { if (st) st._touchAt = performance.now(); };
+    ['touchmove', 'touchend', 'wheel'].forEach((t) => main.addEventListener(t, touched, { passive: true }));
     let tap = null;
     main.addEventListener('pointerdown', (e) => { tap = e.pointerType === 'touch' ? { x: e.clientX, y: e.clientY, t: performance.now() } : null; });
     main.addEventListener('pointerup', (e) => {
