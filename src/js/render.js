@@ -30,7 +30,9 @@
   R.resize = () => {
     A.dpr = Math.min(window.devicePixelRatio || 1, 2);
     const r = R.main.parentElement.getBoundingClientRect();
+    const changed = Math.abs((R.w || 0) - r.width) > 1 || Math.abs((R.h || 0) - r.height) > 1;
     R.w = Math.max(1, r.width); R.h = Math.max(1, r.height);
+    if (changed) setTimeout(() => A.emit('stage:resize'), 0);
     for (const c of [R.main, R.overlay, R.scratch, R.cache]) {
       c.width = Math.round(R.w * A.dpr); c.height = Math.round(R.h * A.dpr);
     }

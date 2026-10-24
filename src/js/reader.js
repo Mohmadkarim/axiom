@@ -466,6 +466,7 @@
         chip('Explain', () => ask('explain', n, r)),
         chip('Fill in steps', () => ask('prove', n, r)),
         chip('Hint', () => ask('hint', n, r)),
+        chip('Solve', () => solveFrom(n, r)),
         h('i', { class: 'ab-sep' }),
         h('button', { class: 'ab-ic', title: 'Highlight', 'aria-label': 'Highlight', html: A.icon('rename'), onclick: () => { addHighlight(n, r); st.focus = null; drawOverlays(n); clearActions(); } }),
         h('button', { class: 'ab-ic', title: 'Copy text', 'aria-label': 'Copy text', html: A.icon('copy'), onclick: async () => { const t = linesIn(await RD.lines(n), r).map((l) => l.text).join('\n'); copyText(t); } }),
@@ -478,6 +479,15 @@
     const maxX = st.main.clientWidth + (st.main.getBoundingClientRect().left - hr.left) - bw - 8;
     bar.style.left = A.clamp(x, 8, Math.max(8, maxX)) + 'px';
     bar.style.top = A.clamp(y, 64, hr.height - bh - 60) + 'px';
+  }
+  /* take the selected problem to a notebook or canvas, with the book docked beside it */
+  async function solveFrom(n, r) {
+    clearActions();
+    const url = await regionImage(n, r, 1800);
+    const im = await new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.src = url; });
+    const meta = st.meta;
+    const loc = await RD.locationOf(n);
+    A.UI.solveBeside(meta, n, { url, w: im.naturalWidth, h: im.naturalHeight, label: `${meta.name}, p. ${loc.printed || n}` });
   }
   const copyText = (t) => {
     if (!t) return A.toast('No text found here. This page may be a scan.');
@@ -870,7 +880,7 @@
       [['paper', 'Paper'], ['sepia', 'Sepia'], ['night', 'Night']].forEach(([id, l]) => m.append(h('button', { class: (S.readerTheme || 'paper') === id ? 'on' : '', onclick: () => { S.readerTheme = id; A.saveSettings(); host.dataset.theme = id; applyEpubTheme(); A.closePopovers(); } }, h('i', { class: 'rd-theme-dot ' + id }), l)));
       if (!isEpub) {
         m.append(h('hr'), h('button', { onclick: () => { st.fit = st.fit === 'width' ? 'page' : 'width'; S.readerFit = st.fit; A.saveSettings(); st.zoom = 1; layout(); A.closePopovers(); } }, A.iconEl('scale'), st.fit === 'width' ? 'Fit whole page' : 'Fit page width'));
-        m.append(h('button', { onclick: () => { A.closePopovers(); const md = A.ST.doc(meta.id); RD.close(); A.UI.studyDoc(md); } }, A.iconEl('rename'), 'Work on this page on a canvas'));
+        m.append(h('button', { onclick: () => { A.closePopovers(); A.UI.solveBeside(A.ST.doc(meta.id), st.page); } }, A.iconEl('rename'), 'Solve beside this page…'));
       }
       A.popover(m, e.currentTarget, { side: 'down' });
     });

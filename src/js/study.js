@@ -157,7 +157,12 @@
     return doc;
   };
   ST.activeDoc = () => { if (!D.doc) return null; const d = tabState(); return d.studyActive !== 'ai' ? ST.doc(d.studyActive) : (d.studyTabs.length ? ST.doc(d.lastDocTab) || ST.doc(d.studyTabs[d.studyTabs.length - 1]) : null); };
-  ST.openDoc = (id) => {
+  ST.openDoc = (id, page) => {
+    if (page) {
+      ST.updateDoc(id, { lastPage: page });
+      const v = views.get(id);
+      if (v) v.ready.then(() => v.goto(page, true));
+    }
     const doc = tabState();
     if (!doc.studyTabs.includes(id)) doc.studyTabs.push(id);
     doc.studyActive = id; doc.lastDocTab = id;
@@ -362,10 +367,13 @@
     more(anchor) {
       const box = h('div', { class: 'menu' });
       const it = (icon, label, fn) => { const b = h('button', { onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); box.append(b); };
-      it('image', 'Put this page on the canvas', async () => {
-        if (this.meta.type === 'pdf') { const r = await ST.renderPage(this.meta, this.page, 2); A.UI.placeImage(r.url, r.canvas.width, r.canvas.height, { width: r.w1 * (96 / 72) }); }
-        else { const url = await this.pageImage(); const im = new Image(); im.onload = () => A.UI.placeImage(url, im.naturalWidth, im.naturalHeight); im.src = url; }
-        A.toast('Page placed on the canvas: write on it with the Pencil');
+      const nb = D.isNotebook();
+      it('image', nb ? 'Put this page in the notebook' : 'Put this page on the canvas', async () => {
+        if (this.meta.type === 'pdf') {
+          const r = await ST.renderPage(this.meta, this.page, 2);
+          if (nb) A.NB.placeReference(r.url, r.canvas.width, r.canvas.height); else A.UI.placeImage(r.url, r.canvas.width, r.canvas.height, { width: r.w1 * (96 / 72) });
+        } else { const url = await this.pageImage(); const im = new Image(); im.onload = () => (nb ? A.NB.placeReference(url, im.naturalWidth, im.naturalHeight) : A.UI.placeImage(url, im.naturalWidth, im.naturalHeight)); im.src = url; }
+        A.toast(nb ? 'Page added to your notebook: write on it with the Pencil' : 'Page placed on the canvas: write on it with the Pencil');
       });
       if (this.meta.type === 'pdf') it('layers', 'Import all pages to annotate', async () => {
         const blob = await A.store.loadFile('doc_' + this.meta.id, 'application/pdf');
@@ -419,7 +427,8 @@
       applyWidth();
       R.resize(); R.render(); // the stage width depends on the panel
       if (open) renderTabs();
-      if (ST.pendingDoc && ST.doc(ST.pendingDoc)) { const id = ST.pendingDoc; ST.pendingDoc = null; setTimeout(() => ST.openDoc(id), 50); }
+      const pd = ST.pendingDoc && (typeof ST.pendingDoc === 'object' ? ST.pendingDoc : { id: ST.pendingDoc });
+      if (pd && ST.doc(pd.id)) { ST.pendingDoc = null; setTimeout(() => ST.openDoc(pd.id, pd.page), 50); }
     });
     A.on('go:gallery', () => { if (view && view.detach) view.detach(); });
   };

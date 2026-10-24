@@ -42,7 +42,7 @@
     /* rotating the iPad or opening the tutor keeps the page fitted if it was fitted before */
     let lastFit = 0;
     A.on('view', () => { if (on()) { const f = R.fitPageZoom(); if (Math.abs(D.doc.view.zoom - f) < f * 0.02) lastFit = 1; else lastFit = 0; } });
-    addEventListener('resize', () => {
+    A.on('stage:resize', () => {
       if (!on()) return;
       const cur = R.currentPage();
       requestAnimationFrame(() => {
@@ -225,6 +225,7 @@
       it('pdf', 'PDF pages', async () => { const f = await pickFile('application/pdf,.pdf'); if (f) A.UI.importPdf(f); });
       it('addpage', 'New page', () => { const cur = R.currentPage(); D.insertPage(cur + 1, { template: D.pageTemplate(D.doc, cur) }); R.showPage(cur + 1, true); });
       it('shapes', 'Diagram', () => A.V.open(anchor));
+      it('book', 'Book page beside…', () => bookBesideMenu(anchor));
       box.append(h('hr'));
       it('laser', 'Laser pointer', () => A.UI.setSlot(7));
       it('tape', 'Tape', () => A.UI.setSlot(8));
@@ -691,4 +692,30 @@
     document.body.append(back);
   };
   NB.timerDialog = timerDialog;
+
+  /* put a book page or a problem at the top of the next free page, ready to solve under it */
+  NB.placeReference = (url, iw, ih, opts = {}) => {
+    const doc = D.doc;
+    const pageUsed = (i) => { const rc = D.pageRect(doc, i); return doc.layers.some((l) => l.items.some((it) => G.bbHit(it.bb, rc) && D.pageAt(doc, (it.bb[0] + it.bb[2]) / 2, (it.bb[1] + it.bb[3]) / 2) === i)); };
+    let at = R.currentPage();
+    if (pageUsed(at)) { at += 1; if (at >= doc.pages.length || pageUsed(at)) D.insertPage(at, { template: D.pageTemplate(doc, at - 1) }); }
+    const rc = D.pageRect(doc, at), [pw] = D.pageSize(doc);
+    const margin = 14 * D.MM;
+    const s = Math.min((pw - margin * 2) / iw, opts.full ? (rc[3] - rc[1] - margin * 2) / ih : (rc[3] - rc[1]) * 0.45 / ih);
+    const it = { id: A.uid(), t: 'i', src: url, iw, ih, m: [s, 0, 0, s, rc[0] + (pw - iw * s) / 2, rc[1] + margin], o: 1, ref: opts.label || 'reference' };
+    it.bb = B.imageBB(it);
+    let l = D.active();
+    if (l.locked || l.pdfLayer) l = doc.layers.slice().reverse().find((x) => !x.locked && !x.pdfLayer && x.visible) || D.addLayer();
+    D.begin(); D.addItems([it], l); D.commit();
+    R.showPage(at, true); R.render(); A.emit('layers:thumbs');
+    return it;
+  };
+  function bookBesideMenu(anchor) {
+    const docs = A.ST.docs().filter((d) => d.type !== 'epub').sort((a, b) => (b.lastRead || b.added) - (a.lastRead || a.added));
+    menu(anchor, (it, box) => {
+      box.append(h('div', { class: 'sub' }, 'Open beside your notes'));
+      if (!docs.length) box.append(h('p', { class: 'nb-hint', style: { padding: '4px 14px 10px' } }, 'Add books or problem sets in Books first.'));
+      docs.slice(0, 8).forEach((d) => it(d.kind === 'sheet' ? 'file' : 'book', d.name, () => A.ST.openDoc(d.id, d.lastPage || 1), '', d.pages ? `p. ${d.lastPage || 1} of ${d.pages}` : ''));
+    }, 'left');
+  }
 })();

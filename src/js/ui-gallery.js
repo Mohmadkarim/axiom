@@ -444,7 +444,7 @@
     const box = h('div', { class: 'menu' });
     const it = (icon, label, fn, cls) => { const b = h('button', { class: cls || '', onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); box.append(b); };
     it('book', 'Read', () => A.emit('read', d.id));
-    it('rename', 'Work on it beside a drawing', () => studyDoc(d));
+    it('rename', 'Solve beside it…', () => UI.solveBeside(d, d.lastPage || 1));
     it('folder', 'Course: ' + (A.SU.name(d.subject) || 'none'), () => A.SU.pickMenu(anchor, d.subject, (sid) => { A.ST.updateDoc(d.id, { subject: sid }); render(); }));
     it('check', d.finished ? 'Mark as unfinished' : 'Mark as finished', () => { A.ST.updateDoc(d.id, { finished: d.finished ? null : Date.now() }); render(); });
     it('layers', d.kind === 'sheet' ? 'Show under Books' : 'Show under Problem sets', () => { A.ST.updateDoc(d.id, { kind: d.kind === 'sheet' ? 'book' : 'sheet' }); render(); });
@@ -468,7 +468,55 @@
     A.ST.pendingDoc = d.id;
     A.emit('open', target.id);
   }
-  UI.studyDoc = studyDoc;
+  UI.studyDoc = (d) => UI.solveBeside(d, d.lastPage || 1);
+
+  /* "Solve beside this page": open a notebook or canvas with the book docked at that page;
+     with a problem image, it is also placed on the paper ready to write under */
+  UI.solveBeside = async (book, page, problem) => {
+    const metas = (await A.store.listMeta()).filter(Boolean).sort((a, b) => b.updated - a.updated);
+    const same = metas.filter((m) => book.subject && m.subject === book.subject);
+    const recent = same.concat(metas.filter((m) => !same.includes(m))).slice(0, 6);
+    const back = h('div', { class: 'modal-back' });
+    const close = () => back.remove();
+    const go = async (target) => {
+      close();
+      let id = target;
+      if (target === 'notebook' || target === 'canvas') {
+        const ln = S.lastNotebook || {};
+        const name = (problem ? 'Problems · ' : 'Notes · ') + book.name.slice(0, 40);
+        const doc = target === 'notebook'
+          ? D.create({ name, bg: ln.color || '#ffffff', kind: 'notebook', page: { template: ln.tpl || 'grid', color: ln.color || '#ffffff', size: ln.size || 'a4', orient: 'portrait', scroll: 'vertical' } })
+          : UI.createFromSheet({ kind: 'canvas', name, t: UI.templates[1], bg: D.papers.white, subject: book.subject });
+        doc.subject = book.subject || null;
+        await A.store.saveDoc(doc, null);
+        id = doc.id;
+      }
+      A.ST.pendingDoc = { id: book.id, page };
+      UI.pendingInsert = problem || null;
+      A.emit('open', id);
+    };
+    const opt = (icon, title, sub, fn) => h('button', { class: 'sb-opt', onclick: fn }, h('span', { class: 'sb-ic', html: A.icon(icon) }), h('span', { class: 'grow' }, h('b', null, title), h('small', null, sub)));
+    const list = h('div', { class: 'sb-list' });
+    recent.forEach((m) => list.append(opt(m.kind === 'notebook' ? 'notebook' : 'canvas', m.name, (A.SU.name(m.subject) ? A.SU.name(m.subject) + ' · ' : '') + 'edited ' + A.fmtDate(m.updated), () => go(m.id))));
+    back.append(h('div', { class: 'modal solve-modal', role: 'dialog', 'aria-label': 'Solve beside this page' },
+      h('h3', null, 'Solve beside page ' + page),
+      h('p', { class: 'muted small' }, problem ? 'The problem goes on a fresh page, with the book open beside it at this page.' : 'The book stays open beside your work, at this page.'),
+      h('div', { class: 'sb-new' }, opt('notebook', 'New notebook', 'Pages to write on', () => go('notebook')), opt('canvas', 'New canvas', 'Infinite space', () => go('canvas'))),
+      recent.length ? h('h5', null, 'Or continue in') : null, recent.length ? list : null,
+      h('div', { class: 'row end', style: { marginTop: '14px' } }, h('button', { class: 'btn', onclick: close }, 'Cancel'))));
+    back.addEventListener('pointerdown', (e) => { if (e.target === back) close(); });
+    document.body.append(back);
+  };
+  A.on('doc:open', () => {
+    const pi = UI.pendingInsert;
+    if (!pi) return;
+    UI.pendingInsert = null;
+    setTimeout(() => {
+      if (!D.doc) return;
+      if (D.isNotebook()) A.NB.placeReference(pi.url, pi.w, pi.h, { label: pi.label });
+      else { const [x, y] = R.toWorld(R.w * 0.12, R.h * 0.16); A.UI.placeImage(pi.url, pi.w, pi.h, { at: [x, y], width: Math.min(pi.w, (R.w * 0.45) / D.doc.view.zoom) }); }
+    }, 350);
+  });
   async function importDocs() {
     const f = await A.ST.pickFile();
     if (!f) return;
