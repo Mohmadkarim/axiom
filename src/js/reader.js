@@ -282,7 +282,7 @@
     if (!st || !st.pages.length) return;
     const main = st.main;
     host.classList.toggle('rd-narrow', main.clientWidth < 760);
-    const frac = keep ? main.scrollTop / Math.max(1, main.scrollHeight) : null;
+    const anchor = keep ? anchorAt(main.getBoundingClientRect().left + main.clientWidth / 2, main.getBoundingClientRect().top + main.clientHeight * 0.35) : null;
     const availW = Math.max(240, main.clientWidth - 64), availH = Math.max(240, main.clientHeight - 48);
     st.pages.forEach((p) => {
       let w = st.fit === 'page' ? Math.min(availW, availH / p.aspect) : Math.min(availW, 980);
@@ -293,7 +293,23 @@
       if (p.canvas && Math.abs(p.w - w) > 2 && p.visible) renderPage(p);
       if (p.ink) drawInkPage(p);
     });
-    if (frac != null) main.scrollTop = frac * main.scrollHeight;
+    if (anchor) restoreAnchor(anchor);
+  }
+  /* "this point of this page stays where it is on screen" — for zooming, fitting and rotating without losing the place */
+  function anchorAt(cx, cy) {
+    let best = null, bd = Infinity;
+    for (const p of st.pages) {
+      const r = p.el.getBoundingClientRect();
+      const d = cy < r.top ? r.top - cy : cy > r.bottom ? cy - r.bottom : 0;
+      if (d < bd) { bd = d; best = { p, rx: (cx - r.left) / r.width, ry: (cy - r.top) / r.height, cx, cy }; }
+      if (d === 0) break;
+    }
+    return best;
+  }
+  function restoreAnchor(a) {
+    const r = a.p.el.getBoundingClientRect();
+    st.main.scrollLeft += r.left + a.rx * r.width - a.cx;
+    st.main.scrollTop += r.top + a.ry * r.height - a.cy;
   }
   /* two passes: an instant low-resolution preview, then the sharp page; the old bitmap stays until the new one is ready */
   async function renderPage(p) {
@@ -308,6 +324,7 @@
       const vp1 = page.getViewport({ scale: 1 });
       if (Math.abs(vp1.height / vp1.width - p.aspect) > 0.01) { p.aspect = vp1.height / vp1.width; p.el.style.height = Math.round(w * p.aspect) + 'px'; }
       const draw = async (scale) => {
+        scale = Math.min(scale, 4096 / vp1.width, 4096 / vp1.height, Math.sqrt(10e6 / (vp1.width * vp1.height)));
         const vp = page.getViewport({ scale });
         const c = h('canvas', { class: 'rd-canvas' });
         c.width = Math.max(1, Math.round(vp.width)); c.height = Math.max(1, Math.round(vp.height));
@@ -392,30 +409,66 @@
   /* ---------- handwriting on pages (stored as page-relative vector strokes) ---------- */
   const INK = { black: '#1b1d22', blue: '#1f4fbf', red: '#c43c35', green: '#1e8449' };
   const inkOf = (n) => ((st.ann.ink = st.ann.ink || {})[n] = st.ann.ink[n] || []);
-  const strokePath = (s, W, H, ox = 0, oy = 0) => {
-    const pts = [];
-    const src = A.IN && A.IN.smoothStroke ? A.IN.smoothStroke(s.pts, 0.45) : s.pts;
-    for (let i = 0; i < src.length; i += 3) pts.push(src[i] * W + ox, src[i + 1] * H + oy, 0.35 + 0.65 * src[i + 2]);
-    const path = new Path2D();
-    A.G.buildVar(path, pts.length > 6 ? A.G.spline(pts, 1.2) : pts, Math.max(0.6, s.w * W), 0);
-    return path;
-  };
-  const drawStrokes = (ctx, strokes, W, H, ox = 0, oy = 0) => {
-    for (const s of strokes) { ctx.fillStyle = s.c; ctx.globalAlpha = s.o || 1; ctx.fill(strokePath(s, W, H, ox, oy)); }
+  /* Ink is drawn as round-capped segments whose width follows the pressure. The same renderer runs live and afterwards,
+     so a stroke never changes shape when the pen lifts; nothing is straightened or smoothed unless "Smooth" is on. */
+  const drawStroke = (ctx, s, W, H, ox = 0, oy = 0, from = 1) => {
+    const p = s.pts, n = p.length / 3;
+    if (!n) return;
+    const base = Math.max(0.6, s.w * W);
+    const X = (i) => p[i * 3] * W + ox, Y = (i) => p[i * 3 + 1] * H + oy, Wd = (i) => base * (0.35 + 0.65 * p[i * 3 + 2]);
+    ctx.globalAlpha = s.o || 1; ctx.strokeStyle = s.c; ctx.fillStyle = s.c; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (n === 1) { ctx.beginPath(); ctx.arc(X(0), Y(0), Wd(0) / 2, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; return; }
+    for (let i = Math.max(1, from); i < n; i++) {
+      // a quadratic from the previous midpoint to this midpoint, bending through the previous sample (passes near every point)
+      const sx = i === 1 ? X(0) : (X(i - 2) + X(i - 1)) / 2, sy = i === 1 ? Y(0) : (Y(i - 2) + Y(i - 1)) / 2;
+      const ex = (X(i - 1) + X(i)) / 2, ey = (Y(i - 1) + Y(i)) / 2;
+      ctx.lineWidth = (Wd(i - 1) + Wd(i)) / 2;
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(X(i - 1), Y(i - 1), ex, ey); ctx.stroke();
+    }
     ctx.globalAlpha = 1;
   };
-  function drawInkPage(p, live) {
-    const strokes = (st.ann.ink && st.ann.ink[p.n]) || [];
-    if (!strokes.length && !live && !p.ink) return;
-    if (!p.ink) { p.ink = h('canvas', { class: 'rd-ink' }); p.el.insertBefore(p.ink, p.ov); }
+  const drawTail = (ctx, s, W, H, ox = 0, oy = 0) => {
+    const p = s.pts, n = p.length / 3;
+    if (n < 2) return;
+    const base = Math.max(0.6, s.w * W), k = n - 1;
+    ctx.strokeStyle = s.c; ctx.lineCap = 'round'; ctx.globalAlpha = s.o || 1;
+    ctx.lineWidth = base * (0.35 + 0.65 * p[k * 3 + 2]);
+    ctx.beginPath(); ctx.moveTo((p[k * 3 - 3] + p[k * 3]) / 2 * W + ox, (p[k * 3 - 2] + p[k * 3 + 1]) / 2 * H + oy); ctx.lineTo(p[k * 3] * W + ox, p[k * 3 + 1] * H + oy); ctx.stroke();
+    ctx.globalAlpha = 1;
+  };
+  const drawStrokes = (ctx, strokes, W, H, ox = 0, oy = 0) => { for (const s of strokes) { drawStroke(ctx, s, W, H, ox, oy); drawTail(ctx, s, W, H, ox, oy); } };
+  const sizeCanvas = (p, c) => {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const W = p.el.clientWidth, H = p.el.clientHeight;
-    if (p.ink.width !== Math.round(W * dpr) || p.ink.height !== Math.round(H * dpr)) { p.ink.width = Math.round(W * dpr); p.ink.height = Math.round(H * dpr); }
-    const ctx = p.ink.getContext('2d');
+    const W = Math.round(p.el.clientWidth * dpr), H = Math.round(p.el.clientHeight * dpr);
+    if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+    return c.getContext('2d');
+  };
+  function drawInkPage(p) {
+    const strokes = (st.ann.ink && st.ann.ink[p.n]) || [];
+    if (!strokes.length && !p.ink) return;
+    if (!p.ink) { p.ink = h('canvas', { class: 'rd-ink' }); p.el.insertBefore(p.ink, p.ov); }
+    const ctx = sizeCanvas(p, p.ink);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, p.ink.width, p.ink.height);
-    drawStrokes(ctx, live ? strokes.concat([live]) : strokes, p.ink.width, p.ink.height);
+    drawStrokes(ctx, strokes, p.ink.width, p.ink.height);
   }
+  /* the stroke being written lives on its own small layer and only its new segments are painted each frame */
+  const liveLayer = (p) => {
+    if (!p.live) { p.live = h('canvas', { class: 'rd-ink rd-live' }); p.el.insertBefore(p.live, p.ov); }
+    return sizeCanvas(p, p.live);
+  };
+  const paintLive = (c) => {
+    const ctx = liveLayer(c.p), n = c.stroke.pts.length / 3;
+    drawStroke(ctx, c.stroke, c.p.live.width, c.p.live.height, 0, 0, c.drawn || 1);
+    c.drawn = n;
+  };
+  const commitStroke = (p, s) => {
+    if (!p.ink) drawInkPage(p);
+    if (!p.ink) { p.ink = h('canvas', { class: 'rd-ink' }); p.el.insertBefore(p.ink, p.ov); }
+    const ctx = sizeCanvas(p, p.ink);
+    drawStroke(ctx, s, p.ink.width, p.ink.height); drawTail(ctx, s, p.ink.width, p.ink.height);
+    if (p.live) { const lc = p.live.getContext('2d'); lc.clearRect(0, 0, p.live.width, p.live.height); }
+  };
   RD.inkUndo = () => {
     const last = st.inkHist.pop();
     if (!last) return A.toast('Nothing to undo');
@@ -444,11 +497,12 @@
       const selecting = e.pointerType === 'pen' || e.pointerType === 'mouse' || fingerSelects();
       if (!selecting || e.button > 0) return;
       if (e.pointerType === 'pen' && !S.penSeen) { S.penSeen = true; A.saveSettings(); }
-      const hit = pageAt(e.clientX, e.clientY);
+      const [ex, ey] = A.IN.penXY(e);
+      const hit = pageAt(ex, ey);
       if (!hit) return;
       e.preventDefault();
       clearActions();
-      const fx = (e.clientX - hit.r.left) / hit.r.width, fy = (e.clientY - hit.r.top) / hit.r.height;
+      const fx = (ex - hit.r.left) / hit.r.width, fy = (ey - hit.r.top) / hit.r.height;
       cur = { p: hit.p, r: hit.r, pts: [[fx, fy]], id: e.pointerId };
       if (st.tool === 'write') {
         if (st.inkTool === 'eraser') { cur.erase = true; eraseAt(hit.p, fx, fy); }
@@ -467,12 +521,13 @@
         cur.fresh = cur.fresh || A.IN.freshFilter();
         for (const ev of list) {
           if (!cur.fresh(ev.timeStamp || 0, ev.clientX, ev.clientY)) continue;
-          const fx = (ev.clientX - cur.r.left) / cur.r.width, fy = (ev.clientY - cur.r.top) / cur.r.height, m = ev.pointerType === 'pen' ? Math.max(0.05, ev.pressure) : 0.6, k = sp.length - 3;
+          const [qx, qy] = A.IN.penXY(ev);
+          const fx = (qx - cur.r.left) / cur.r.width, fy = (qy - cur.r.top) / cur.r.height, m = ev.pointerType === 'pen' ? Math.max(0.05, ev.pressure) : 0.6, k = sp.length - 3;
           // keep samples at least ~0.6 px apart; closer ones just move the last point (no jitter, no lag)
           if (Math.hypot((fx - sp[k]) * cur.r.width, (fy - sp[k + 1]) * cur.r.height) > 0.6) sp.push(fx, fy, m);
           else { sp[k] = fx; sp[k + 1] = fy; sp[k + 2] = Math.max(sp[k + 2], m); }
         }
-        if (!cur.raf) cur.raf = requestAnimationFrame(() => { if (cur) { cur.raf = 0; drawInkPage(cur.p, cur.stroke); } });
+        if (!cur.raf) { const c = cur; cur.raf = requestAnimationFrame(() => { c.raf = 0; if (cur === c) paintLive(c); }); }
         return;
       }
       for (const ev of list) cur.pts.push([A.clamp((ev.clientX - cur.r.left) / cur.r.width, 0, 1), A.clamp((ev.clientY - cur.r.top) / cur.r.height, 0, 1)]);
@@ -485,11 +540,13 @@
       if (cur.erase) { cur = null; return; }
       if (cur.stroke) {
         const s = cur.stroke, p = cur.p;
+        if (cur.raf) cancelAnimationFrame(cur.raf);
         cur = null;
-        s.pts = A.G.simplify(s.pts, 0.0006, 0.04);
+        if (S.readerSmooth) s.pts = A.IN.smoothStroke(s.pts, 0.5);
+        s.pts = A.G.simplify(s.pts, 0.00015, 0.03); // sub-pixel: drops only redundant samples
         inkOf(p.n).push(s);
         st.inkHist.push({ type: 'add', page: p.n, stroke: s });
-        drawInkPage(p); saveAnn();
+        commitStroke(p, s); saveAnn();
         return;
       }
       const sh = shapeOf(cur.pts);
@@ -970,6 +1027,13 @@
       inkBar.append(h('div', { class: 'sb-sep' }));
       const er = ib('b-eraser', 'Eraser', () => { st.inkTool = st.inkTool === 'eraser' ? 'pen' : 'eraser'; drawInkBar(); }); er.classList.toggle('on', st.inkTool === 'eraser'); inkBar.append(er);
       inkBar.append(ib('undo', 'Undo', () => RD.inkUndo()));
+      const opts = ib('more', 'Pen options', () => {
+        const m = h('div', { class: 'menu' });
+        m.append(h('button', { class: S.readerSmooth ? 'on' : '', onclick: () => { A.closePopovers(); S.readerSmooth = !S.readerSmooth; A.saveSettings(); A.toast(S.readerSmooth ? 'New strokes are smoothed' : 'Strokes stay exactly as written', 1600); } }, A.iconEl(S.readerSmooth ? 'check' : 'minus'), 'Smooth strokes'));
+        m.append(h('button', { onclick: () => { A.closePopovers(); A.IN.calibratePen(); } }, A.iconEl('target'), 'Calibrate Apple Pencil…'));
+        A.popover(m, opts, { side: 'down' });
+      });
+      inkBar.append(opts);
     };
     drawInkBar();
     const moreBtn = { _open: null };
@@ -1095,14 +1159,39 @@
     // record reading
     const d = A.ST.doc(meta.id); if (d) { d.lastRead = Date.now(); d.pages = n; A.saveSettings(); }
   };
+  /* two-finger zoom around the point between the fingers (and pan while pinching); the page under the fingers stays put */
   function bindPinch(main, inner) {
-    const pts = new Map(); let d0 = 0, z0 = 1, pz = 0;
-    main.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'touch') return; pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 2) { const [a, b] = [...pts.values()]; d0 = Math.hypot(a[0] - b[0], a[1] - b[1]); z0 = st.zoom; } });
-    main.addEventListener('pointermove', (e) => {
-      if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, [e.clientX, e.clientY]);
-      if (pts.size === 2 && d0) { const [a, b] = [...pts.values()]; pz = A.clamp(z0 * Math.hypot(a[0] - b[0], a[1] - b[1]) / d0, 0.5, 3); inner.style.transformOrigin = 'top center'; inner.style.transform = `scale(${pz / st.zoom})`; }
+    const pts = new Map();
+    let g = null;
+    main.addEventListener('touchmove', (e) => { if (e.touches.length >= 2) e.preventDefault(); }, { passive: false });
+    const mid = () => { const [a, b] = [...pts.values()]; return { x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2, d: Math.hypot(a[0] - b[0], a[1] - b[1]) }; };
+    main.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'touch') return;
+      pts.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pts.size === 2) {
+        const m = mid(), ir = inner.getBoundingClientRect();
+        g = { d0: Math.max(20, m.d), x0: m.x, y0: m.y, z0: st.zoom, z: st.zoom, x: m.x, y: m.y, anchor: anchorAt(m.x, m.y) };
+        inner.style.transformOrigin = `${m.x - ir.left}px ${m.y - ir.top}px`;
+        inner.style.willChange = 'transform';
+      }
     });
-    const end = (e) => { pts.delete(e.pointerId); if (pts.size < 2 && pz) { inner.style.transform = ''; st.zoom = pz; pz = 0; d0 = 0; layout(); } };
+    main.addEventListener('pointermove', (e) => {
+      if (!pts.has(e.pointerId)) return;
+      pts.set(e.pointerId, [e.clientX, e.clientY]);
+      if (!g || pts.size !== 2) return;
+      const m = mid();
+      g.z = A.clamp(g.z0 * m.d / g.d0, 0.5, 4); g.x = m.x; g.y = m.y;
+      inner.style.transform = `translate(${m.x - g.x0}px, ${m.y - g.y0}px) scale(${g.z / g.z0})`;
+    });
+    const end = (e) => {
+      if (!pts.delete(e.pointerId) || !g || pts.size >= 2) return;
+      const done = g; g = null; pts.clear();
+      inner.style.transform = ''; inner.style.willChange = '';
+      if (Math.abs(done.z - done.z0) < 0.02 && Math.hypot(done.x - done.x0, done.y - done.y0) < 4) return;
+      st.zoom = done.z;
+      layout(false);
+      if (done.anchor) restoreAnchor(Object.assign({}, done.anchor, { cx: done.x, cy: done.y }));
+    };
     main.addEventListener('pointerup', end); main.addEventListener('pointercancel', end);
   }
   RD.close = (silent) => {

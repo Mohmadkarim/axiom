@@ -83,7 +83,8 @@
         tilt = Math.atan(Math.sqrt(tx * tx + ty * ty)) / (Math.PI / 2);
       }
     }
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top, p: e.pressure, tilt, t: e.timeStamp || performance.now(), type: e.pointerType };
+    const [px, py] = IN.penXY(e);
+    return { x: px - rect.left, y: py - rect.top, p: e.pressure, tilt, t: e.timeStamp || performance.now(), type: e.pointerType };
   };
   /* WebKit can hand the same Pencil samples over twice (overlapping coalesced lists) or slightly out of order;
      replaying them makes the line jump back each frame: doubled tracks on fast strokes and loops at the ends */
@@ -966,22 +967,9 @@
     return null;
   }
 
-  /* self-calibration: WebKit's own pen-down and the native sample of the same touch should agree; if the web view is ever
-     scaled or inset (Stage Manager, split view), learn the offset so ink stays exactly under the Pencil tip */
-  const penCal = { x: 0, y: 0, web: null, nat: null, n: 0 };
-  const calPair = () => {
-    const w = penCal.web, n = penCal.nat;
-    if (!w || !n || Math.abs(w.t - n.t) > 150) return;
-    const dx = w.x - n.x, dy = w.y - n.y;
-    penCal.web = penCal.nat = null;
-    if (Math.hypot(dx, dy) > 80) return;
-    const k = penCal.n < 3 ? 0.6 : 0.25;
-    penCal.x += (dx - penCal.x) * k; penCal.y += (dy - penCal.y) * k; penCal.n++;
-  };
-  IN.penCal = penCal;
   function onDown(e) {
     fresh.delete(e.pointerId);
-    if (IN.nativePen && e.pointerType === 'pen' && !e.__native) { penCal.web = { x: e.clientX, y: e.clientY, t: performance.now() }; calPair(); return; }
+    if (IN.nativePen && e.pointerType === 'pen' && !e.__native) return;
     if (e.button > 0 && e.pointerType === 'mouse' && e.button !== 1 && e.button !== 2) return;
     e.preventDefault();
     if (Glide.raf) { Glide.stop(); R.gesturing = false; }
@@ -1099,7 +1087,7 @@
   IN.nativePen = !!(window.AXIOM_NATIVE && window.AXIOM_NATIVE.pen);
   const nativeEv = (s, type) => ({
     __native: true, type, pointerId: 7777, pointerType: 'pen', button: 0, buttons: type === 'pointerup' || type === 'pointercancel' ? 0 : 1,
-    clientX: s[0] + (Math.abs(penCal.x) > 1 ? penCal.x : 0), clientY: s[1] + (Math.abs(penCal.y) > 1 ? penCal.y : 0), pressure: Math.max(0.01, s[2]), altitudeAngle: s[3], azimuthAngle: s[4], tiltX: 0, tiltY: 0, timeStamp: s[5],
+    clientX: s[0], clientY: s[1], pressure: Math.max(0.01, s[2]), altitudeAngle: s[3], azimuthAngle: s[4], tiltX: 0, tiltY: 0, timeStamp: s[5],
     preventDefault() {},
   });
   window.__axiomPen = (phase, samples, predicted) => {
@@ -1108,7 +1096,6 @@
     const last = samples[samples.length - 1];
     const withLists = (ev, list, pred) => { ev.getCoalescedEvents = () => list.map((s) => nativeEv(s, 'pointermove')); ev.getPredictedEvents = () => (pred || []).map((s) => nativeEv(s, 'pointermove')); return ev; };
     if (phase === 'b') {
-      penCal.nat = { x: samples[0][0], y: samples[0][1], t: performance.now() }; calPair();
       onDown(nativeEv(samples[0], 'pointerdown'));
       if (samples.length > 1) onMove(withLists(nativeEv(last, 'pointermove'), samples.slice(1), []));
     } else if (phase === 'm') {
@@ -1117,6 +1104,51 @@
       if (samples.length) onMove(withLists(nativeEv(last, 'pointermove'), samples, []));
       onUp(nativeEv(last, phase === 'c' ? 'pointercancel' : 'pointerup'));
     }
+  };
+
+
+  /* ---------- Apple Pencil calibration: the user taps targets; the average gap becomes a correction for every pen sample ---------- */
+  IN.penXY = (e) => {
+    const o = (e.pointerType === 'pen' && A.settings.penOffset) || null;
+    return o ? [e.clientX + o.x, e.clientY + o.y] : [e.clientX, e.clientY];
+  };
+  IN.calibratePen = () => {
+    const spots = [[0.5, 0.42], [0.22, 0.25], [0.78, 0.25], [0.22, 0.75], [0.78, 0.75]];
+    const back = A.h('div', { class: 'pc-back' });
+    const target = A.h('div', { class: 'pc-target' });
+    const msg = A.h('p', { class: 'pc-msg' }, 'Touch the centre of the cross with the tip of your Apple Pencil.');
+    const cancel = A.h('button', { class: 'btn', onclick: () => back.remove() }, 'Cancel');
+    back.append(target, A.h('div', { class: 'pc-panel' }, A.h('h3', null, 'Calibrate Apple Pencil'), msg, A.h('div', { class: 'row gap' }, cancel)));
+    document.body.append(back);
+    const got = [];
+    let k = 0, tx = 0, ty = 0, ready = false;
+    const place = () => { tx = Math.round(innerWidth * spots[k][0]); ty = Math.round(innerHeight * spots[k][1]); target.style.left = tx + 'px'; target.style.top = ty + 'px'; target.classList.remove('hit'); setTimeout(() => { ready = true; }, 320); };
+    place();
+    back.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button')) return;
+      e.preventDefault();
+      if (!ready) return;
+      if (e.pointerType !== 'pen' && A.settings.penSeen) { msg.textContent = 'Use the Apple Pencil, not your finger.'; return; }
+      if (Math.hypot(tx - e.clientX, ty - e.clientY) > 40) { msg.textContent = 'That was too far from the cross. Touch its centre.'; return; }
+      ready = false;
+      got.push([tx - e.clientX, ty - e.clientY]);
+      target.classList.add('hit');
+      k++;
+      if (k < spots.length) { setTimeout(place, 220); msg.textContent = `Good. ${spots.length - k} more.`; return; }
+      // drop the worst tap, average the rest
+      const mean = (arr) => [arr.reduce((a, v) => a + v[0], 0) / arr.length, arr.reduce((a, v) => a + v[1], 0) / arr.length];
+      let [mx, my] = mean(got);
+      const kept = got.slice().sort((a, b) => Math.hypot(a[0] - mx, a[1] - my) - Math.hypot(b[0] - mx, b[1] - my)).slice(0, got.length - 1);
+      [mx, my] = mean(kept);
+      const small = Math.hypot(mx, my) < 1.5;
+      A.settings.penOffset = small ? null : { x: Math.round(mx * 10) / 10, y: Math.round(my * 10) / 10 };
+      A.saveSettings();
+      target.remove();
+      const dir = (v, a, b) => (Math.abs(v) < 0.5 ? '' : `${Math.abs(v).toFixed(1)} pt ${v > 0 ? a : b}`);
+      msg.textContent = small ? 'Your Pencil already lines up (under 1.5 pt). No correction needed.'
+        : `Ink was landing ${[dir(-mx, 'to the right of', 'to the left of'), dir(-my, 'below', 'above')].filter(Boolean).join(' and ')} the tip. It is now corrected to sit under the tip.`;
+      cancel.textContent = 'Done';
+    });
   };
 
   IN.cancelAll = () => { if (action && action.cancel) action.cancel(); action = null; pointers.clear(); };
