@@ -53,14 +53,20 @@
     return [[bb[0] - pad, bb[1] - pad], [bb[2] + pad, bb[1] - pad], [bb[2] + pad, bb[3] + pad], [bb[0] - pad, bb[3] + pad]]
       .map(([x, y]) => M.apply(T, x, y)).map(([x, y]) => R.toScreen(x, y));
   };
+  /* the rotation knob sits above the selection, or below it when the top runs under the toolbar */
+  SEL.rotHandle = (c) => {
+    let top = [(c[0][0] + c[1][0]) / 2, (c[0][1] + c[1][1]) / 2];
+    const ctr = [(c[0][0] + c[2][0]) / 2, (c[0][1] + c[2][1]) / 2];
+    let dx = top[0] - ctr[0], dy = top[1] - ctr[1], L = hyp(dx, dy) || 1;
+    let rh = [top[0] + (dx / L) * 30, top[1] + (dy / L) * 30];
+    if (rh[1] < 78) { top = [(c[2][0] + c[3][0]) / 2, (c[2][1] + c[3][1]) / 2]; dx = top[0] - ctr[0]; dy = top[1] - ctr[1]; L = hyp(dx, dy) || 1; rh = [top[0] + (dx / L) * 30, top[1] + (dy / L) * 30]; }
+    return { top, rh };
+  };
   SEL.hit = (sx, sy) => {
     const c = SEL.screenCorners();
     if (!c) return null;
     for (let i = 0; i < 4; i++) if (hyp(c[i][0] - sx, c[i][1] - sy) < 24) return { kind: 'corner', i };
-    const top = [(c[0][0] + c[1][0]) / 2, (c[0][1] + c[1][1]) / 2];
-    const ctr = [(c[0][0] + c[2][0]) / 2, (c[0][1] + c[2][1]) / 2];
-    const dx = top[0] - ctr[0], dy = top[1] - ctr[1], L = hyp(dx, dy) || 1;
-    const rh = [top[0] + (dx / L) * 30, top[1] + (dy / L) * 30];
+    const { top, rh } = SEL.rotHandle(c);
     if (IN.allowSelRotate && hyp(rh[0] - sx, rh[1] - sy) < 22) return { kind: 'rotate', rh };
     if (G.pointInPoly(sx, sy, c.flat())) return { kind: 'move' };
     return null;
@@ -130,7 +136,7 @@
     }
     onHold() {
       if (this.done || this.shape) return;
-      if (this.lengthScreen < 5 && A.settings.tapHoldSelect && this.rec.type !== 'touch') {
+      if (this.lengthScreen < 5 && A.settings.tapHoldSelect && this.rec.type !== 'touch' && !D.isNotebook()) {
         // Concepts-style tap+hold: switch to lasso selection
         this.done = true;
         IN.liveDraw = null;
@@ -565,6 +571,7 @@
       this.w0 = R.toWorld(this.mid0[0], this.mid0[1]);
       this.selection = selection;
       this.rotUnlocked = false;
+      Glide.reset();
       if (selection) { this.T0 = R.selPreview || M.id(); A.emit('selpopup:hide'); }
       else R.gesturing = true;
     }
@@ -594,6 +601,7 @@
       const c = Math.cos(rot) * zoom, s = Math.sin(rot) * zoom;
       const [wx, wy] = this.w0;
       R.setView({ zoom, rot, tx: mid[0] - (c * wx - s * wy), ty: mid[1] - (s * wx + c * wy) });
+      Glide.track(mid[0], mid[1]);
       if (touchSession) touchSession.gestureMoved = true;
     }
     up() { this.end(); }
@@ -601,7 +609,7 @@
       if (this.ended) return;
       this.ended = true;
       if (this.selection) IN.commitSelTransform();
-      else { R.gesturing = false; R.render(); }
+      else if (!Glide.release()) { R.gesturing = false; R.render(); }
     }
     cancel() { this.end(); }
   }
@@ -735,6 +743,41 @@
     cancel() { if (this.begun) D.cancel(); }
   }
 
+  /* ---- momentum: a flick keeps the page gliding and eases out, like native scrolling ---- */
+  const Glide = {
+    raf: 0, samples: [],
+    track(x, y) { const t = performance.now(); this.samples.push([t, x, y]); while (this.samples.length > 2 && t - this.samples[0][0] > 90) this.samples.shift(); },
+    reset() { this.samples = []; this.stop(); },
+    stop() { if (this.raf) cancelAnimationFrame(this.raf); this.raf = 0; },
+    release() {
+      const sm = this.samples; this.samples = [];
+      if (sm.length < 2) return false;
+      const a = sm[0], b = sm[sm.length - 1], dt = Math.max(8, b[0] - a[0]);
+      if (performance.now() - b[0] > 60) return false; // finger stopped before lifting
+      let vx = (b[1] - a[1]) / dt, vy = (b[2] - a[2]) / dt;
+      if (Math.hypot(vx, vy) < 0.25) return false;
+      if (D.isNotebook()) vx *= 0.25; // pages scroll vertically
+      const max = 4.5; const sp = Math.hypot(vx, vy); if (sp > max) { vx *= max / sp; vy *= max / sp; }
+      let last = performance.now();
+      R.gesturing = true;
+      const step = (now) => {
+        const dtm = Math.min(32, now - last); last = now;
+        const v = D.doc.view;
+        const tx0 = v.tx, ty0 = v.ty;
+        R.setView({ tx: v.tx + vx * dtm, ty: v.ty + vy * dtm });
+        // stop at notebook edges instead of pushing against them
+        if (Math.abs(v.tx - tx0) < 0.01 && Math.abs(vx) > 0.01) vx = 0;
+        if (Math.abs(v.ty - ty0) < 0.01 && Math.abs(vy) > 0.01) vy = 0;
+        const k = Math.pow(0.9945, dtm); vx *= k; vy *= k;
+        if (Math.hypot(vx, vy) < 0.02) { this.raf = 0; R.gesturing = false; R.render(); return; }
+        this.raf = requestAnimationFrame(step);
+      };
+      this.raf = requestAnimationFrame(step);
+      return true;
+    },
+  };
+  IN.glide = Glide;
+
   /* ---- one finger: drag pans; long-press then move = lasso; long-press and lift = context menu ---- */
   class FingerAction {
     constructor(rec, s) {
@@ -744,6 +787,7 @@
       this.moved = 0;
       this.v0 = { tx: D.doc.view.tx, ty: D.doc.view.ty };
       R.gesturing = true;
+      Glide.reset(); Glide.track(s.x, s.y);
       this.timer = setTimeout(() => this.onHold(), A.settings.holdTime || 500);
     }
     onHold() {
@@ -768,12 +812,14 @@
       const v = D.doc.view;
       R.setView({ tx: v.tx + r.x - this.last[0], ty: v.ty + r.y - this.last[1] });
       this.last = [r.x, r.y];
+      Glide.track(r.x, r.y);
     }
     up(e, rect) {
       this.ended = true;
       clearTimeout(this.timer);
       IN.holdRing = null;
       if (!this.held) {
+        if (this.moved > 10 && Glide.release()) return;
         R.gesturing = false; R.render();
         if (this.moved < 8) { if (!IN.toggleTapeAt(this.start.x, this.start.y)) A.emit('canvas:tap', this.start); }
         return;
@@ -790,14 +836,15 @@
   }
 
   class PanAction {
-    constructor(rec) { this.rec = rec; this.last = [rec.x, rec.y]; R.gesturing = true; }
+    constructor(rec) { this.rec = rec; this.last = [rec.x, rec.y]; R.gesturing = true; Glide.reset(); Glide.track(rec.x, rec.y); }
     move() {
       const r = this.rec;
       const v = D.doc.view;
       R.setView({ tx: v.tx + r.x - this.last[0], ty: v.ty + r.y - this.last[1] });
       this.last = [r.x, r.y];
+      Glide.track(r.x, r.y);
     }
-    up() { R.gesturing = false; R.render(); }
+    up() { if (Glide.release()) return; R.gesturing = false; R.render(); }
     cancel() { this.up(); }
   }
 
@@ -866,6 +913,8 @@
     const abl = IN.artboardLabelHit(s.x, s.y);
     if (abl) return new ArtboardAction(rec, s, abl);
     let tool = B.slot().b;
+    // a Pencil touch right next to the tool bar is almost always a stray dab while reaching for a tool
+    if (rec.type === 'pen') { const tb = A.$('#tools .toolbar'); if (tb && !D.isNotebook()) { const r = tb.getBoundingClientRect(), o = R.overlay.getBoundingClientRect(); if (s.x + o.left < r.right + 14 && s.y + o.top > r.top - 10 && s.y + o.top < r.bottom + 10) return null; } }
     if (isFinger) {
       const fm = fingerMode();
       if (fm === 'pan') return new FingerAction(rec, s);
@@ -891,6 +940,7 @@
     if (IN.nativePen && e.pointerType === 'pen' && !e.__native) return;
     if (e.button > 0 && e.pointerType === 'mouse' && e.button !== 1 && e.button !== 2) return;
     e.preventDefault();
+    if (Glide.raf) { Glide.stop(); R.gesturing = false; }
     A.closePopovers();
     A.emit('canvas:down');
     const rect = rectOf();
@@ -936,7 +986,9 @@
       let inSel = false;
       if (R.sel.size) {
         const c = SEL.screenCorners();
-        inSel = c && touches.every((t) => G.pointInPoly(t.x, t.y, c.flat()));
+        const xs = c ? c.map((p) => p[0]) : [], ys = c ? c.map((p) => p[1]) : [];
+        const big = c && (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys)) > R.w * R.h * 0.5;
+        inSel = c && !big && touches.every((t) => G.pointInPoly(t.x, t.y, c.flat()));
       }
       action = new GestureAction(touches, inSel);
       action.owner = null;
@@ -1065,21 +1117,20 @@
       ctx.beginPath();
       for (let i = 0; i < pl.length; i += 2) { const [x, y] = R.toScreen(pl[i], pl[i + 1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
       ctx.closePath();
-      ctx.fillStyle = A.C.rgba(accent.startsWith('#') ? accent : '#2f6fdb', 0.07); ctx.fill();
-      ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5; ctx.strokeStyle = accent; ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = A.C.rgba(accent.startsWith('#') ? accent : '#2f6fdb', 0.1); ctx.fill();
+      ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.stroke();
+      ctx.setLineDash([6, 5]); ctx.lineWidth = 1.6; ctx.strokeStyle = accent; ctx.stroke(); ctx.setLineDash([]);
     }
     // selection box
     const c = SEL.screenCorners();
     if (c && R.sel.size) {
       ctx.beginPath(); c.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath();
-      ctx.setLineDash([6, 4]); ctx.lineWidth = 1.25; ctx.strokeStyle = accent; ctx.stroke(); ctx.setLineDash([]);
+      ctx.lineWidth = 1.25; ctx.strokeStyle = accent; ctx.stroke();
       if (IN.scaleMode !== 'off') for (const [x, y] of c) {
         ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 2; ctx.stroke();
       }
       if (IN.allowSelRotate) {
-        const top = [(c[0][0] + c[1][0]) / 2, (c[0][1] + c[1][1]) / 2], ctr = [(c[0][0] + c[2][0]) / 2, (c[0][1] + c[2][1]) / 2];
-        const dx = top[0] - ctr[0], dy = top[1] - ctr[1], L = hyp(dx, dy) || 1;
-        const rh = [top[0] + (dx / L) * 30, top[1] + (dy / L) * 30];
+        const { top, rh } = SEL.rotHandle(c);
         ctx.beginPath(); ctx.moveTo(top[0], top[1]); ctx.lineTo(rh[0], rh[1]); ctx.lineWidth = 1.25; ctx.stroke();
         ctx.beginPath(); ctx.arc(rh[0], rh[1], 8, 0, Math.PI * 2); ctx.fillStyle = accent; ctx.fill();
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(rh[0], rh[1], 4, -0.4, 4.2); ctx.stroke();

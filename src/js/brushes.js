@@ -128,8 +128,20 @@
   /* ---------- dark display: adapt ink to a dark canvas (display only; exports keep true colors) ---------- */
   B.dark = false;
   const dcache = new Map();
+  /* on paper the student chose to be dark: brighten only dark inks so they stay visible */
+  const lcache = new Map();
+  const liftDark = (c) => {
+    let v = lcache.get(c);
+    if (v) return v;
+    const rgb = A.C.hexToRgb(c);
+    if (!rgb) return c;
+    const [hh, s, l] = A.C.rgbToHsl(...rgb);
+    v = l >= 0.5 ? c : A.C.rgbToHex(...A.C.hslToRgb(hh, s, s < 0.15 ? 0.86 - l * 0.3 : 0.66 + (0.5 - l) * 0.24));
+    lcache.set(c, v);
+    return v;
+  };
   B.col = (c) => {
-    if (!B.dark) return c;
+    if (!B.dark) return B.lift ? liftDark(c) : c;
     let v = dcache.get(c);
     if (v) return v;
     const rgb = A.C.hexToRgb(c);
@@ -152,7 +164,7 @@
     const col = item.raw ? item.c : B.col(item.c);
     ctx.save();
     ctx.globalAlpha = a;
-    if (c.blend) ctx.globalCompositeOperation = B.dark ? 'screen' : c.blend;
+    if (c.blend) ctx.globalCompositeOperation = B.dark || B.lift ? 'screen' : c.blend;
     if (c.mask) ctx.globalCompositeOperation = 'destination-out';
     if (c.soft) {
       const t = ctx.getTransform();

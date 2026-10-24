@@ -22,7 +22,7 @@
     const layBtn = btn('layers', 'Layers (L)', () => toggleLayers(), 'btn-layers');
     const visBtn = btn('shapes', 'Visual tools', (e) => A.V.open(e.currentTarget), 'btn-visuals');
     const left = h('div', { class: 'sb-group panel' },
-      btn('gallery', 'Gallery', () => A.emit('go:gallery')), name, h('div', { class: 'sb-sep' }), precBtn, layBtn, visBtn);
+      (() => { const b = btn('chev', 'Back to library', () => A.emit('go:gallery')); b.classList.add('flip'); return b; })(), name, h('div', { class: 'sb-sep' }), precBtn, layBtn, visBtn);
     const readout = h('button', { id: 'readout', class: 'panel', title: 'View options' });
     readout.addEventListener('click', () => viewMenu(readout));
     const right = h('div', { class: 'sb-group panel' },
@@ -54,13 +54,8 @@
     let rot = ((A.deg(v.rot) % 360) + 360) % 360;
     if (rot > 180) rot -= 360;
     const lk = (on) => (on ? `<span class="ro-lock">${A.icon('lock')}</span>` : '');
-    const parts = [`${lk(S.zoomLock)}<b>${v.zoom >= 1 ? Math.round(v.zoom * 100) : (v.zoom * 100).toFixed(v.zoom < 0.1 ? 1 : 0)}%</b>`, `<span class="hide-sm">${lk(S.rotLock)}${rot.toFixed(0)}°</span>`];
-    if (R.sel.size && A.SEL.box) {
-      const bb = A.SEL.box, T = R.selPreview;
-      let w = bb[2] - bb[0], hh = bb[3] - bb[1];
-      if (T) { const k = Math.sqrt(Math.abs(M.det(T))); w *= k; hh *= k; }
-      parts.push(`<span>${R.sel.size} sel · ${A.fmtLen(w)} × ${A.fmtLen(hh)}</span>`);
-    }
+    const parts = [`${lk(S.zoomLock)}<b>${v.zoom >= 1 ? Math.round(v.zoom * 100) : (v.zoom * 100).toFixed(v.zoom < 0.1 ? 1 : 0)}%</b>`];
+    if (Math.round(rot) !== 0 || S.rotLock) parts.push(`<span class="hide-sm">${lk(S.rotLock)}${rot.toFixed(0)}°</span>`);
     el.innerHTML = parts.join('<span class="dot"></span>');
   }
   /* Measurement popover (as in Concepts): zoom and rotation with lock padlocks and presets, plus artboards */
@@ -227,40 +222,47 @@
   try { const raw = localStorage.getItem('axiom.clip'); if (raw) A.clip = JSON.parse(raw); } catch (e) { /* ignore */ }
 
   const selectTool = () => B.slot().b === 'select';
+  /* Selection: one compact bar next to the selection (primary actions + "…"); the bottom bar only shows
+     lasso options while the selection tool is active and nothing is selected yet. */
   function renderSelMenu() {
     if (!selMenu) return;
     const has = R.sel.size > 0;
-    const show = selectTool() || has;
+    const show = selectTool() && !has;
     selMenu.hidden = !show;
     if (!show) return;
     selMenu.innerHTML = '';
-    const ib = (icon, title, on, fn, id) => {
-      const b = h('button', { class: 'ibtn' + (on ? ' on' : ''), title, 'aria-label': title, id, html: A.icon(icon) });
-      b.addEventListener('click', fn);
-      return b;
-    };
-    if (!has) {
-      selMenu.append(
-        segc([['lasso', 'Lasso'], ['picker', 'Picker']], A.IN.selMode, (v) => { A.IN.selMode = v; renderSelMenu(); }),
-        ib('partial', 'Partial: select strokes the lasso only touches', A.IN.selPartial, () => { A.IN.selPartial = !A.IN.selPartial; A.toast(A.IN.selPartial ? 'Partial strokes are selected' : 'Only strokes fully inside are selected'); renderSelMenu(); }),
-        ib('layerone', 'Select on the active layer only', A.IN.selLayerOnly, () => { A.IN.selLayerOnly = !A.IN.selLayerOnly; A.toast(A.IN.selLayerOnly ? 'Active layer only' : 'All layers'); renderSelMenu(); }),
-        h('div', { class: 'sb-sep' }),
-        ib('selectall', 'Select all', false, () => A.emit('cmd', 'selectAll')),
-        ...(A.clip && A.clip.items && A.clip.items.length ? [ib('paste', 'Paste', false, () => A.emit('cmd', 'paste'))] : []));
-    } else {
-      const modes = { scale: ['scale', 'Scale with strokes'], stretch: ['stretch', 'Stretch (keep stroke width)'], off: ['lock', 'Scaling locked'] };
-      const [icon, title] = modes[A.IN.scaleMode];
-      selMenu.append(
-        h('span', { class: 'sm-label num' }, `${R.sel.size} selected`),
-        ib(icon, title, A.IN.scaleMode !== 'off', () => {
-          A.IN.scaleMode = { scale: 'stretch', stretch: 'off', off: 'scale' }[A.IN.scaleMode];
-          A.toast(modes[A.IN.scaleMode][1]); renderSelMenu(); R.renderOverlay();
-        }),
-        ib('rotate', A.IN.allowSelRotate ? 'Rotation on' : 'Rotation off', A.IN.allowSelRotate, () => { A.IN.allowSelRotate = !A.IN.allowSelRotate; renderSelMenu(); R.renderOverlay(); }),
-        h('div', { class: 'sb-sep' }),
-        ib('selectall', 'Select all', false, () => A.emit('cmd', 'selectAll')),
-        ib('close', 'Deselect', false, () => A.SEL.clear()));
-    }
+    selMenu.append(
+      segc([['lasso', 'Lasso'], ['picker', 'Tap items']], A.IN.selMode, (v) => { A.IN.selMode = v; renderSelMenu(); }),
+      h('div', { class: 'sb-sep' }),
+      (() => { const b = h('button', { class: 'ibtn', title: 'Selection options', 'aria-label': 'Selection options', html: A.icon('more') }); b.addEventListener('click', () => selOptions(b)); return b; })());
+  }
+  function selOptions(anchor) {
+    const box = h('div', { class: 'menu' });
+    const tog = (label, on, fn) => box.append(h('button', { class: on ? 'on' : '', onclick: () => { fn(); A.closePopovers(); renderSelMenu(); R.renderOverlay(); } }, A.iconEl(on ? 'check' : 'minus'), label));
+    tog('Select strokes the lasso only touches', A.IN.selPartial, () => { A.IN.selPartial = !A.IN.selPartial; });
+    tog('Active layer only', A.IN.selLayerOnly, () => { A.IN.selLayerOnly = !A.IN.selLayerOnly; });
+    box.append(h('hr'), h('button', { onclick: () => { A.closePopovers(); A.emit('cmd', 'selectAll'); } }, A.iconEl('selectall'), 'Select all'));
+    if (A.clip && A.clip.items && A.clip.items.length) box.append(h('button', { onclick: () => { A.closePopovers(); A.emit('cmd', 'paste'); } }, A.iconEl('paste'), 'Paste'));
+    A.popover(box, anchor, { side: 'up' });
+  }
+  function selMore(anchor) {
+    const box = h('div', { class: 'menu' });
+    const it = (icon, label, fn) => box.append(h('button', { onclick: () => { A.closePopovers(); fn(); } }, A.iconEl(icon), label));
+    const cmd = (c) => () => A.emit('cmd', c);
+    it('fliph', 'Flip horizontally', cmd('flipH'));
+    it('flipv', 'Flip vertically', cmd('flipV'));
+    it('recolor', 'Apply current colour', cmd('recolor'));
+    it('front', 'Bring to front', cmd('front'));
+    it('back', 'Send to back', cmd('back'));
+    if (!D.isNotebook()) it('moveto', 'Move to layer…', () => moveToMenu(anchor));
+    box.append(h('hr'));
+    const modes = { scale: 'Scale with strokes', stretch: 'Stretch, keep stroke width', off: 'Scaling locked' };
+    it(A.IN.scaleMode === 'off' ? 'lock' : 'scale', 'Resize: ' + modes[A.IN.scaleMode].toLowerCase(), () => { A.IN.scaleMode = { scale: 'stretch', stretch: 'off', off: 'scale' }[A.IN.scaleMode]; A.toast(modes[A.IN.scaleMode], 1200); R.renderOverlay(); });
+    it('rotate', A.IN.allowSelRotate ? 'Rotation handle: on' : 'Rotation handle: off', () => { A.IN.allowSelRotate = !A.IN.allowSelRotate; R.renderOverlay(); });
+    box.append(h('hr'));
+    it('bookmark', 'Save as a visual', cmd('saveVisual'));
+    it('selectall', 'Select all', cmd('selectAll'));
+    A.popover(box, anchor, { side: 'down' });
   }
   function renderSelPopup() {
     if (!selPop) return;
@@ -268,23 +270,25 @@
     if (!c) { selPop.hidden = true; return; }
     selPop.hidden = false;
     if (!selPop.childElementCount) {
-      const ib = (icon, title, cmd) => {
-        const b = h('button', { class: 'ibtn', title, 'aria-label': title, html: A.icon(icon) });
-        b.addEventListener('click', (e) => (cmd === 'moveto' ? moveToMenu(e.currentTarget) : A.emit('cmd', cmd)));
-        return b;
-      };
-      selPop.append(ib('duplicate', 'Duplicate', 'duplicate'), ib('copy', 'Copy', 'copy'), ib('trash', 'Delete', 'delete'),
-        h('div', { class: 'sb-sep' }), ib('fliph', 'Flip horizontal', 'flipH'), ib('flipv', 'Flip vertical', 'flipV'),
-        ib('recolor', 'Apply current color', 'recolor'), ib('front', 'Bring to front', 'front'), ib('back', 'Send to back', 'back'),
-        ib('moveto', 'Move to layer', 'moveto'), h('div', { class: 'sb-sep' }), ib('bookmark', 'Save as visual', 'saveVisual'), ib('spark', 'Ask the tutor about this', 'askTutor'));
+      const ib = (icon, title, fn) => { const b = h('button', { class: 'ibtn', title, 'aria-label': title, html: A.icon(icon) }); b.addEventListener('click', (e) => fn(e.currentTarget)); return b; };
+      selPop.append(
+        ib('duplicate', 'Duplicate', () => A.emit('cmd', 'duplicate')),
+        ib('copy', 'Copy', () => A.emit('cmd', 'copy')),
+        ib('trash', 'Delete', () => A.emit('cmd', 'delete')),
+        ib('spark', 'Ask the tutor about this', () => A.emit('cmd', 'askTutor')),
+        h('div', { class: 'sb-sep' }),
+        ib('more', 'More', (b) => selMore(b)));
     }
     const ys = c.map((p) => p[1]), xs = c.map((p) => p[0]);
     const r = selPop.getBoundingClientRect();
-    let y = Math.min(...ys) - r.height - 46;
-    if (y < 70) y = Math.max(...ys) + 16;
-    const x = A.clamp((Math.min(...xs) + Math.max(...xs)) / 2 - r.width / 2, 8, innerWidth - r.width - 8);
+    const stage = A.$('#stage').getBoundingClientRect();
+    // prefer above the selection (clear of the rotation handle), else below, never over the bottom bars
+    let y = Math.min(...ys) - r.height - 48;
+    if (y < stage.top + 66) y = Math.max(...ys) + 18;
+    y = A.clamp(y, stage.top + 66, stage.bottom - r.height - 84);
+    const x = A.clamp((Math.min(...xs) + Math.max(...xs)) / 2 - r.width / 2, stage.left + 76, stage.right - r.width - 76);
     selPop.style.left = x + 'px';
-    selPop.style.top = A.clamp(y, 64, innerHeight - r.height - 76) + 'px';
+    selPop.style.top = y + 'px';
   }
   function moveToMenu(anchor) {
     const box = h('div', { class: 'menu' });
@@ -735,7 +739,18 @@
     const close = () => back.remove();
     const set = (k, v) => { S[k] = v; A.saveSettings(); };
     const row = (t, d, ctl) => h('div', { class: 'set-row' }, h('div', null, h('div', { class: 't' }, t), d ? h('div', { class: 'd' }, d) : null), ctl);
-    const sel = (k, opts, after) => segc(opts, S[k], (v) => { set(k, v); after && after(); rebuild(); });
+    /* up to 3 options: segmented control; more: a menu picker showing the current value */
+    const pickBtn = (opts, cur, onPick) => {
+      const label = (opts.find(([v]) => v === cur) || opts[0])[1];
+      const b = h('button', { class: 'pick-btn' }, h('span', null, label), A.iconEl('chevdown'));
+      b.addEventListener('click', () => {
+        const box = h('div', { class: 'menu' });
+        opts.forEach(([v, l]) => box.append(h('button', { class: v === cur ? 'on' : '', onclick: () => { A.closePopovers(); onPick(v); } }, A.iconEl(v === cur ? 'check' : 'minus'), l)));
+        A.popover(box, b, { side: 'down' });
+      });
+      return b;
+    };
+    const sel = (k, opts, after) => (opts.length > 3 ? pickBtn(opts, S[k], (v) => { set(k, v); after && after(); rebuild(); }) : segc(opts, S[k], (v) => { set(k, v); after && after(); rebuild(); }));
     const slider = (k, min, max, step, fmt, onSet) => {
       const r = h('input', { type: 'range', min, max, step, value: S[k], style: { width: '150px' } });
       const v = h('span', { class: 'num small' }, fmt(S[k]));
@@ -760,7 +775,7 @@
           row('Dark paper in dark mode', 'Paper turns dark and ink adapts. Exports keep your real colours.', toggleSw(S.darkCanvas !== false, (v) => { set('darkCanvas', v); R.themeChanged(); }, 's-darkcanvas')),
           h('h5', null, 'Tool setup (canvases)'),
           row('Interface', 'Choose your tool palette', sel('toolSetup', [['wheel', 'Tool Wheel'], ['bar', 'Tool Bar']], () => { S.toolPos = null; UI.renderTools(); })),
-          row('Left or right handed?', 'Puts the tools and labels on the side that suits your hand', sel('toolSide', [['left', 'Left'], ['right', 'Right']], () => { S.toolPos = null; UI.renderTools(); })),
+          row('Handedness', 'Puts the tools on the side that suits your hand', sel('toolSide', [['left', 'Left'], ['right', 'Right']], () => { S.toolPos = null; UI.renderTools(); })),
           row('Palette under the tools', 'Quick colours under the colour button', toggleSw(S.showPalette, (v) => { set('showPalette', v); UI.renderTools(); }, 's-pal')));
         if (D.doc && !D.isNotebook()) {
           const doc = D.doc, P = doc.precision;
@@ -770,25 +785,25 @@
               Object.entries(D.papers).forEach(([k, c]) => r.append(h('button', { class: doc.paper.bg === c ? 'on' : '', style: { background: c }, 'aria-label': k, onclick: () => { doc.paper.bg = c; D.changed('paper'); R.render(); rebuild(); } })));
               return r;
             })()),
-            row('Grid type', 'Also in the Precision menu', segc([['none', 'No grid'], ['dot', 'Dot'], ['graph', 'Graph'], ['lined', 'Lined'], ['iso', 'Isometric'], ['tri', 'Triangle']], P.grid ? doc.paper.grid.type : 'none', (v) => { if (v === 'none') P.grid = false; else { P.grid = true; doc.paper.grid.type = v; } D.changed('precision'); R.render(); rebuild(); })),
+            row('Grid type', 'Also in the Precision menu', pickBtn([['none', 'No grid'], ['dot', 'Dot'], ['graph', 'Graph'], ['lined', 'Lined'], ['iso', 'Isometric'], ['tri', 'Triangle']], P.grid ? doc.paper.grid.type : 'none', (v) => { if (v === 'none') P.grid = false; else { P.grid = true; doc.paper.grid.type = v; } D.changed('precision'); R.render(); rebuild(); })),
             row('Artboards', doc.artboards.length ? doc.artboards.map((a) => `${a.name} (${(a.w / D.MM / 10).toFixed(1)} × ${(a.h / D.MM / 10).toFixed(1)} cm)`).join(', ') : 'Reference frames for printing and export. None yet.', (() => { const b = h('button', { class: 'btn' }, A.iconEl('plus'), 'Add'); b.addEventListener('click', () => UI.artboardMenu(b)); return b; })()),
             h('h5', null, 'Measurements'),
-            row('Drawing scale', 'How objects on screen compare to real life', segc([[1, '1:1'], [2, '1:2'], [4, '1:4'], [5, '1:5'], [8, '1:8'], [10, '1:10'], [12, '1:12']], P.scale || 1, (v) => { P.scale = v; D.changed('precision'); rebuild(); })),
-            row('Units', 'Used for measurements and selection sizes', segc([['px', 'px'], ['pt', 'pt'], ['mm', 'mm'], ['cm', 'cm'], ['in', 'in']], P.units, (v) => { P.units = v; D.changed('precision'); A.emit('view'); rebuild(); })));
+            row('Drawing scale', 'How objects on screen compare to real life', pickBtn([[1, '1:1'], [2, '1:2'], [4, '1:4'], [5, '1:5'], [8, '1:8'], [10, '1:10'], [12, '1:12']], P.scale || 1, (v) => { P.scale = v; D.changed('precision'); rebuild(); })),
+            row('Units', 'Used for measurements and selection sizes', pickBtn([['px', 'Pixels'], ['pt', 'Points'], ['mm', 'Millimetres'], ['cm', 'Centimetres'], ['in', 'Inches']], P.units, (v) => { P.units = v; D.changed('precision'); A.emit('view'); rebuild(); })));
         }
       } else if (cur === 'interaction') {
         add(h('h5', null, 'Touch input'),
           row('Finger action', 'What your finger does when you use an Apple Pencil', sel('fingerAction', [['none', 'Do nothing'], ['pan', 'Pan'], ['draw', 'Draw'], ['select', 'Select'], ['auto', 'Auto']])),
           row('Two fingers: canvas rotation', 'Twist to rotate canvases (notebooks never rotate)', toggleSw(S.allowRotate && !S.rotLock, (v) => { set('allowRotate', true); set('rotLock', !v); A.emit('view'); }, 's-rot')),
           row('Two fingers: canvas zoom', 'Turn off to lock the zoom level', toggleSw(!S.zoomLock, (v) => { set('zoomLock', !v); A.emit('view'); }, 's-zoom')),
-          row('Tap + hold', 'Hold a finger or the Pencil still to start a selection', toggleSw(S.tapHoldSelect, (v) => set('tapHoldSelect', v), 's-th')),
+          row('Tap and hold to select', 'Hold the Pencil still on a canvas to start a lasso', toggleSw(S.tapHoldSelect, (v) => set('tapHoldSelect', v), 's-th')),
           row('Highlight selection', 'Fade everything that is not selected', toggleSw(S.highlightSelection, (v) => { set('highlightSelection', v); R.render(); }, 's-hl')),
           row('Draw & hold: activation time', 'Hold at the end of a stroke to turn it into a clean shape', slider('holdTime', 250, 1200, 50, (v) => (v / 1000).toFixed(2) + ' s')),
-          row('Two-finger tap', null, toggleSw(S.twoFingerUndo, (v) => set('twoFingerUndo', v), 's-2f'), ),
+          row('Two-finger tap', 'Undo', toggleSw(S.twoFingerUndo, (v) => set('twoFingerUndo', v), 's-2f')),
           row('Three-finger tap', 'Redo', toggleSw(S.threeFingerRedo, (v) => set('threeFingerRedo', v), 's-3f')),
           h('h5', null, 'Apple Pencil'),
           row('Double-tap', 'What a double-tap on the Pencil does', sel('pencilTap', [['system', 'System setting'], ['switchEraser', 'Eraser'], ['switchPrevious', 'Last tool'], ['showColorPalette', 'Colours'], ['undo', 'Undo'], ['toggleUI', 'Hide UI']])),
-          row('Squeeze (Apple Pencil Pro)', null, sel('pencilSqueeze', [['brush', 'Tool menu'], ['palette', 'Colours'], ['undo', 'Undo'], ['eraser', 'Eraser']])),
+          row('Squeeze (Apple Pencil Pro)', 'What a squeeze on the Pencil does', sel('pencilSqueeze', [['brush', 'Tool menu'], ['palette', 'Colours'], ['undo', 'Undo'], ['eraser', 'Eraser']])),
           row('Pressure response', 'Softer makes light strokes thicker', slider('pressure', 0.4, 2, 0.05, (v) => (v < 0.95 ? 'softer' : v > 1.05 ? 'firmer' : 'normal'))),
           row('Hover brush preview', 'Shows the brush size while the Pencil hovers (M2 and later)', toggleSw(S.hoverCursor, (v) => set('hoverCursor', v), 's-hover')));
         if (NATIVE) {
@@ -799,7 +814,7 @@
       } else if (cur === 'notebooks') {
         const ln = S.lastNotebook || {};
         add(h('h5', null, 'New notebook defaults'),
-          row('Paper', 'Used for new notebooks (change any time in Template settings)', segc([['lined', 'Lined'], ['grid', 'Grid'], ['dot', 'Dot'], ['blank', 'Blank'], ['cornell', 'Cornell']], ln.tpl || 'lined', (v) => { S.lastNotebook = Object.assign({}, ln, { tpl: v }); A.saveSettings(); rebuild(); })),
+          row('Paper', 'For new notebooks', pickBtn([['lined', 'Lined'], ['grid', 'Grid'], ['dot', 'Dot grid'], ['blank', 'Blank'], ['cornell', 'Cornell']], ln.tpl || 'lined', (v) => { S.lastNotebook = Object.assign({}, ln, { tpl: v }); A.saveSettings(); rebuild(); })),
           row('Page size', null, segc([['a4', 'A4'], ['letter', 'Letter'], ['a5', 'A5']], ln.size || 'a4', (v) => { S.lastNotebook = Object.assign({}, ln, { size: v }); A.saveSettings(); rebuild(); })),
           row('Default view', 'Seamless scrolls pages vertically; single pages turn sideways', segc([['vertical', 'Seamless'], ['horizontal', 'Single pages']], ln.scroll || 'vertical', (v) => { S.lastNotebook = Object.assign({}, ln, { scroll: v }); A.saveSettings(); rebuild(); })),
           h('h5', null, 'Handwriting and drawing'),

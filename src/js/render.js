@@ -91,7 +91,7 @@
     const bb = D.pagesBB();
     const bw = (bb[2] - bb[0]) * v.zoom, bh = (bb[3] - bb[1]) * v.zoom;
     const top = R.notebookTop || 70, bot = 90;
-    const L = R.nbInsetL || 0, Rr = R.w > 700 ? 64 : 0;
+    const L = R.nbInsetL || 0, Rr = 66;
     const horiz = D.doc.page.scroll === 'horizontal';
     // centred on the screen like Notability; only nudged when the page would run under the side chrome
     if (!horiz && bw <= R.w - L - Rr - 24) {
@@ -254,7 +254,11 @@
       ctx.stroke();
       if (margin) { ctx.strokeStyle = dark ? 'rgba(255,120,120,0.35)' : 'rgba(220,70,70,0.45)'; ctx.lineWidth = hair; ctx.beginPath(); ctx.moveTo(x0 + margin, y0); ctx.lineTo(x0 + margin, y1); ctx.stroke(); }
     };
-    const grid = (sp, a, major = 0) => {
+    const css = hair > 0 ? 1 / hair : 1; // device px per world unit (≈ screen scale)
+    const lod = (sp) => { let st = sp; while (st * css < 7) st *= 2; return st; };
+    const grid = (sp0, a, major = 0) => {
+      const sp = lod(sp0);
+      if (sp !== sp0) major = 0;
       ctx.lineWidth = hair; ctx.beginPath();
       const nx = Math.floor(W / sp), ny = Math.floor(H / sp);
       const ox = x0 + (W - nx * sp) / 2, oy = y0 + (H - ny * sp) / 2;
@@ -278,7 +282,7 @@
       case 'smallgrid': grid(4 * MM, 0.14); break;
       case 'graph': grid(1 * MM, 0.07, 10); break;
       case 'dot': {
-        const sp = 5 * MM, rad = Math.max(hair * 1.1, 0.55);
+        const sp = lod(5 * MM), rad = hair * 1.25;
         const nx = Math.floor(W / sp), ny = Math.floor(H / sp);
         const ox = x0 + (W - nx * sp) / 2, oy = y0 + (H - ny * sp) / 2;
         ctx.fillStyle = line(0.38); ctx.beginPath();
@@ -299,7 +303,7 @@
         break;
       }
       case 'iso': {
-        const sp = 6 * MM, h3 = sp * S3, rad = Math.max(hair * 1.1, 0.55);
+        const sp = lod(6 * MM), h3 = sp * S3, rad = hair * 1.25;
         ctx.fillStyle = line(0.38); ctx.beginPath();
         for (let j = 0, yy = y0 + 8 * MM; yy < y1 - 6 * MM; j++, yy += h3) for (let xx = x0 + 8 * MM + (j % 2 ? sp / 2 : 0); xx < x1 - 6 * MM; xx += sp) ctx.rect(xx - rad, yy - rad, rad * 2, rad * 2);
         ctx.fill();
@@ -353,6 +357,7 @@
           ctx.restore();
         } else if (o.pageBg) { ctx.fillStyle = pc; ctx.fillRect(rc[0], rc[1], rc[2] - rc[0], rc[3] - rc[1]); }
         if (o.bg || o.pageBg) R.drawTemplate(ctx, rc, D.pageTemplate(doc, i), pc, hair);
+        if (o.bg && A.C.luminance(pc) < 0.35) { ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = hair; ctx.strokeRect(rc[0], rc[1], rc[2] - rc[0], rc[3] - rc[1]); }
       });
       // everything else is clipped to the paper
       ctx.beginPath();
@@ -380,10 +385,12 @@
   const layerHasMask = (l) => l.items.some((it) => it.t === 's' && B.catalog[it.b] && B.catalog[it.b].mask);
 
   /* opts: {m, w, h, doc, bg (null = transparent), grid, sel:Set, selPreview, fade, scratch, onImage, dpr, onlyIds:Set} */
+  R.paperIsDark = (doc = D.doc) => !!doc && A.C.luminance(D.isNotebook(doc) ? doc.page.color : doc.paper.bg) < 0.35;
   R.drawScene = (ctx, o) => {
     const doc = o.doc;
-    const prevDark = B.dark;
+    const prevDark = B.dark, prevLift = B.lift;
     B.dark = !!o.dark;
+    B.lift = !o.dark && !!o.inkAdapt && R.paperIsDark(doc);
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, o.w, o.h);
@@ -393,7 +400,7 @@
     if (o.grid && !nbk) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); R.drawGrid(ctx, o.m, o.w, o.h, o.bg ? Object.assign({}, doc.paper, { bg: o.bg }) : doc.paper, { dpr: o.dpr, axes: false }); ctx.restore(); }
     const vbb = R.worldBB(o.m, o.w, o.h);
     const sel = o.sel && o.sel.size ? o.sel : null;
-    const fade = sel && o.fade ? 0.28 : 1;
+    const fade = sel && o.fade ? 0.5 : 1;
     const focus = doc.focusLayerId;
     const selected = [];
     for (const l of doc.layers) {
@@ -415,7 +422,8 @@
         if (o.hideId && it.id === o.hideId) continue;
         if (sel && sel.has(it.id)) { selected.push(it); continue; }
         if (!G.bbHit(it.bb, vbb)) continue;
-        const a = o.replay && it.rid === o.replay.rid && it.at > o.replay.t ? fade * 0.12 : fade;
+        const f = B.isBox(it) ? 1 : fade; // dim ink only; pages and images stay as they are
+        const a = o.replay && it.rid === o.replay.rid && it.at > o.replay.t ? f * 0.12 : f;
         if (B.isBox(it)) B.renderImage(tctx, it, a, o.onImage);
         else B.render(tctx, it, a);
       }
@@ -435,7 +443,7 @@
       }
     }
     ctx.restore();
-    B.dark = prevDark;
+    B.dark = prevDark; B.lift = prevLift;
   };
 
   let mainQueued = false, overlayQueued = false;
@@ -467,7 +475,7 @@
     R.drawScene(R.mctx, {
       m, w: W, h: H, doc: D.doc, bg: R.displayBg(), dark: R.darkActive(), grid: D.doc.precision.grid,
       sel: R.sel, selPreview: R.selPreview, fade: R.fadeOthers && A.settings.highlightSelection,
-      scratch: R.scratch, sctx: R.sctx, onImage: R.render, dpr: A.dpr, replay: R.replay, hideId: R.hideId,
+      scratch: R.scratch, sctx: R.sctx, onImage: R.render, dpr: A.dpr, replay: R.replay, hideId: R.hideId, inkAdapt: true,
     });
     lastFull = performance.now();
     R.lastMs = lastFull - t0;
@@ -494,10 +502,10 @@
     ctx.save();
     ctx.setTransform(...R.dmatrix(doc.view));
     if (D.isNotebook(doc)) { ctx.beginPath(); for (const rc of D.pageRects(doc)) ctx.rect(rc[0], rc[1], rc[2] - rc[0], rc[3] - rc[1]); ctx.clip(); }
-    const prevDark = B.dark;
-    B.dark = R.darkActive();
+    const prevDark = B.dark, prevLift = B.lift;
+    B.dark = R.darkActive(); B.lift = !B.dark && R.paperIsDark(doc);
     if (B.isBox(item)) B.renderImage(ctx, item, 1, R.render); else B.render(ctx, item, 1);
-    B.dark = prevDark;
+    B.dark = prevDark; B.lift = prevLift;
     ctx.restore();
     R.cacheValid = false;
   };
@@ -511,15 +519,15 @@
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, R.overlay.width, R.overlay.height);
       if (!D.doc) return;
-      const prevDark = B.dark;
-      B.dark = R.darkActive();
+      const prevDark = B.dark, prevLift = B.lift;
+      B.dark = R.darkActive(); B.lift = !B.dark && R.paperIsDark();
       for (const p of R.painters) {
         ctx.save();
         ctx.setTransform(A.dpr, 0, 0, A.dpr, 0, 0);
         try { p(ctx); } catch (e) { console.error(e); }
         ctx.restore();
       }
-      B.dark = prevDark;
+      B.dark = prevDark; B.lift = prevLift;
     });
   };
 

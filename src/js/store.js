@@ -62,7 +62,7 @@
       return tx('docs', 'readonly', (s) => req(s.get(id)));
     },
     async saveDoc(doc, thumb) {
-      const meta = { id: doc.id, name: doc.name, created: doc.created, updated: doc.updated, thumb: thumb || null, paper: doc.paper.bg, subject: doc.subject || null, kind: doc.kind || 'canvas', pages: doc.pages ? doc.pages.length : null, fav: !!doc.fav, rec: doc.recordings ? doc.recordings.length : 0 };
+      const meta = { id: doc.id, name: doc.name, created: doc.created, updated: doc.updated, thumb: thumb || null, paper: doc.paper.bg, subject: doc.subject || null, kind: doc.kind || 'canvas', pages: doc.pages ? doc.pages.length : null, fav: !!doc.fav, folder: doc.folder || null, rec: doc.recordings ? doc.recordings.length : 0 };
       if (NATIVE) { await post({ op: 'save', id: doc.id, doc: JSON.stringify(doc), meta: JSON.stringify(meta) }); return; }
       await open();
       if (useMem) { mem.docs.set(doc.id, JSON.parse(JSON.stringify(doc))); mem.meta.set(doc.id, meta); return; }
@@ -134,7 +134,7 @@
     fingerAction: 'auto',       // auto | draw | pan | select
     twoFingerUndo: true,
     threeFingerRedo: true,
-    tapHoldSelect: true,
+    tapHoldSelect: false,
     holdTime: 500,
     pressure: 1.0,              // exponent: <1 softer, >1 firmer
     allowRotate: true,

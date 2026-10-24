@@ -135,6 +135,10 @@ A.toast = (msg, ms = 1800) => {
     requestAnimationFrame(() => t.classList.add('in'));
   } else t.classList.add('in');
   t.textContent = msg;
+  // centre over the pane in use (canvas beside a panel, reader beside the tutor)
+  const pane = [A.$('#canvas-view:not([hidden]) #stage'), A.$('#reader-view:not([hidden]) .rd-main')].find(Boolean);
+  const r = pane ? pane.getBoundingClientRect() : null;
+  host.style.left = r && r.width ? r.left + r.width / 2 + 'px' : '50%';
   clearTimeout(t._hide); clearTimeout(t._rm);
   t._hide = setTimeout(() => { t.classList.remove('in'); t._rm = setTimeout(() => t.remove(), 300); }, ms);
 };
@@ -249,7 +253,9 @@ A.showFilePreview = (blob, filename, previewUrl) => {
 
 A.fmtDate = (t) => {
   const d = new Date(t), now = new Date();
-  const same = d.toDateString() === now.toDateString();
-  return same ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : d.toLocaleDateString([], { month: 'short', day: 'numeric', year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
+  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (d.toDateString() === now.toDateString()) return 'Today, ' + time;
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return 'Yesterday, ' + time;
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
 };

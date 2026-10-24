@@ -1093,6 +1093,261 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
 .sb-opt small { display: block; font-size: 12px; color: var(--muted); }
 .sb-ic { width: 36px; height: 36px; border-radius: 10px; background: var(--panel-2); display: grid; place-items: center; flex: none; color: var(--accent); }
 .sb-list { display: flex; flex-direction: column; gap: 6px; max-height: 40vh; overflow-y: auto; }
+#selpopup { border-radius: 16px; padding: 4px; gap: 0; animation: pop .14s ease; }
+#selpopup .ibtn { width: 40px; height: 40px; border-radius: 11px; }
+#selmenu { border-radius: 16px; padding: 4px 6px; }
+@keyframes pop { from { opacity: 0; transform: translateY(4px) scale(.98); } to { opacity: 1; transform: none; } }
+.thumb { transition: transform .18s ease, box-shadow .18s ease; } .thumb.pressing { transform: scale(.97); }
+/* ---------- folders ---------- */
+.fd-row { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 18px; }
+.fd-row::-webkit-scrollbar { display: none; }
+.fd-tile { flex: none; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px 0 12px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); font-weight: 600; font-size: 14px; transition: border-color .15s, transform .15s; }
+.fd-tile:active { transform: scale(.98); }
+.fd-tile:hover { border-color: var(--line-strong); }
+.fd-ic { width: 30px; height: 30px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+.fd-ic .ic { width: 18px; height: 18px; }
+.fd-n { font-size: 12px; color: var(--muted); }
+.fd-tile.add { background: transparent; border-style: dashed; color: var(--muted); }
+.fd-tile.add .fd-ic { background: transparent; color: var(--muted); }
+.fd-crumb { display: flex; align-items: center; gap: 8px; padding: 2px 0 18px; font-weight: 600; }
+.fd-back { display: flex; align-items: center; gap: 4px; color: var(--accent); font-weight: 600; }
+.fd-back .ic { width: 18px; height: 18px; transform: rotate(180deg); }
+.fd-sep { color: var(--faint); }
+.fd-cur { display: flex; align-items: center; gap: 6px; }
+.fd-cur .ic { width: 18px; height: 18px; color: var(--accent); }
+.fd-more { width: 34px; height: 34px; margin-left: auto; }
+/* ---------- motion: one consistent, quick, native-feeling curve ---------- */
+:root { --ease: cubic-bezier(.2, .8, .2, 1); }
+.view-in { animation: viewIn .26s var(--ease); }
+.view-back { animation: viewBack .22s var(--ease); }
+@keyframes viewIn { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes viewBack { from { opacity: .4; transform: scale(1.01); } to { opacity: 1; transform: none; } }
+.popover { animation: popIn .16s var(--ease); transform-origin: top center; }
+@keyframes popIn { from { opacity: 0; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: none; } }
+.modal-back { animation: fadeIn .18s ease; }
+.modal-back > .modal { animation: sheetIn .24s var(--ease); }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sheetIn { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
+button { transition: background-color .12s ease, color .12s ease, opacity .12s ease; }
+@media (prefers-reduced-motion: reduce) { .view-in, .view-back, .popover, .modal-back, .modal-back > .modal { animation: none !important; } }
+/* ---------- books: calm grid like Apple Books ---------- */
+.bk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 28px 22px; padding-bottom: 20px; }
+.bk-grid .book { width: auto; }
+.book-meta .bk-more { opacity: .55; }
+.book-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bk-hero { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; margin-bottom: 26px; }
+.bk-hero > .cont-card { margin: 0; }
+.bk-up { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 20px; background: var(--panel); border: 1px solid var(--line); }
+.bk-up-h { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 0 4px 2px; }
+.bk-mini { display: flex; align-items: center; gap: 12px; text-align: left; padding: 6px; border-radius: 12px; }
+.bk-mini:hover, .bk-mini:active { background: var(--panel-2); }
+.bk-mini .cover { width: 38px; flex: none; }
+.bk-mini b { display: block; font-size: 13.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bk-mini small { font-size: 12px; color: var(--muted); }
+@media (max-width: 900px) { .bk-hero { grid-template-columns: 1fr; } }
+.g-tools .seg { flex: none; }
+@media (max-width: 760px) { .g-tools { flex-wrap: wrap; } .g-tools .g-search { flex-basis: 100%; max-width: none; } }
+.g-layout > .g-main { container-type: inline-size; container-name: gmain; }
+@container gmain (max-width: 680px) {
+  .g-tools { flex-wrap: wrap; }
+  .g-tools .g-search { flex-basis: 100%; max-width: none; }
+  .bk-hero { grid-template-columns: 1fr; }
+  .page-hero .goal small { display: none; }
+}
+.rd-canvas.rd-fade { animation: fadeIn .14s ease; }
+.rd-page:not(.rendered)::before { content: ""; position: absolute; inset: 10% 12%; background: repeating-linear-gradient(180deg, rgba(120,128,140,.10) 0 9px, transparent 9px 22px); border-radius: 2px; animation: shimmer 1.2s ease-in-out infinite alternate; }
+@keyframes shimmer { from { opacity: .45; } to { opacity: .9; } }
+
+/* =====================================================================
+   DESIGN SYSTEM PASS (Oct 24, 2026, second recording)
+   tokens · one floating surface · sans with tabular numbers · calm controls
+   ===================================================================== */
+:root {
+  --r-xs: 8px; --r-s: 10px; --r-m: 12px; --r-l: 20px;
+  --float-bg: rgba(250, 250, 252, 0.88);
+  --float-line: rgba(20, 24, 36, 0.08);
+  --float-shadow: 0 1px 2px rgba(16, 22, 36, 0.06), 0 6px 22px rgba(16, 22, 36, 0.12);
+  --label: rgba(26, 30, 38, 0.56);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --float-bg: rgba(30, 32, 38, 0.86); --float-line: rgba(255, 255, 255, 0.08); --float-shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.36); --label: rgba(232, 234, 238, 0.58); } }
+:root[data-theme="dark"] { --float-bg: rgba(30, 32, 38, 0.86); --float-line: rgba(255, 255, 255, 0.08); --float-shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.36); --label: rgba(232, 234, 238, 0.58); }
+
+/* numbers: the UI sans with tabular figures — no monospace in the interface */
+.num, .g-count, .g-ver, .nb-count-n, .au-time, .te-fs, .pp-v, .rd-page-n, .sm-label, .dv-page, .fd-n, .pg-badge, .tb-props span, #readout { font-family: var(--ff-ui) !important; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.card .date, .book-sub, .cont-sub { font-family: var(--ff-ui); font-variant-numeric: tabular-nums; }
+
+/* one floating surface for every bar, pill and rail */
+.panel, #nb-ui .panel, .rd-group.panel, .rd-bottom.panel, #selpopup, #selmenu, .te-bar {
+  background: var(--float-bg) !important; border: 0.5px solid var(--float-line) !important; box-shadow: var(--float-shadow) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
+}
+.sb-group.panel, #readout.panel, .nb-tl, .nb-tr, .rd-group.panel, #selpopup, #selmenu { border-radius: 16px; }
+.toolbar.slim, .nb-rail { border-radius: 18px; }
+#readout { min-width: 76px; justify-content: center; }
+
+/* segmented controls: a clearly raised selected segment */
+.seg { background: rgba(120, 128, 145, 0.14); border: 0; border-radius: var(--r-s); padding: 2px; gap: 0; }
+.seg button { height: 30px; border-radius: var(--r-xs); padding: 0 12px; color: var(--label); }
+.seg button.on { background: var(--panel-solid); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,.12), 0 0 0 0.5px rgba(0,0,0,.04); }
+:root[data-theme="dark"] .seg button.on { background: rgba(255,255,255,.16); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .seg button.on { background: rgba(255,255,255,.16); } }
+
+/* toasts: one quiet capsule */
+.toast { background: var(--float-bg); color: var(--fg); border: 0.5px solid var(--float-line); box-shadow: var(--float-shadow); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); padding: 10px 18px; border-radius: 22px; font-weight: 600; font-size: 13.5px; max-width: min(360px, calc(100vw - 48px)); text-align: center; }
+#toasts { bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+
+/* section labels and secondary text */
+h5, .g-sec-h h2, .sub, .nb-fly-h, .pp-h, .bk-up-h { font-size: 11px !important; font-weight: 650 !important; letter-spacing: .06em !important; text-transform: uppercase; color: var(--label) !important; }
+.set-row .d, .muted, .home-sub { color: var(--label); }
+.set-row .d { font-size: 12.5px; }
+
+/* sheets: opaque, scrim behind, fixed size for settings */
+.modal-back { background: rgba(8, 10, 14, 0.42); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.modal { background: var(--panel-solid); border-radius: var(--r-l); }
+.settings-modal { height: min(640px, calc(100vh - 48px)); }
+.set-body { -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 28px), transparent); padding-bottom: 36px; }
+
+/* library sidebar: readable counts, build string gone (it lives in Settings) */
+.g-ver { display: none; }
+.g-count { color: var(--label); font-size: 13px; opacity: .8; }
+.g-nav.on .g-count { display: none; }
+.g-nav { height: 38px; border-radius: var(--r-s); }
+/* ---------- library: one header, one grid, one card ---------- */
+.home-hero, .page-hero { align-items: center; padding: 6px 0 18px; }
+.page-title, .home-greet { margin: 0; }
+.g-tools { margin: 0 0 22px; }
+.g-tools .sort-btn { margin-left: auto; }
+.sort-btn .ic { width: 16px; height: 16px; }
+.g-grid, .g-grid.nb-grid { grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)) !important; gap: 26px 20px; }
+.card { position: relative; gap: 10px; }
+.card .thumb, .card.nbcard .thumb { aspect-ratio: 3 / 4; border-radius: var(--r-m); overflow: hidden; border: 0.5px solid var(--float-line); box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 20px -10px rgba(0,0,0,.28); }
+.card .thumb img { object-fit: cover; object-position: center top; }
+.card .meta { align-items: flex-start; padding: 0 2px; }
+.card .name { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.25; font-size: 14px; }
+.card .date { margin-top: 3px; }
+.card .meta .ibtn { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border-radius: 50%; background: var(--float-bg); border: 0.5px solid var(--float-line); box-shadow: var(--float-shadow); color: var(--fg); opacity: 0; transition: opacity .15s; }
+.card:hover .meta .ibtn, .card:focus-within .meta .ibtn { opacity: 1; }
+@media (hover: none) { .card .meta .ibtn { opacity: .92; } }
+.card .meta .ibtn .ic { width: 16px; height: 16px; }
+.fav-badge { left: 8px; right: auto; }
+.cont-row { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.cont-card { min-height: 0; height: 152px; padding: 14px; gap: 16px; border-radius: 18px; box-shadow: var(--float-shadow); border: 0.5px solid var(--float-line); }
+.cont-card .cover, .cont-thumb, .cont-thumb.nb { width: 92px !important; height: 122px; flex: none; border-radius: 8px; overflow: hidden; align-self: center; }
+.cont-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+.cont-info { padding: 2px 0; }
+.cont-title { font-size: 19px !important; line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cont-cta { margin-top: auto; }
+.course-tile .ct-band { display: none; }
+.course-tile { padding: 16px 18px; border-radius: 16px; border: 0.5px solid var(--float-line); box-shadow: var(--float-shadow); }
+.course-tile .ct-name::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--c); margin-right: 8px; vertical-align: 1px; }
+.course-empty { margin: 40px auto 0; align-items: center; text-align: center; border: 0; max-width: 460px; }
+.ce-acts { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 8px; } .course-empty .te-mark { margin-bottom: 4px; }
+.cont-row { grid-template-columns: repeat(auto-fit, minmax(236px, 1fr)); }
+.cont-card { height: 144px; padding: 12px; gap: 14px; }
+.cont-card .cover, .cont-thumb, .cont-thumb.nb { width: 84px !important; height: 116px; }
+.cont-title { font-size: 17px !important; }
+.cont-kicker { font-size: 10.5px !important; }
+@container gmain (max-width: 720px) {
+  .cont-row { grid-template-columns: 1fr; }
+  .cont-card { height: 120px; }
+  .cont-card .cover, .cont-thumb, .cont-thumb.nb { width: 70px !important; height: 96px; }
+}
+
+/* ---------- reader: one bar on top, one bar at the bottom, both hide while reading ---------- */
+.rd-top.rd-bar { left: 0; right: 0; top: 0; height: calc(56px + env(safe-area-inset-top, 0px)); padding: env(safe-area-inset-top, 0px) 10px 0; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; pointer-events: auto; container-type: inline-size; container-name: rdtop;
+  background: var(--float-bg); border-bottom: 0.5px solid var(--float-line); -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6); transition: transform .28s var(--ease), opacity .2s ease; }
+#reader-view.with-tutor .rd-top.rd-bar { right: var(--rdw); }
+#reader-view.with-rail .rd-top.rd-bar { left: 0; }
+.rd-slot { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.rd-left { justify-self: start; }
+.rd-center { justify-self: center; }
+.rd-right { justify-self: end; }
+.rd-left .rd-title { padding-left: 2px; }
+.rd-title-main { font: 650 15px/1.2 var(--ff-ui) !important; letter-spacing: -.01em; }
+.rd-title-sub { font-size: 12px; color: var(--label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block !important; }
+.rd-back .ic { transform: rotate(180deg); }
+.rd-center .rd-tools { background: rgba(120,128,145,.14); }
+.rd-tools button { gap: 6px; }
+.rd-tools button .ic { width: 17px; height: 17px; }
+.rd-aa-btn { font: 650 15px var(--ff-ui); letter-spacing: -.02em; }
+#rd-btn-tutor.on { background: var(--accent-soft); color: var(--accent); }
+.rd-bottom.rd-bar { left: 0 !important; right: 0; bottom: 0; transform: none; width: auto !important; border-radius: 0; height: calc(48px + env(safe-area-inset-bottom, 0px)); padding: 0 18px env(safe-area-inset-bottom, 0px); gap: 16px;
+  background: var(--float-bg); border-top: 0.5px solid var(--float-line); -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6); box-shadow: none; transition: transform .28s var(--ease), opacity .2s ease; }
+#reader-view.with-tutor .rd-bottom.rd-bar { right: var(--rdw); left: 0 !important; width: auto !important; }
+.rd-pg { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+.rd-pg .rd-page-n { font-weight: 650; font-size: 14px; min-width: 0 !important; }
+.rd-pg-of { font-size: 12px; color: var(--label); }
+.rd-scrub { flex: 1; accent-color: var(--accent); height: 20px; }
+.rd-main { padding-top: calc(72px + env(safe-area-inset-top, 0px)) !important; padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important; }
+#reader-view.chrome-hidden .rd-top.rd-bar { transform: translateY(-100%); opacity: 0; pointer-events: none; }
+#reader-view.chrome-hidden .rd-bottom.rd-bar { transform: translateY(100%); opacity: 0; pointer-events: none; }
+.rd-pages { gap: 16px; }
+.rd-page { border-radius: 2px; }
+#reader-view[data-theme="night"] .rd-page { box-shadow: 0 0 0 0.5px rgba(255,255,255,.08), 0 10px 30px -14px rgba(0,0,0,.6); }
+@container rdtop (max-width: 760px) { .rd-tools button { font-size: 0 !important; gap: 0 !important; padding: 0 11px !important; } .rd-title { max-width: 220px; } }
+@container rdtop (max-width: 560px) { .rd-title-sub { display: none !important; } .rd-title { max-width: 120px; } #rd-btn-rail { display: none; } }
+/* Aa popover */
+.menu.rd-aa { width: 260px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.rd-zoomrow { display: flex; align-items: center; justify-content: space-between; background: rgba(120,128,145,.12); border-radius: 12px; padding: 2px; }
+.rd-zoomrow .ibtn { width: 44px; height: 36px; }
+.rd-zoomval { font-weight: 650; font-size: 14px; }
+.rd-fitseg { display: flex; } .rd-fitseg button { flex: 1; }
+.rd-swatches { display: flex; gap: 10px; }
+.rd-swatch { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--label); }
+.rd-swatch i { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; box-shadow: inset 0 0 0 1px rgba(128,128,128,.35); color: transparent; }
+.rd-swatch i .ic { width: 18px; height: 18px; }
+.rd-swatch.paper i { background: #fff; } .rd-swatch.sepia i { background: #f4ecd8; } .rd-swatch.night i { background: #111214; }
+.rd-swatch.on { color: var(--fg); }
+.rd-swatch.on i { box-shadow: 0 0 0 2px var(--panel-solid), 0 0 0 4px var(--accent); color: var(--accent); }
+.rd-swatch.night.on i { color: #fff; }
+/* tutor panel header */
+.rd-tutor { background: var(--bg) !important; border-left: 0.5px solid var(--float-line) !important; }
+.rd-tutor-h { display: flex; align-items: center; justify-content: space-between; height: 56px; padding: 0 8px 0 16px; border-bottom: 0.5px solid var(--float-line); flex: none; }
+.rd-tutor-t { display: flex; align-items: center; gap: 8px; font-weight: 650; font-size: 15px; }
+.rd-tutor-t .ic { width: 18px; height: 18px; color: var(--accent); }
+.rd-tutor .tutor-setup, .rd-tutor .tutor-empty { margin: 24px auto auto; }
+/* ask card */
+.rd-actions.ask-bar { background: var(--float-bg) !important; color: var(--fg) !important; border: 0.5px solid var(--float-line); box-shadow: 0 12px 34px rgba(0,0,0,.28); border-radius: 18px; padding: 10px; gap: 8px; width: min(400px, calc(100% - 24px)); -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6); }
+.ab-head { display: flex; align-items: center; gap: 2px; padding-left: 4px; }
+.ab-head > span { flex: 1; font-size: 11px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--label); }
+.rd-actions.ask-bar .ab-ic { width: 32px; height: 30px; color: var(--fg); opacity: .7; }
+.ab-row { position: relative; }
+.rd-actions.ask-bar .ab-in { height: 42px; border-radius: 21px; border: 0.5px solid var(--float-line); background: var(--panel-2); color: var(--fg); padding: 0 48px 0 16px; width: 100%; }
+.rd-actions.ask-bar .ab-in::placeholder { color: var(--label); }
+.rd-actions.ask-bar .ab-send { position: absolute; right: 5px; top: 5px; width: 32px; height: 32px; border-radius: 50%; padding: 0; justify-content: center; background: var(--accent); color: #fff; }
+.rd-actions.ask-bar .ab-send .ic { width: 16px; height: 16px; }
+.rd-actions.ask-bar .ab-chip { height: 30px; padding: 0 12px; border-radius: 15px; background: var(--panel-2); color: var(--fg); font-size: 13px; font-weight: 600; }
+/* highlights: line-shaped, readable in night mode */
+.rd-hl { border-radius: 3px; }
+#reader-view[data-theme="night"] .rd-hl.yellow { background: rgba(255, 214, 10, .22); }
+#reader-view[data-theme="night"] .rd-hl.green { background: rgba(80, 220, 130, .2); }
+#reader-view[data-theme="night"] .rd-hl.blue { background: rgba(90, 160, 255, .22); }
+#reader-view[data-theme="night"] .rd-hl.pink { background: rgba(255, 100, 170, .2); }
+/* one title chip in every editor */
+.nb-title > span:first-child, .sb-name { font: 650 15px/1.2 var(--ff-ui) !important; letter-spacing: -.01em; }
+.nb-sub { font-size: 12px !important; color: var(--label) !important; }
+.sb-group .flip .ic, .nb-tl .flip .ic { transform: rotate(180deg); }
+/* page counter on one line */
+.nb-counter { flex-direction: row; padding: 3px; border-radius: 16px; }
+.nb-counter .ibtn { width: 36px; height: 36px; }
+.nb-counter .ibtn:disabled { opacity: .3; }
+.nb-count-n { flex-direction: row; align-items: baseline; gap: 0; padding: 0 6px; font-size: 14px; color: var(--fg); }
+.nb-count-n b { font-size: 14px; font-weight: 650; }
+.nb-count-n span { font-size: 14px !important; opacity: 1 !important; color: var(--label); }
+/* rail: steady layout and readable disabled states */
+.ibtn:disabled { opacity: .32; }
+.toolbar.slim .ibtn:disabled { opacity: .3; }
+.dv-pg { position: relative; background: #fff; border-radius: 2px; box-shadow: 0 0 0 0.5px rgba(0,0,0,.08), 0 6px 18px -10px rgba(0,0,0,.35); }
+.dv-pg:not(.rendered)::before { content: ""; position: absolute; inset: 10% 12%; background: repeating-linear-gradient(180deg, rgba(120,128,140,.12) 0 8px, transparent 8px 20px); animation: shimmer 1.2s ease-in-out infinite alternate; }
+.dv-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.dv-bar { gap: 2px; padding: 6px 8px; border-bottom: 0.5px solid var(--float-line); }
+.pick-btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px 0 12px; border-radius: var(--r-s); background: rgba(120,128,145,.14); font-weight: 600; font-size: 13.5px; color: var(--fg); white-space: nowrap; }
+.pick-btn .ic { width: 15px; height: 15px; color: var(--label); }
+.set-row { min-height: 56px; gap: 16px; }
+.set-row > :last-child { flex: none; max-width: 60%; }
+.set-row .t { font-weight: 600; font-size: 14px; }
+.set-row input[type=range] { width: 200px !important; accent-color: var(--accent); }
+@keyframes sheetIn { from { transform: translateY(18px) scale(.985); } to { transform: none; } }
 </style>
 </head>
 <body>
@@ -1114,7 +1369,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
 </div>
 <div id="toasts" aria-live="polite"></div>
 
-<script>window.AXIOM_BUILD = 'mvmtfqi8';
+<script>window.AXIOM_BUILD = 'mvmvgclk';
 /* ---- core.js ---- */
 /* Axiom core: namespace, math, color, events, DOM helpers */
 'use strict';
@@ -1253,6 +1508,10 @@ A.toast = (msg, ms = 1800) => {
     requestAnimationFrame(() => t.classList.add('in'));
   } else t.classList.add('in');
   t.textContent = msg;
+  // centre over the pane in use (canvas beside a panel, reader beside the tutor)
+  const pane = [A.$('#canvas-view:not([hidden]) #stage'), A.$('#reader-view:not([hidden]) .rd-main')].find(Boolean);
+  const r = pane ? pane.getBoundingClientRect() : null;
+  host.style.left = r && r.width ? r.left + r.width / 2 + 'px' : '50%';
   clearTimeout(t._hide); clearTimeout(t._rm);
   t._hide = setTimeout(() => { t.classList.remove('in'); t._rm = setTimeout(() => t.remove(), 300); }, ms);
 };
@@ -1367,9 +1626,11 @@ A.showFilePreview = (blob, filename, previewUrl) => {
 
 A.fmtDate = (t) => {
   const d = new Date(t), now = new Date();
-  const same = d.toDateString() === now.toDateString();
-  return same ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : d.toLocaleDateString([], { month: 'short', day: 'numeric', year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
+  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (d.toDateString() === now.toDateString()) return 'Today, ' + time;
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return 'Yesterday, ' + time;
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
 };
 
 /* ---- icons.js ---- */
@@ -1377,6 +1638,9 @@ A.fmtDate = (t) => {
 'use strict';
 (() => {
   const P = {
+    home: '<path d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15v-6h-6v6H5.5A1.5 1.5 0 0 1 4 19v-8.5Z"/>',
+    tray: '<path d="M4 13.5h4.5l1.5 2.5h4l1.5-2.5H20"/><path d="M6.2 5.5h11.6L20 13.5V18a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18v-4.5l2.2-8Z"/>',
+    infinite: '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5" stroke-dasharray="2.4 2.6"/><path d="M8 14.5c1.6-4.5 3.4-4.5 4 0s2.4 4.5 4 0"/>',
     text: '<path d="M5 7V5h14v2"/><path d="M12 5v14"/><path d="M9 19h6"/>',
     laser: '<path d="m4 20 9-9"/><circle cx="16.5" cy="7.5" r="3.2"/><path d="M16.5 2v1.2M22 7.5h-1.2M20.4 3.6l-.9.9" />',
     hand: '<path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12"/><path d="M11 11V4a1.5 1.5 0 0 1 3 0v7"/><path d="M14 11V5.5a1.5 1.5 0 0 1 3 0V13"/><path d="M17 9.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-4.9-2.6L4.4 15a1.5 1.5 0 0 1 2.4-1.8L8 14.5"/>',
@@ -1556,7 +1820,7 @@ A.fmtDate = (t) => {
       return tx('docs', 'readonly', (s) => req(s.get(id)));
     },
     async saveDoc(doc, thumb) {
-      const meta = { id: doc.id, name: doc.name, created: doc.created, updated: doc.updated, thumb: thumb || null, paper: doc.paper.bg, subject: doc.subject || null, kind: doc.kind || 'canvas', pages: doc.pages ? doc.pages.length : null, fav: !!doc.fav, rec: doc.recordings ? doc.recordings.length : 0 };
+      const meta = { id: doc.id, name: doc.name, created: doc.created, updated: doc.updated, thumb: thumb || null, paper: doc.paper.bg, subject: doc.subject || null, kind: doc.kind || 'canvas', pages: doc.pages ? doc.pages.length : null, fav: !!doc.fav, folder: doc.folder || null, rec: doc.recordings ? doc.recordings.length : 0 };
       if (NATIVE) { await post({ op: 'save', id: doc.id, doc: JSON.stringify(doc), meta: JSON.stringify(meta) }); return; }
       await open();
       if (useMem) { mem.docs.set(doc.id, JSON.parse(JSON.stringify(doc))); mem.meta.set(doc.id, meta); return; }
@@ -1628,7 +1892,7 @@ A.fmtDate = (t) => {
     fingerAction: 'auto',       // auto | draw | pan | select
     twoFingerUndo: true,
     threeFingerRedo: true,
-    tapHoldSelect: true,
+    tapHoldSelect: false,
     holdTime: 500,
     pressure: 1.0,              // exponent: <1 softer, >1 firmer
     allowRotate: true,
@@ -2351,8 +2615,20 @@ A.fmtDate = (t) => {
   /* ---------- dark display: adapt ink to a dark canvas (display only; exports keep true colors) ---------- */
   B.dark = false;
   const dcache = new Map();
+  /* on paper the student chose to be dark: brighten only dark inks so they stay visible */
+  const lcache = new Map();
+  const liftDark = (c) => {
+    let v = lcache.get(c);
+    if (v) return v;
+    const rgb = A.C.hexToRgb(c);
+    if (!rgb) return c;
+    const [hh, s, l] = A.C.rgbToHsl(...rgb);
+    v = l >= 0.5 ? c : A.C.rgbToHex(...A.C.hslToRgb(hh, s, s < 0.15 ? 0.86 - l * 0.3 : 0.66 + (0.5 - l) * 0.24));
+    lcache.set(c, v);
+    return v;
+  };
   B.col = (c) => {
-    if (!B.dark) return c;
+    if (!B.dark) return B.lift ? liftDark(c) : c;
     let v = dcache.get(c);
     if (v) return v;
     const rgb = A.C.hexToRgb(c);
@@ -2375,7 +2651,7 @@ A.fmtDate = (t) => {
     const col = item.raw ? item.c : B.col(item.c);
     ctx.save();
     ctx.globalAlpha = a;
-    if (c.blend) ctx.globalCompositeOperation = B.dark ? 'screen' : c.blend;
+    if (c.blend) ctx.globalCompositeOperation = B.dark || B.lift ? 'screen' : c.blend;
     if (c.mask) ctx.globalCompositeOperation = 'destination-out';
     if (c.soft) {
       const t = ctx.getTransform();
@@ -3061,7 +3337,7 @@ A.fmtDate = (t) => {
     const bb = D.pagesBB();
     const bw = (bb[2] - bb[0]) * v.zoom, bh = (bb[3] - bb[1]) * v.zoom;
     const top = R.notebookTop || 70, bot = 90;
-    const L = R.nbInsetL || 0, Rr = R.w > 700 ? 64 : 0;
+    const L = R.nbInsetL || 0, Rr = 66;
     const horiz = D.doc.page.scroll === 'horizontal';
     // centred on the screen like Notability; only nudged when the page would run under the side chrome
     if (!horiz && bw <= R.w - L - Rr - 24) {
@@ -3224,7 +3500,11 @@ A.fmtDate = (t) => {
       ctx.stroke();
       if (margin) { ctx.strokeStyle = dark ? 'rgba(255,120,120,0.35)' : 'rgba(220,70,70,0.45)'; ctx.lineWidth = hair; ctx.beginPath(); ctx.moveTo(x0 + margin, y0); ctx.lineTo(x0 + margin, y1); ctx.stroke(); }
     };
-    const grid = (sp, a, major = 0) => {
+    const css = hair > 0 ? 1 / hair : 1; // device px per world unit (≈ screen scale)
+    const lod = (sp) => { let st = sp; while (st * css < 7) st *= 2; return st; };
+    const grid = (sp0, a, major = 0) => {
+      const sp = lod(sp0);
+      if (sp !== sp0) major = 0;
       ctx.lineWidth = hair; ctx.beginPath();
       const nx = Math.floor(W / sp), ny = Math.floor(H / sp);
       const ox = x0 + (W - nx * sp) / 2, oy = y0 + (H - ny * sp) / 2;
@@ -3248,7 +3528,7 @@ A.fmtDate = (t) => {
       case 'smallgrid': grid(4 * MM, 0.14); break;
       case 'graph': grid(1 * MM, 0.07, 10); break;
       case 'dot': {
-        const sp = 5 * MM, rad = Math.max(hair * 1.1, 0.55);
+        const sp = lod(5 * MM), rad = hair * 1.25;
         const nx = Math.floor(W / sp), ny = Math.floor(H / sp);
         const ox = x0 + (W - nx * sp) / 2, oy = y0 + (H - ny * sp) / 2;
         ctx.fillStyle = line(0.38); ctx.beginPath();
@@ -3269,7 +3549,7 @@ A.fmtDate = (t) => {
         break;
       }
       case 'iso': {
-        const sp = 6 * MM, h3 = sp * S3, rad = Math.max(hair * 1.1, 0.55);
+        const sp = lod(6 * MM), h3 = sp * S3, rad = hair * 1.25;
         ctx.fillStyle = line(0.38); ctx.beginPath();
         for (let j = 0, yy = y0 + 8 * MM; yy < y1 - 6 * MM; j++, yy += h3) for (let xx = x0 + 8 * MM + (j % 2 ? sp / 2 : 0); xx < x1 - 6 * MM; xx += sp) ctx.rect(xx - rad, yy - rad, rad * 2, rad * 2);
         ctx.fill();
@@ -3323,6 +3603,7 @@ A.fmtDate = (t) => {
           ctx.restore();
         } else if (o.pageBg) { ctx.fillStyle = pc; ctx.fillRect(rc[0], rc[1], rc[2] - rc[0], rc[3] - rc[1]); }
         if (o.bg || o.pageBg) R.drawTemplate(ctx, rc, D.pageTemplate(doc, i), pc, hair);
+        if (o.bg && A.C.luminance(pc) < 0.35) { ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = hair; ctx.strokeRect(rc[0], rc[1], rc[2] - rc[0], rc[3] - rc[1]); }
       });
       // everything else is clipped to the paper
       ctx.beginPath();
@@ -3350,10 +3631,12 @@ A.fmtDate = (t) => {
   const layerHasMask = (l) => l.items.some((it) => it.t === 's' && B.catalog[it.b] && B.catalog[it.b].mask);
 
   /* opts: {m, w, h, doc, bg (null = transparent), grid, sel:Set, selPreview, fade, scratch, onImage, dpr, onlyIds:Set} */
+  R.paperIsDark = (doc = D.doc) => !!doc && A.C.luminance(D.isNotebook(doc) ? doc.page.color : doc.paper.bg) < 0.35;
   R.drawScene = (ctx, o) => {
     const doc = o.doc;
-    const prevDark = B.dark;
+    const prevDark = B.dark, prevLift = B.lift;
     B.dark = !!o.dark;
+    B.lift = !o.dark && !!o.inkAdapt && R.paperIsDark(doc);
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, o.w, o.h);
@@ -3363,7 +3646,7 @@ A.fmtDate = (t) => {
     if (o.grid && !nbk) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); R.drawGrid(ctx, o.m, o.w, o.h, o.bg ? Object.assign({}, doc.paper, { bg: o.bg }) : doc.paper, { dpr: o.dpr, axes: false }); ctx.restore(); }
     const vbb = R.worldBB(o.m, o.w, o.h);
     const sel = o.sel && o.sel.size ? o.sel : null;
-    const fade = sel && o.fade ? 0.28 : 1;
+    const fade = sel && o.fade ? 0.5 : 1;
     const focus = doc.focusLayerId;
     const selected = [];
     for (const l of doc.layers) {
@@ -3385,7 +3668,8 @@ A.fmtDate = (t) => {
         if (o.hideId && it.id === o.hideId) continue;
         if (sel && sel.has(it.id)) { selected.push(it); continue; }
         if (!G.bbHit(it.bb, vbb)) continue;
-        const a = o.replay && it.rid === o.replay.rid && it.at > o.replay.t ? fade * 0.12 : fade;
+        const f = B.isBox(it) ? 1 : fade; // dim ink only; pages and images stay as they are
+        const a = o.replay && it.rid === o.replay.rid && it.at > o.replay.t ? f * 0.12 : f;
         if (B.isBox(it)) B.renderImage(tctx, it, a, o.onImage);
         else B.render(tctx, it, a);
       }
@@ -3405,7 +3689,7 @@ A.fmtDate = (t) => {
       }
     }
     ctx.restore();
-    B.dark = prevDark;
+    B.dark = prevDark; B.lift = prevLift;
   };
 
   let mainQueued = false, overlayQueued = false;
@@ -3437,7 +3721,7 @@ A.fmtDate = (t) => {
     R.drawScene(R.mctx, {
       m, w: W, h: H, doc: D.doc, bg: R.displayBg(), dark: R.darkActive(), grid: D.doc.precision.grid,
       sel: R.sel, selPreview: R.selPreview, fade: R.fadeOthers && A.settings.highlightSelection,
-      scratch: R.scratch, sctx: R.sctx, onImage: R.render, dpr: A.dpr, replay: R.replay, hideId: R.hideId,
+      scratch: R.scratch, sctx: R.sctx, onImage: R.render, dpr: A.dpr, replay: R.replay, hideId: R.hideId, inkAdapt: true,
     });
     lastFull = performance.now();
     R.lastMs = lastFull - t0;
@@ -3464,10 +3748,10 @@ A.fmtDate = (t) => {
     ctx.save();
     ctx.setTransform(...R.dmatrix(doc.view));
     if (D.isNotebook(doc)) { ctx.beginPath(); for (const rc of D.pageRects(doc)) ctx.rect(rc[0], rc[1], rc[2] - rc[0], rc[3] - rc[1]); ctx.clip(); }
-    const prevDark = B.dark;
-    B.dark = R.darkActive();
+    const prevDark = B.dark, prevLift = B.lift;
+    B.dark = R.darkActive(); B.lift = !B.dark && R.paperIsDark(doc);
     if (B.isBox(item)) B.renderImage(ctx, item, 1, R.render); else B.render(ctx, item, 1);
-    B.dark = prevDark;
+    B.dark = prevDark; B.lift = prevLift;
     ctx.restore();
     R.cacheValid = false;
   };
@@ -3481,15 +3765,15 @@ A.fmtDate = (t) => {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, R.overlay.width, R.overlay.height);
       if (!D.doc) return;
-      const prevDark = B.dark;
-      B.dark = R.darkActive();
+      const prevDark = B.dark, prevLift = B.lift;
+      B.dark = R.darkActive(); B.lift = !B.dark && R.paperIsDark();
       for (const p of R.painters) {
         ctx.save();
         ctx.setTransform(A.dpr, 0, 0, A.dpr, 0, 0);
         try { p(ctx); } catch (e) { console.error(e); }
         ctx.restore();
       }
-      B.dark = prevDark;
+      B.dark = prevDark; B.lift = prevLift;
     });
   };
 
@@ -3863,14 +4147,20 @@ A.fmtDate = (t) => {
     return [[bb[0] - pad, bb[1] - pad], [bb[2] + pad, bb[1] - pad], [bb[2] + pad, bb[3] + pad], [bb[0] - pad, bb[3] + pad]]
       .map(([x, y]) => M.apply(T, x, y)).map(([x, y]) => R.toScreen(x, y));
   };
+  /* the rotation knob sits above the selection, or below it when the top runs under the toolbar */
+  SEL.rotHandle = (c) => {
+    let top = [(c[0][0] + c[1][0]) / 2, (c[0][1] + c[1][1]) / 2];
+    const ctr = [(c[0][0] + c[2][0]) / 2, (c[0][1] + c[2][1]) / 2];
+    let dx = top[0] - ctr[0], dy = top[1] - ctr[1], L = hyp(dx, dy) || 1;
+    let rh = [top[0] + (dx / L) * 30, top[1] + (dy / L) * 30];
+    if (rh[1] < 78) { top = [(c[2][0] + c[3][0]) / 2, (c[2][1] + c[3][1]) / 2]; dx = top[0] - ctr[0]; dy = top[1] - ctr[1]; L = hyp(dx, dy) || 1; rh = [top[0] + (dx / L) * 30, top[1] + (dy / L) * 30]; }
+    return { top, rh };
+  };
   SEL.hit = (sx, sy) => {
     const c = SEL.screenCorners();
     if (!c) return null;
     for (let i = 0; i < 4; i++) if (hyp(c[i][0] - sx, c[i][1] - sy) < 24) return { kind: 'corner', i };
-    const top = [(c[0][0] + c[1][0]) / 2, (c[0][1] + c[1][1]) / 2];
-    const ctr = [(c[0][0] + c[2][0]) / 2, (c[0][1] + c[2][1]) / 2];
-    const dx = top[0] - ctr[0], dy = top[1] - ctr[1], L = hyp(dx, dy) || 1;
-    const rh = [top[0] + (dx / L) * 30, top[1] + (dy / L) * 30];
+    const { top, rh } = SEL.rotHandle(c);
     if (IN.allowSelRotate && hyp(rh[0] - sx, rh[1] - sy) < 22) return { kind: 'rotate', rh };
     if (G.pointInPoly(sx, sy, c.flat())) return { kind: 'move' };
     return null;
@@ -3940,7 +4230,7 @@ A.fmtDate = (t) => {
     }
     onHold() {
       if (this.done || this.shape) return;
-      if (this.lengthScreen < 5 && A.settings.tapHoldSelect && this.rec.type !== 'touch') {
+      if (this.lengthScreen < 5 && A.settings.tapHoldSelect && this.rec.type !== 'touch' && !D.isNotebook()) {
         // Concepts-style tap+hold: switch to lasso selection
         this.done = true;
         IN.liveDraw = null;
@@ -4375,6 +4665,7 @@ A.fmtDate = (t) => {
       this.w0 = R.toWorld(this.mid0[0], this.mid0[1]);
       this.selection = selection;
       this.rotUnlocked = false;
+      Glide.reset();
       if (selection) { this.T0 = R.selPreview || M.id(); A.emit('selpopup:hide'); }
       else R.gesturing = true;
     }
@@ -4404,6 +4695,7 @@ A.fmtDate = (t) => {
       const c = Math.cos(rot) * zoom, s = Math.sin(rot) * zoom;
       const [wx, wy] = this.w0;
       R.setView({ zoom, rot, tx: mid[0] - (c * wx - s * wy), ty: mid[1] - (s * wx + c * wy) });
+      Glide.track(mid[0], mid[1]);
       if (touchSession) touchSession.gestureMoved = true;
     }
     up() { this.end(); }
@@ -4411,7 +4703,7 @@ A.fmtDate = (t) => {
       if (this.ended) return;
       this.ended = true;
       if (this.selection) IN.commitSelTransform();
-      else { R.gesturing = false; R.render(); }
+      else if (!Glide.release()) { R.gesturing = false; R.render(); }
     }
     cancel() { this.end(); }
   }
@@ -4545,6 +4837,41 @@ A.fmtDate = (t) => {
     cancel() { if (this.begun) D.cancel(); }
   }
 
+  /* ---- momentum: a flick keeps the page gliding and eases out, like native scrolling ---- */
+  const Glide = {
+    raf: 0, samples: [],
+    track(x, y) { const t = performance.now(); this.samples.push([t, x, y]); while (this.samples.length > 2 && t - this.samples[0][0] > 90) this.samples.shift(); },
+    reset() { this.samples = []; this.stop(); },
+    stop() { if (this.raf) cancelAnimationFrame(this.raf); this.raf = 0; },
+    release() {
+      const sm = this.samples; this.samples = [];
+      if (sm.length < 2) return false;
+      const a = sm[0], b = sm[sm.length - 1], dt = Math.max(8, b[0] - a[0]);
+      if (performance.now() - b[0] > 60) return false; // finger stopped before lifting
+      let vx = (b[1] - a[1]) / dt, vy = (b[2] - a[2]) / dt;
+      if (Math.hypot(vx, vy) < 0.25) return false;
+      if (D.isNotebook()) vx *= 0.25; // pages scroll vertically
+      const max = 4.5; const sp = Math.hypot(vx, vy); if (sp > max) { vx *= max / sp; vy *= max / sp; }
+      let last = performance.now();
+      R.gesturing = true;
+      const step = (now) => {
+        const dtm = Math.min(32, now - last); last = now;
+        const v = D.doc.view;
+        const tx0 = v.tx, ty0 = v.ty;
+        R.setView({ tx: v.tx + vx * dtm, ty: v.ty + vy * dtm });
+        // stop at notebook edges instead of pushing against them
+        if (Math.abs(v.tx - tx0) < 0.01 && Math.abs(vx) > 0.01) vx = 0;
+        if (Math.abs(v.ty - ty0) < 0.01 && Math.abs(vy) > 0.01) vy = 0;
+        const k = Math.pow(0.9945, dtm); vx *= k; vy *= k;
+        if (Math.hypot(vx, vy) < 0.02) { this.raf = 0; R.gesturing = false; R.render(); return; }
+        this.raf = requestAnimationFrame(step);
+      };
+      this.raf = requestAnimationFrame(step);
+      return true;
+    },
+  };
+  IN.glide = Glide;
+
   /* ---- one finger: drag pans; long-press then move = lasso; long-press and lift = context menu ---- */
   class FingerAction {
     constructor(rec, s) {
@@ -4554,6 +4881,7 @@ A.fmtDate = (t) => {
       this.moved = 0;
       this.v0 = { tx: D.doc.view.tx, ty: D.doc.view.ty };
       R.gesturing = true;
+      Glide.reset(); Glide.track(s.x, s.y);
       this.timer = setTimeout(() => this.onHold(), A.settings.holdTime || 500);
     }
     onHold() {
@@ -4578,12 +4906,14 @@ A.fmtDate = (t) => {
       const v = D.doc.view;
       R.setView({ tx: v.tx + r.x - this.last[0], ty: v.ty + r.y - this.last[1] });
       this.last = [r.x, r.y];
+      Glide.track(r.x, r.y);
     }
     up(e, rect) {
       this.ended = true;
       clearTimeout(this.timer);
       IN.holdRing = null;
       if (!this.held) {
+        if (this.moved > 10 && Glide.release()) return;
         R.gesturing = false; R.render();
         if (this.moved < 8) { if (!IN.toggleTapeAt(this.start.x, this.start.y)) A.emit('canvas:tap', this.start); }
         return;
@@ -4600,14 +4930,15 @@ A.fmtDate = (t) => {
   }
 
   class PanAction {
-    constructor(rec) { this.rec = rec; this.last = [rec.x, rec.y]; R.gesturing = true; }
+    constructor(rec) { this.rec = rec; this.last = [rec.x, rec.y]; R.gesturing = true; Glide.reset(); Glide.track(rec.x, rec.y); }
     move() {
       const r = this.rec;
       const v = D.doc.view;
       R.setView({ tx: v.tx + r.x - this.last[0], ty: v.ty + r.y - this.last[1] });
       this.last = [r.x, r.y];
+      Glide.track(r.x, r.y);
     }
-    up() { R.gesturing = false; R.render(); }
+    up() { if (Glide.release()) return; R.gesturing = false; R.render(); }
     cancel() { this.up(); }
   }
 
@@ -4676,6 +5007,8 @@ A.fmtDate = (t) => {
     const abl = IN.artboardLabelHit(s.x, s.y);
     if (abl) return new ArtboardAction(rec, s, abl);
     let tool = B.slot().b;
+    // a Pencil touch right next to the tool bar is almost always a stray dab while reaching for a tool
+    if (rec.type === 'pen') { const tb = A.$('#tools .toolbar'); if (tb && !D.isNotebook()) { const r = tb.getBoundingClientRect(), o = R.overlay.getBoundingClientRect(); if (s.x + o.left < r.right + 14 && s.y + o.top > r.top - 10 && s.y + o.top < r.bottom + 10) return null; } }
     if (isFinger) {
       const fm = fingerMode();
       if (fm === 'pan') return new FingerAction(rec, s);
@@ -4701,6 +5034,7 @@ A.fmtDate = (t) => {
     if (IN.nativePen && e.pointerType === 'pen' && !e.__native) return;
     if (e.button > 0 && e.pointerType === 'mouse' && e.button !== 1 && e.button !== 2) return;
     e.preventDefault();
+    if (Glide.raf) { Glide.stop(); R.gesturing = false; }
     A.closePopovers();
     A.emit('canvas:down');
     const rect = rectOf();
@@ -4746,7 +5080,9 @@ A.fmtDate = (t) => {
       let inSel = false;
       if (R.sel.size) {
         const c = SEL.screenCorners();
-        inSel = c && touches.every((t) => G.pointInPoly(t.x, t.y, c.flat()));
+        const xs = c ? c.map((p) => p[0]) : [], ys = c ? c.map((p) => p[1]) : [];
+        const big = c && (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys)) > R.w * R.h * 0.5;
+        inSel = c && !big && touches.every((t) => G.pointInPoly(t.x, t.y, c.flat()));
       }
       action = new GestureAction(touches, inSel);
       action.owner = null;
@@ -4875,21 +5211,20 @@ A.fmtDate = (t) => {
       ctx.beginPath();
       for (let i = 0; i < pl.length; i += 2) { const [x, y] = R.toScreen(pl[i], pl[i + 1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
       ctx.closePath();
-      ctx.fillStyle = A.C.rgba(accent.startsWith('#') ? accent : '#2f6fdb', 0.07); ctx.fill();
-      ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5; ctx.strokeStyle = accent; ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = A.C.rgba(accent.startsWith('#') ? accent : '#2f6fdb', 0.1); ctx.fill();
+      ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.stroke();
+      ctx.setLineDash([6, 5]); ctx.lineWidth = 1.6; ctx.strokeStyle = accent; ctx.stroke(); ctx.setLineDash([]);
     }
     // selection box
     const c = SEL.screenCorners();
     if (c && R.sel.size) {
       ctx.beginPath(); c.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath();
-      ctx.setLineDash([6, 4]); ctx.lineWidth = 1.25; ctx.strokeStyle = accent; ctx.stroke(); ctx.setLineDash([]);
+      ctx.lineWidth = 1.25; ctx.strokeStyle = accent; ctx.stroke();
       if (IN.scaleMode !== 'off') for (const [x, y] of c) {
         ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 2; ctx.stroke();
       }
       if (IN.allowSelRotate) {
-        const top = [(c[0][0] + c[1][0]) / 2, (c[0][1] + c[1][1]) / 2], ctr = [(c[0][0] + c[2][0]) / 2, (c[0][1] + c[2][1]) / 2];
-        const dx = top[0] - ctr[0], dy = top[1] - ctr[1], L = hyp(dx, dy) || 1;
-        const rh = [top[0] + (dx / L) * 30, top[1] + (dy / L) * 30];
+        const { top, rh } = SEL.rotHandle(c);
         ctx.beginPath(); ctx.moveTo(top[0], top[1]); ctx.lineTo(rh[0], rh[1]); ctx.lineWidth = 1.25; ctx.stroke();
         ctx.beginPath(); ctx.arc(rh[0], rh[1], 8, 0, Math.PI * 2); ctx.fillStyle = accent; ctx.fill();
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(rh[0], rh[1], 4, -0.4, 4.2); ctx.stroke();
@@ -5766,7 +6101,8 @@ A.fmtDate = (t) => {
     bar.append(props);
     const cb = h('button', { class: 'colorbtn slim', 'aria-label': 'Colour', title: 'Colour', style: { background: s.color } });
     cb.addEventListener('click', () => UI.openColor(cb));
-    if (B.isDrawing(s.b) || c.kind === 'tool' && s.b === 'text') bar.append(cb);
+    if (!(B.isDrawing(s.b) || s.b === 'text')) { cb.disabled = true; cb.style.background = 'transparent'; cb.title = 'This tool has no colour'; }
+    bar.append(cb); // always present, so the rail never shifts when tools change
     if (S.showPalette && UI.activePaletteColors) {
       const strip = h('div', { class: 'palette-strip slim' });
       UI.activePaletteColors().slice(0, 4).forEach((col) => strip.append(h('button', {
@@ -6377,7 +6713,7 @@ A.fmtDate = (t) => {
     const layBtn = btn('layers', 'Layers (L)', () => toggleLayers(), 'btn-layers');
     const visBtn = btn('shapes', 'Visual tools', (e) => A.V.open(e.currentTarget), 'btn-visuals');
     const left = h('div', { class: 'sb-group panel' },
-      btn('gallery', 'Gallery', () => A.emit('go:gallery')), name, h('div', { class: 'sb-sep' }), precBtn, layBtn, visBtn);
+      (() => { const b = btn('chev', 'Back to library', () => A.emit('go:gallery')); b.classList.add('flip'); return b; })(), name, h('div', { class: 'sb-sep' }), precBtn, layBtn, visBtn);
     const readout = h('button', { id: 'readout', class: 'panel', title: 'View options' });
     readout.addEventListener('click', () => viewMenu(readout));
     const right = h('div', { class: 'sb-group panel' },
@@ -6409,13 +6745,8 @@ A.fmtDate = (t) => {
     let rot = ((A.deg(v.rot) % 360) + 360) % 360;
     if (rot > 180) rot -= 360;
     const lk = (on) => (on ? `<span class="ro-lock">${A.icon('lock')}</span>` : '');
-    const parts = [`${lk(S.zoomLock)}<b>${v.zoom >= 1 ? Math.round(v.zoom * 100) : (v.zoom * 100).toFixed(v.zoom < 0.1 ? 1 : 0)}%</b>`, `<span class="hide-sm">${lk(S.rotLock)}${rot.toFixed(0)}°</span>`];
-    if (R.sel.size && A.SEL.box) {
-      const bb = A.SEL.box, T = R.selPreview;
-      let w = bb[2] - bb[0], hh = bb[3] - bb[1];
-      if (T) { const k = Math.sqrt(Math.abs(M.det(T))); w *= k; hh *= k; }
-      parts.push(`<span>${R.sel.size} sel · ${A.fmtLen(w)} × ${A.fmtLen(hh)}</span>`);
-    }
+    const parts = [`${lk(S.zoomLock)}<b>${v.zoom >= 1 ? Math.round(v.zoom * 100) : (v.zoom * 100).toFixed(v.zoom < 0.1 ? 1 : 0)}%</b>`];
+    if (Math.round(rot) !== 0 || S.rotLock) parts.push(`<span class="hide-sm">${lk(S.rotLock)}${rot.toFixed(0)}°</span>`);
     el.innerHTML = parts.join('<span class="dot"></span>');
   }
   /* Measurement popover (as in Concepts): zoom and rotation with lock padlocks and presets, plus artboards */
@@ -6582,40 +6913,47 @@ A.fmtDate = (t) => {
   try { const raw = localStorage.getItem('axiom.clip'); if (raw) A.clip = JSON.parse(raw); } catch (e) { /* ignore */ }
 
   const selectTool = () => B.slot().b === 'select';
+  /* Selection: one compact bar next to the selection (primary actions + "…"); the bottom bar only shows
+     lasso options while the selection tool is active and nothing is selected yet. */
   function renderSelMenu() {
     if (!selMenu) return;
     const has = R.sel.size > 0;
-    const show = selectTool() || has;
+    const show = selectTool() && !has;
     selMenu.hidden = !show;
     if (!show) return;
     selMenu.innerHTML = '';
-    const ib = (icon, title, on, fn, id) => {
-      const b = h('button', { class: 'ibtn' + (on ? ' on' : ''), title, 'aria-label': title, id, html: A.icon(icon) });
-      b.addEventListener('click', fn);
-      return b;
-    };
-    if (!has) {
-      selMenu.append(
-        segc([['lasso', 'Lasso'], ['picker', 'Picker']], A.IN.selMode, (v) => { A.IN.selMode = v; renderSelMenu(); }),
-        ib('partial', 'Partial: select strokes the lasso only touches', A.IN.selPartial, () => { A.IN.selPartial = !A.IN.selPartial; A.toast(A.IN.selPartial ? 'Partial strokes are selected' : 'Only strokes fully inside are selected'); renderSelMenu(); }),
-        ib('layerone', 'Select on the active layer only', A.IN.selLayerOnly, () => { A.IN.selLayerOnly = !A.IN.selLayerOnly; A.toast(A.IN.selLayerOnly ? 'Active layer only' : 'All layers'); renderSelMenu(); }),
-        h('div', { class: 'sb-sep' }),
-        ib('selectall', 'Select all', false, () => A.emit('cmd', 'selectAll')),
-        ...(A.clip && A.clip.items && A.clip.items.length ? [ib('paste', 'Paste', false, () => A.emit('cmd', 'paste'))] : []));
-    } else {
-      const modes = { scale: ['scale', 'Scale with strokes'], stretch: ['stretch', 'Stretch (keep stroke width)'], off: ['lock', 'Scaling locked'] };
-      const [icon, title] = modes[A.IN.scaleMode];
-      selMenu.append(
-        h('span', { class: 'sm-label num' }, `${R.sel.size} selected`),
-        ib(icon, title, A.IN.scaleMode !== 'off', () => {
-          A.IN.scaleMode = { scale: 'stretch', stretch: 'off', off: 'scale' }[A.IN.scaleMode];
-          A.toast(modes[A.IN.scaleMode][1]); renderSelMenu(); R.renderOverlay();
-        }),
-        ib('rotate', A.IN.allowSelRotate ? 'Rotation on' : 'Rotation off', A.IN.allowSelRotate, () => { A.IN.allowSelRotate = !A.IN.allowSelRotate; renderSelMenu(); R.renderOverlay(); }),
-        h('div', { class: 'sb-sep' }),
-        ib('selectall', 'Select all', false, () => A.emit('cmd', 'selectAll')),
-        ib('close', 'Deselect', false, () => A.SEL.clear()));
-    }
+    selMenu.append(
+      segc([['lasso', 'Lasso'], ['picker', 'Tap items']], A.IN.selMode, (v) => { A.IN.selMode = v; renderSelMenu(); }),
+      h('div', { class: 'sb-sep' }),
+      (() => { const b = h('button', { class: 'ibtn', title: 'Selection options', 'aria-label': 'Selection options', html: A.icon('more') }); b.addEventListener('click', () => selOptions(b)); return b; })());
+  }
+  function selOptions(anchor) {
+    const box = h('div', { class: 'menu' });
+    const tog = (label, on, fn) => box.append(h('button', { class: on ? 'on' : '', onclick: () => { fn(); A.closePopovers(); renderSelMenu(); R.renderOverlay(); } }, A.iconEl(on ? 'check' : 'minus'), label));
+    tog('Select strokes the lasso only touches', A.IN.selPartial, () => { A.IN.selPartial = !A.IN.selPartial; });
+    tog('Active layer only', A.IN.selLayerOnly, () => { A.IN.selLayerOnly = !A.IN.selLayerOnly; });
+    box.append(h('hr'), h('button', { onclick: () => { A.closePopovers(); A.emit('cmd', 'selectAll'); } }, A.iconEl('selectall'), 'Select all'));
+    if (A.clip && A.clip.items && A.clip.items.length) box.append(h('button', { onclick: () => { A.closePopovers(); A.emit('cmd', 'paste'); } }, A.iconEl('paste'), 'Paste'));
+    A.popover(box, anchor, { side: 'up' });
+  }
+  function selMore(anchor) {
+    const box = h('div', { class: 'menu' });
+    const it = (icon, label, fn) => box.append(h('button', { onclick: () => { A.closePopovers(); fn(); } }, A.iconEl(icon), label));
+    const cmd = (c) => () => A.emit('cmd', c);
+    it('fliph', 'Flip horizontally', cmd('flipH'));
+    it('flipv', 'Flip vertically', cmd('flipV'));
+    it('recolor', 'Apply current colour', cmd('recolor'));
+    it('front', 'Bring to front', cmd('front'));
+    it('back', 'Send to back', cmd('back'));
+    if (!D.isNotebook()) it('moveto', 'Move to layer…', () => moveToMenu(anchor));
+    box.append(h('hr'));
+    const modes = { scale: 'Scale with strokes', stretch: 'Stretch, keep stroke width', off: 'Scaling locked' };
+    it(A.IN.scaleMode === 'off' ? 'lock' : 'scale', 'Resize: ' + modes[A.IN.scaleMode].toLowerCase(), () => { A.IN.scaleMode = { scale: 'stretch', stretch: 'off', off: 'scale' }[A.IN.scaleMode]; A.toast(modes[A.IN.scaleMode], 1200); R.renderOverlay(); });
+    it('rotate', A.IN.allowSelRotate ? 'Rotation handle: on' : 'Rotation handle: off', () => { A.IN.allowSelRotate = !A.IN.allowSelRotate; R.renderOverlay(); });
+    box.append(h('hr'));
+    it('bookmark', 'Save as a visual', cmd('saveVisual'));
+    it('selectall', 'Select all', cmd('selectAll'));
+    A.popover(box, anchor, { side: 'down' });
   }
   function renderSelPopup() {
     if (!selPop) return;
@@ -6623,23 +6961,25 @@ A.fmtDate = (t) => {
     if (!c) { selPop.hidden = true; return; }
     selPop.hidden = false;
     if (!selPop.childElementCount) {
-      const ib = (icon, title, cmd) => {
-        const b = h('button', { class: 'ibtn', title, 'aria-label': title, html: A.icon(icon) });
-        b.addEventListener('click', (e) => (cmd === 'moveto' ? moveToMenu(e.currentTarget) : A.emit('cmd', cmd)));
-        return b;
-      };
-      selPop.append(ib('duplicate', 'Duplicate', 'duplicate'), ib('copy', 'Copy', 'copy'), ib('trash', 'Delete', 'delete'),
-        h('div', { class: 'sb-sep' }), ib('fliph', 'Flip horizontal', 'flipH'), ib('flipv', 'Flip vertical', 'flipV'),
-        ib('recolor', 'Apply current color', 'recolor'), ib('front', 'Bring to front', 'front'), ib('back', 'Send to back', 'back'),
-        ib('moveto', 'Move to layer', 'moveto'), h('div', { class: 'sb-sep' }), ib('bookmark', 'Save as visual', 'saveVisual'), ib('spark', 'Ask the tutor about this', 'askTutor'));
+      const ib = (icon, title, fn) => { const b = h('button', { class: 'ibtn', title, 'aria-label': title, html: A.icon(icon) }); b.addEventListener('click', (e) => fn(e.currentTarget)); return b; };
+      selPop.append(
+        ib('duplicate', 'Duplicate', () => A.emit('cmd', 'duplicate')),
+        ib('copy', 'Copy', () => A.emit('cmd', 'copy')),
+        ib('trash', 'Delete', () => A.emit('cmd', 'delete')),
+        ib('spark', 'Ask the tutor about this', () => A.emit('cmd', 'askTutor')),
+        h('div', { class: 'sb-sep' }),
+        ib('more', 'More', (b) => selMore(b)));
     }
     const ys = c.map((p) => p[1]), xs = c.map((p) => p[0]);
     const r = selPop.getBoundingClientRect();
-    let y = Math.min(...ys) - r.height - 46;
-    if (y < 70) y = Math.max(...ys) + 16;
-    const x = A.clamp((Math.min(...xs) + Math.max(...xs)) / 2 - r.width / 2, 8, innerWidth - r.width - 8);
+    const stage = A.$('#stage').getBoundingClientRect();
+    // prefer above the selection (clear of the rotation handle), else below, never over the bottom bars
+    let y = Math.min(...ys) - r.height - 48;
+    if (y < stage.top + 66) y = Math.max(...ys) + 18;
+    y = A.clamp(y, stage.top + 66, stage.bottom - r.height - 84);
+    const x = A.clamp((Math.min(...xs) + Math.max(...xs)) / 2 - r.width / 2, stage.left + 76, stage.right - r.width - 76);
     selPop.style.left = x + 'px';
-    selPop.style.top = A.clamp(y, 64, innerHeight - r.height - 76) + 'px';
+    selPop.style.top = y + 'px';
   }
   function moveToMenu(anchor) {
     const box = h('div', { class: 'menu' });
@@ -7090,7 +7430,18 @@ A.fmtDate = (t) => {
     const close = () => back.remove();
     const set = (k, v) => { S[k] = v; A.saveSettings(); };
     const row = (t, d, ctl) => h('div', { class: 'set-row' }, h('div', null, h('div', { class: 't' }, t), d ? h('div', { class: 'd' }, d) : null), ctl);
-    const sel = (k, opts, after) => segc(opts, S[k], (v) => { set(k, v); after && after(); rebuild(); });
+    /* up to 3 options: segmented control; more: a menu picker showing the current value */
+    const pickBtn = (opts, cur, onPick) => {
+      const label = (opts.find(([v]) => v === cur) || opts[0])[1];
+      const b = h('button', { class: 'pick-btn' }, h('span', null, label), A.iconEl('chevdown'));
+      b.addEventListener('click', () => {
+        const box = h('div', { class: 'menu' });
+        opts.forEach(([v, l]) => box.append(h('button', { class: v === cur ? 'on' : '', onclick: () => { A.closePopovers(); onPick(v); } }, A.iconEl(v === cur ? 'check' : 'minus'), l)));
+        A.popover(box, b, { side: 'down' });
+      });
+      return b;
+    };
+    const sel = (k, opts, after) => (opts.length > 3 ? pickBtn(opts, S[k], (v) => { set(k, v); after && after(); rebuild(); }) : segc(opts, S[k], (v) => { set(k, v); after && after(); rebuild(); }));
     const slider = (k, min, max, step, fmt, onSet) => {
       const r = h('input', { type: 'range', min, max, step, value: S[k], style: { width: '150px' } });
       const v = h('span', { class: 'num small' }, fmt(S[k]));
@@ -7115,7 +7466,7 @@ A.fmtDate = (t) => {
           row('Dark paper in dark mode', 'Paper turns dark and ink adapts. Exports keep your real colours.', toggleSw(S.darkCanvas !== false, (v) => { set('darkCanvas', v); R.themeChanged(); }, 's-darkcanvas')),
           h('h5', null, 'Tool setup (canvases)'),
           row('Interface', 'Choose your tool palette', sel('toolSetup', [['wheel', 'Tool Wheel'], ['bar', 'Tool Bar']], () => { S.toolPos = null; UI.renderTools(); })),
-          row('Left or right handed?', 'Puts the tools and labels on the side that suits your hand', sel('toolSide', [['left', 'Left'], ['right', 'Right']], () => { S.toolPos = null; UI.renderTools(); })),
+          row('Handedness', 'Puts the tools on the side that suits your hand', sel('toolSide', [['left', 'Left'], ['right', 'Right']], () => { S.toolPos = null; UI.renderTools(); })),
           row('Palette under the tools', 'Quick colours under the colour button', toggleSw(S.showPalette, (v) => { set('showPalette', v); UI.renderTools(); }, 's-pal')));
         if (D.doc && !D.isNotebook()) {
           const doc = D.doc, P = doc.precision;
@@ -7125,25 +7476,25 @@ A.fmtDate = (t) => {
               Object.entries(D.papers).forEach(([k, c]) => r.append(h('button', { class: doc.paper.bg === c ? 'on' : '', style: { background: c }, 'aria-label': k, onclick: () => { doc.paper.bg = c; D.changed('paper'); R.render(); rebuild(); } })));
               return r;
             })()),
-            row('Grid type', 'Also in the Precision menu', segc([['none', 'No grid'], ['dot', 'Dot'], ['graph', 'Graph'], ['lined', 'Lined'], ['iso', 'Isometric'], ['tri', 'Triangle']], P.grid ? doc.paper.grid.type : 'none', (v) => { if (v === 'none') P.grid = false; else { P.grid = true; doc.paper.grid.type = v; } D.changed('precision'); R.render(); rebuild(); })),
+            row('Grid type', 'Also in the Precision menu', pickBtn([['none', 'No grid'], ['dot', 'Dot'], ['graph', 'Graph'], ['lined', 'Lined'], ['iso', 'Isometric'], ['tri', 'Triangle']], P.grid ? doc.paper.grid.type : 'none', (v) => { if (v === 'none') P.grid = false; else { P.grid = true; doc.paper.grid.type = v; } D.changed('precision'); R.render(); rebuild(); })),
             row('Artboards', doc.artboards.length ? doc.artboards.map((a) => `${a.name} (${(a.w / D.MM / 10).toFixed(1)} × ${(a.h / D.MM / 10).toFixed(1)} cm)`).join(', ') : 'Reference frames for printing and export. None yet.', (() => { const b = h('button', { class: 'btn' }, A.iconEl('plus'), 'Add'); b.addEventListener('click', () => UI.artboardMenu(b)); return b; })()),
             h('h5', null, 'Measurements'),
-            row('Drawing scale', 'How objects on screen compare to real life', segc([[1, '1:1'], [2, '1:2'], [4, '1:4'], [5, '1:5'], [8, '1:8'], [10, '1:10'], [12, '1:12']], P.scale || 1, (v) => { P.scale = v; D.changed('precision'); rebuild(); })),
-            row('Units', 'Used for measurements and selection sizes', segc([['px', 'px'], ['pt', 'pt'], ['mm', 'mm'], ['cm', 'cm'], ['in', 'in']], P.units, (v) => { P.units = v; D.changed('precision'); A.emit('view'); rebuild(); })));
+            row('Drawing scale', 'How objects on screen compare to real life', pickBtn([[1, '1:1'], [2, '1:2'], [4, '1:4'], [5, '1:5'], [8, '1:8'], [10, '1:10'], [12, '1:12']], P.scale || 1, (v) => { P.scale = v; D.changed('precision'); rebuild(); })),
+            row('Units', 'Used for measurements and selection sizes', pickBtn([['px', 'Pixels'], ['pt', 'Points'], ['mm', 'Millimetres'], ['cm', 'Centimetres'], ['in', 'Inches']], P.units, (v) => { P.units = v; D.changed('precision'); A.emit('view'); rebuild(); })));
         }
       } else if (cur === 'interaction') {
         add(h('h5', null, 'Touch input'),
           row('Finger action', 'What your finger does when you use an Apple Pencil', sel('fingerAction', [['none', 'Do nothing'], ['pan', 'Pan'], ['draw', 'Draw'], ['select', 'Select'], ['auto', 'Auto']])),
           row('Two fingers: canvas rotation', 'Twist to rotate canvases (notebooks never rotate)', toggleSw(S.allowRotate && !S.rotLock, (v) => { set('allowRotate', true); set('rotLock', !v); A.emit('view'); }, 's-rot')),
           row('Two fingers: canvas zoom', 'Turn off to lock the zoom level', toggleSw(!S.zoomLock, (v) => { set('zoomLock', !v); A.emit('view'); }, 's-zoom')),
-          row('Tap + hold', 'Hold a finger or the Pencil still to start a selection', toggleSw(S.tapHoldSelect, (v) => set('tapHoldSelect', v), 's-th')),
+          row('Tap and hold to select', 'Hold the Pencil still on a canvas to start a lasso', toggleSw(S.tapHoldSelect, (v) => set('tapHoldSelect', v), 's-th')),
           row('Highlight selection', 'Fade everything that is not selected', toggleSw(S.highlightSelection, (v) => { set('highlightSelection', v); R.render(); }, 's-hl')),
           row('Draw & hold: activation time', 'Hold at the end of a stroke to turn it into a clean shape', slider('holdTime', 250, 1200, 50, (v) => (v / 1000).toFixed(2) + ' s')),
-          row('Two-finger tap', null, toggleSw(S.twoFingerUndo, (v) => set('twoFingerUndo', v), 's-2f'), ),
+          row('Two-finger tap', 'Undo', toggleSw(S.twoFingerUndo, (v) => set('twoFingerUndo', v), 's-2f')),
           row('Three-finger tap', 'Redo', toggleSw(S.threeFingerRedo, (v) => set('threeFingerRedo', v), 's-3f')),
           h('h5', null, 'Apple Pencil'),
           row('Double-tap', 'What a double-tap on the Pencil does', sel('pencilTap', [['system', 'System setting'], ['switchEraser', 'Eraser'], ['switchPrevious', 'Last tool'], ['showColorPalette', 'Colours'], ['undo', 'Undo'], ['toggleUI', 'Hide UI']])),
-          row('Squeeze (Apple Pencil Pro)', null, sel('pencilSqueeze', [['brush', 'Tool menu'], ['palette', 'Colours'], ['undo', 'Undo'], ['eraser', 'Eraser']])),
+          row('Squeeze (Apple Pencil Pro)', 'What a squeeze on the Pencil does', sel('pencilSqueeze', [['brush', 'Tool menu'], ['palette', 'Colours'], ['undo', 'Undo'], ['eraser', 'Eraser']])),
           row('Pressure response', 'Softer makes light strokes thicker', slider('pressure', 0.4, 2, 0.05, (v) => (v < 0.95 ? 'softer' : v > 1.05 ? 'firmer' : 'normal'))),
           row('Hover brush preview', 'Shows the brush size while the Pencil hovers (M2 and later)', toggleSw(S.hoverCursor, (v) => set('hoverCursor', v), 's-hover')));
         if (NATIVE) {
@@ -7154,7 +7505,7 @@ A.fmtDate = (t) => {
       } else if (cur === 'notebooks') {
         const ln = S.lastNotebook || {};
         add(h('h5', null, 'New notebook defaults'),
-          row('Paper', 'Used for new notebooks (change any time in Template settings)', segc([['lined', 'Lined'], ['grid', 'Grid'], ['dot', 'Dot'], ['blank', 'Blank'], ['cornell', 'Cornell']], ln.tpl || 'lined', (v) => { S.lastNotebook = Object.assign({}, ln, { tpl: v }); A.saveSettings(); rebuild(); })),
+          row('Paper', 'For new notebooks', pickBtn([['lined', 'Lined'], ['grid', 'Grid'], ['dot', 'Dot grid'], ['blank', 'Blank'], ['cornell', 'Cornell']], ln.tpl || 'lined', (v) => { S.lastNotebook = Object.assign({}, ln, { tpl: v }); A.saveSettings(); rebuild(); })),
           row('Page size', null, segc([['a4', 'A4'], ['letter', 'Letter'], ['a5', 'A5']], ln.size || 'a4', (v) => { S.lastNotebook = Object.assign({}, ln, { size: v }); A.saveSettings(); rebuild(); })),
           row('Default view', 'Seamless scrolls pages vertically; single pages turn sideways', segc([['vertical', 'Seamless'], ['horizontal', 'Single pages']], ln.scroll || 'vertical', (v) => { S.lastNotebook = Object.assign({}, ln, { scroll: v }); A.saveSettings(); rebuild(); })),
           h('h5', null, 'Handwriting and drawing'),
@@ -7483,8 +7834,6 @@ A.fmtDate = (t) => {
       this.bar.append(
         m.type === 'pdf' ? h('div', { class: 'row', style: { gap: '4px' } }, ib('chevup', 'Previous page', () => this.goto(this.page - 1)), pageLbl, this.countLbl, ib('chevdown', 'Next page', () => this.goto(this.page + 1))) : h('span', { class: 'muted small' }, 'Photo'),
         h('div', { class: 'grow' }),
-        ib('minus', 'Zoom out', () => this.setZoom(this.zoom / 1.25)),
-        ib('plus', 'Zoom in', () => this.setZoom(this.zoom * 1.25)),
         ib('spark', 'Ask the tutor about this page', () => this.askTutor()),
         ib('more', 'More', (e) => this.more(e.currentTarget)));
       if (m.type === 'epub') {
@@ -7507,12 +7856,14 @@ A.fmtDate = (t) => {
         return;
       }
       const n = this.pdf.numPages;
-      this.countLbl.textContent = '/ ' + n;
+      try { const lb = await this.pdf.getPageLabels(); if (lb && lb.some((x, i) => x && x !== String(i + 1))) this.labels = lb; } catch (e) { /* none */ }
+      this.syncCount = () => { const lab = this.labels && this.labels[this.page - 1]; this.countLbl.textContent = lab && lab !== String(this.page) ? `of ${n} · p. ${lab}` : `of ${n}`; };
+      this.syncCount();
       const p1 = await this.pdf.getPage(1);
       const vp = p1.getViewport({ scale: 1 });
       this.aspect = vp.height / vp.width;
       for (let i = 1; i <= n; i++) {
-        const d = h('div', { class: 'dv-pg', dataset: { n: i } }, h('span', { class: 'dv-pgnum num' }, String(i)));
+        const d = h('div', { class: 'dv-pg', dataset: { n: i } });
         this.inner.append(d);
         this.pages.push({ el: d, n: i, canvas: null, scale: 0, aspect: this.aspect });
       }
@@ -7527,7 +7878,7 @@ A.fmtDate = (t) => {
       if (!this.pages.length) return;
       const w = this.width();
       this.inner.style.width = w + 'px';
-      this.pages.forEach((p) => { p.el.style.width = w + 'px'; p.el.style.height = Math.round(w * p.aspect) + 'px'; if (p.canvas && Math.abs(p.scale - w) > 2) { p.canvas.remove(); p.canvas = null; if (p.visible) this.renderPage(p); } });
+      this.pages.forEach((p) => { p.el.style.width = w + 'px'; p.el.style.height = Math.round(w * p.aspect) + 'px'; if (p.canvas && Math.abs(p.scale - w) > 2 && p.visible) this.renderPage(p); });
       if (restore) requestAnimationFrame(() => this.goto(this.page, true));
     }
     setZoom(z) {
@@ -7546,18 +7897,20 @@ A.fmtDate = (t) => {
         const vp1 = page.getViewport({ scale: 1 });
         p.aspect = vp1.height / vp1.width;
         p.el.style.height = Math.round(w * p.aspect) + 'px';
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const vp = page.getViewport({ scale: (w / vp1.width) * dpr });
-        const c = h('canvas', { class: 'dv-canvas' });
-        c.width = Math.round(vp.width); c.height = Math.round(vp.height);
-        const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
-        await page.render({ canvasContext: ctx, viewport: vp }).promise;
-        if (p.canvas) p.canvas.remove();
-        p.canvas = c; p.scale = w;
-        p.el.append(c);
+        const draw = async (scale) => {
+          const vp = page.getViewport({ scale });
+          const c = h('canvas', { class: 'dv-canvas' });
+          c.width = Math.max(1, Math.round(vp.width)); c.height = Math.max(1, Math.round(vp.height));
+          const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+          await page.render({ canvasContext: ctx, viewport: vp }).promise;
+          return c;
+        };
+        const swap = (c) => { const old = p.canvas; p.el.append(c); if (old) setTimeout(() => old.remove(), 120); p.canvas = c; p.scale = w; p.el.classList.add('rendered'); };
+        if (!p.canvas) swap(await draw((w / vp1.width) * 0.45));
+        swap(await draw((w / vp1.width) * Math.min(window.devicePixelRatio || 1, 2)));
         // free far-away pages
         const near = this.page;
-        this.pages.forEach((q) => { if (q.canvas && Math.abs(q.n - near) > 6) { q.canvas.remove(); q.canvas = null; } });
+        this.pages.forEach((q) => { if (q.canvas && Math.abs(q.n - near) > 6) { q.canvas.remove(); q.canvas = null; q.el.classList.remove('rendered'); } });
       } catch (e) { /* page render failed; keep placeholder */ }
       p.busy = false;
     }
@@ -7565,12 +7918,12 @@ A.fmtDate = (t) => {
       const mid = this.scroller.scrollTop + this.scroller.clientHeight * 0.35;
       let n = 1;
       for (const p of this.pages) { if (p.el.offsetTop <= mid) n = p.n; else break; }
-      if (n !== this.page) { this.page = n; this.pageLbl.value = String(n); clearTimeout(this._st); this._st = setTimeout(() => ST.updateDoc(this.meta.id, { lastPage: n }), 500); }
+      if (n !== this.page) { this.page = n; this.pageLbl.value = String(n); if (this.syncCount) this.syncCount(); clearTimeout(this._st); this._st = setTimeout(() => ST.updateDoc(this.meta.id, { lastPage: n }), 500); }
     }
     goto(n, instant) {
       if (!this.pages.length) return;
       n = A.clamp(n, 1, this.pages.length);
-      this.page = n; this.pageLbl.value = String(n);
+      this.page = n; this.pageLbl.value = String(n); if (this.syncCount) this.syncCount();
       this.scroller.scrollTo({ top: this.pages[n - 1].el.offsetTop - 8, behavior: instant ? 'auto' : 'smooth' });
     }
     bindPinch() {
@@ -7600,9 +7953,10 @@ A.fmtDate = (t) => {
       it('image', nb ? 'Put this page in the notebook' : 'Put this page on the canvas', async () => {
         if (this.meta.type === 'pdf') {
           const r = await ST.renderPage(this.meta, this.page, 2);
-          if (nb) A.NB.placeReference(r.url, r.canvas.width, r.canvas.height); else A.UI.placeImage(r.url, r.canvas.width, r.canvas.height, { width: r.w1 * (96 / 72) });
+          if (nb) A.NB.placeReference(r.url, r.canvas.width, r.canvas.height, { full: true });
+          else { const vb = R.visibleBB(); const fitW = Math.min((vb[2] - vb[0]) * 0.55, (vb[3] - vb[1]) * 0.72 * (r.canvas.width / r.canvas.height)); A.UI.placeImage(r.url, r.canvas.width, r.canvas.height, { width: Math.min(r.w1 * (96 / 72), fitW) }); }
         } else { const url = await this.pageImage(); const im = new Image(); im.onload = () => (nb ? A.NB.placeReference(url, im.naturalWidth, im.naturalHeight) : A.UI.placeImage(url, im.naturalWidth, im.naturalHeight)); im.src = url; }
-        A.toast(nb ? 'Page added to your notebook: write on it with the Pencil' : 'Page placed on the canvas: write on it with the Pencil');
+        A.toast('Page added', 1400);
       });
       if (this.meta.type === 'pdf') it('layers', 'Import all pages to annotate', async () => {
         const blob = await A.store.loadFile('doc_' + this.meta.id, 'application/pdf');
@@ -8208,9 +8562,13 @@ A.fmtDate = (t) => {
 
   /* ---------- book index: Axiom reads the whole book once, finds its structure and every stated result ----------
      Works without a table of contents, running headers or printed page numbers. Cached per book in idx_<docId>. */
-  const IDX_V = 3;
+  const IDX_V = 5;
   const RESULT_RE = /^(Definition|Theorem|Lemma|Corollary|Proposition|Axiom|Postulate|Law|Principle|Claim|Example|Exercise|Remark)s?\s*((?:[0-9]+[.\-])*[0-9]+[a-z]?)?\s*[.:]?\s*(\([^)]{1,60}\))?\s*[.:]?/;
-  const KEEP_KINDS = new Set(['Definition', 'Theorem', 'Lemma', 'Corollary', 'Proposition', 'Axiom', 'Postulate', 'Law', 'Principle', 'Claim']);
+  const KEEP_KINDS = new Set(['Definition', 'Theorem', 'Lemma', 'Corollary', 'Proposition', 'Axiom', 'Postulate', 'Law', 'Principle', 'Claim', 'Term', 'Equation']);
+  /* material books state without announcing it */
+  const DEF_CUE = /\b(is called|are called|is said to be|are said to be|we say that|we call|we define|is defined (?:as|to be|by)|are defined (?:as|to be|by)|denoted by|let us call|is known as|is termed|we refer to)\b/i;
+  const LAW_CUE = /\b([A-Z][a-zà-ÿ]+(?:[-–][A-Z][a-zà-ÿ]+)?['’]s (?:[a-z]+ ){0,2}(?:law|principle|equation|theorem|rule|lemma|identity|inequality|formula)s?|(?:law|principle) of (?:the )?(?:conservation of )?[a-z]+(?: [a-z]+)?)/;
+  const EQ_NUM = /\((\d+[.\-]\d+[a-z]?|\d{1,3})\)\s*$/;
   const headingOf = (l, body) => {
     const t = l.text.trim();
     if (t.length < 3 || t.length > 90) return null;
@@ -8254,7 +8612,18 @@ A.fmtDate = (t) => {
         for (let i = 0; i < lines.length; i++) {
           const l = lines[i];
           const hd = i < lines.length * 0.6 ? headingOf(l, body) : null;
-          if (hd) idx.heads.push({ page: n, level: hd.level, title: hd.title, norm: normHead(hd.title) });
+          if (hd) {
+            const gist = lines.slice(i + 1, i + 4).filter((x) => !headingOf(x, body)).map((x) => x.text).join(' ').slice(0, 260);
+            idx.heads.push({ page: n, level: hd.level, title: hd.title, norm: normHead(hd.title), gist });
+          }
+          if (!RESULT_RE.test(l.text)) {
+            const two = (l.text + ' ' + ((lines[i + 1] && lines[i + 1].text) || '')).slice(0, 320);
+            if (DEF_CUE.test(l.text) && idx.results.filter((r) => r.page === n && r.kind === 'Term').length < 5) idx.results.push({ page: n, kind: 'Term', num: '', name: '', text: two });
+            const lm = l.text.match(LAW_CUE);
+            if (lm && !idx.results.some((r) => r.kind === 'Law' && r.name === lm[1])) idx.results.push({ page: n, kind: 'Law', num: '', name: lm[1], text: two });
+            const em = l.text.match(EQ_NUM);
+            if (em && /[=<>≤≥∫∑∂]/.test(l.text) && l.text.length < 160) idx.results.push({ page: n, kind: 'Equation', num: em[1], name: '', text: l.text.slice(0, 200) });
+          }
           const m = l.text.match(RESULT_RE);
           if (m && (i === 0 || !RESULT_RE.test(lines[i - 1].text) || true)) {
             const kind = m[1];
@@ -8287,7 +8656,7 @@ A.fmtDate = (t) => {
     return indexing.p;
   };
   const saveIndex = (idx) => A.store.saveFile('idx_' + idx.id, new Blob([JSON.stringify(idx)], { type: 'application/json' })).catch(() => {});
-  const resultLabel = (r) => `${r.kind}${r.num ? ' ' + r.num : ''}${r.name ? ' ' + r.name : ''}`;
+  const resultLabel = (r) => (r.kind === 'Term' ? 'Defined in the text' : r.kind === 'Equation' ? `Equation (${r.num})` : r.kind === 'Law' && !r.num ? r.name : `${r.kind}${r.num ? ' ' + r.num : ''}${r.name ? ' ' + r.name : ''}`);
   /* structure for a page: from the outline when the PDF has one, otherwise from detected headings */
   RD.trailOf = async (n) => {
     const map = await RD.sectionMap();
@@ -8305,7 +8674,7 @@ A.fmtDate = (t) => {
     const out = [];
     // outline so far
     const before = heads.filter((x) => x.page <= n && x.level <= 1);
-    if (before.length) out.push('Outline of the book up to here:\n' + before.map((x) => `${x.level ? '  ' : ''}${x.title} (p. ${x.page})`).join('\n').slice(-5000));
+    if (before.length) out.push('Outline of the book up to here (with how each section opens):\n' + before.map((x) => `${x.level ? '  ' : ''}${x.title} (p. ${x.page})${x.gist ? ' — ' + x.gist.slice(0, x.page >= n - 40 ? 220 : 90) : ''}`).join('\n').slice(-7000));
     // results: the current chapter in full, earlier chapters shortened
     const chapStart = (heads.filter((x) => x.page <= n && x.level === 0).pop() || { page: 1 }).page;
     const res = idx.results.filter((r) => r.page < n || (r.page === n && false)).filter((r) => KEEP_KINDS.has(r.kind));
@@ -8314,17 +8683,26 @@ A.fmtDate = (t) => {
     const curTxt = [];
     for (let i = cur.length - 1; i >= 0 && left > 0; i--) { const t = `- ${resultLabel(cur[i])} (p. ${cur[i].page}): ${cur[i].text}`; curTxt.unshift(t); left -= t.length; }
     const oldTxt = [];
-    for (let i = old.length - 1; i >= 0 && left > 0; i--) { if (old[i].kind !== 'Definition' && old[i].kind !== 'Theorem' && old[i].kind !== 'Lemma' && old[i].kind !== 'Corollary' && old[i].kind !== 'Proposition') continue; const t = `- ${resultLabel(old[i])} (p. ${old[i].page}): ${old[i].text.slice(0, 150)}`; oldTxt.unshift(t); left -= t.length; }
+    for (let i = old.length - 1; i >= 0 && left > 0; i--) { if (old[i].kind === 'Equation' || old[i].kind === 'Claim') continue; const t = `- ${resultLabel(old[i])} (p. ${old[i].page}): ${old[i].text.slice(0, 150)}`; oldTxt.unshift(t); left -= t.length; }
     if (oldTxt.length) out.push('Results stated in earlier chapters (shortened):\n' + oldTxt.join('\n'));
     if (curTxt.length) out.push('Results stated so far in the current chapter:\n' + curTxt.join('\n'));
     // results the passage refers to by number, in full, wherever they are in the book
     const refs = new Set();
-    String(focusText).replace(/(Theorem|Lemma|Corollary|Proposition|Definition|Exercise|Example)\s+((?:\d+[.\-])*\d+[a-z]?)/g, (_, k, num) => refs.add(k + ' ' + num));
+    String(focusText).replace(/(Theorem|Lemma|Corollary|Proposition|Definition|Exercise|Example|Law|Principle|Postulate|Axiom)\s+((?:\d+[.\-])*\d+[a-z]?)/g, (_, k, num) => refs.add(k + ' ' + num));
+    String(focusText).replace(/(?:Eqs?\.?|equations?|Equations?)\s*\(?((?:\d+[.\-])?\d+[a-z]?)\)?/g, (_, num) => refs.add('Equation ' + num));
+    String(focusText).replace(/\((\d+[.\-]\d+[a-z]?)\)/g, (_, num) => refs.add('Equation ' + num));
     const refTxt = [];
     for (const key of refs) {
       const hit = idx.results.find((r) => `${r.kind} ${r.num}` === key);
-      if (hit) refTxt.push(`- ${resultLabel(hit)} (p. ${hit.page}): ${hit.text}`);
+      if (hit && !refTxt.some((t) => t.includes(`(p. ${hit.page}): ${hit.text.slice(0, 30)}`))) refTxt.push(`- ${resultLabel(hit)} (p. ${hit.page}): ${hit.text}`);
     }
+    // terms the passage uses that were defined earlier in prose
+    const lower = String(focusText).toLowerCase();
+    idx.results.filter((r) => r.kind === 'Term' && r.page < n).forEach((r) => {
+      const m = r.text.match(/(?:is called|are called|is said to be|are said to be|we call|known as|is termed)\s+(?:an?\s+|the\s+)?([a-z][a-z\- ]{2,30}?)(?:[.,;:]|\s+if|\s+when|$)/i);
+      const term = m && m[1].trim().toLowerCase();
+      if (term && term.length > 3 && lower.includes(term) && refTxt.length < 24) refTxt.push(`- Definition of "${term}" (p. ${r.page}): ${r.text}`);
+    });
     if (refTxt.length) out.push('Results this passage refers to (full statements):\n' + refTxt.join('\n'));
     // the current section's text up to this page
     const secStart = (heads.filter((x) => x.page <= n).pop() || { page: Math.max(1, n - 3) }).page;
@@ -8396,35 +8774,48 @@ A.fmtDate = (t) => {
       w *= st.zoom;
       p.el.style.width = Math.round(w) + 'px';
       p.el.style.height = Math.round(w * p.aspect) + 'px';
-      if (p.canvas && Math.abs(p.w - w) > 2) { p.canvas.remove(); p.canvas = null; if (p.visible) renderPage(p); }
+      // keep the current bitmap (it stretches with the page) and re-render sharply behind it
+      if (p.canvas && Math.abs(p.w - w) > 2 && p.visible) renderPage(p);
       if (p.ink) drawInkPage(p);
     });
     if (frac != null) main.scrollTop = frac * main.scrollHeight;
   }
+  /* two passes: an instant low-resolution preview, then the sharp page; the old bitmap stays until the new one is ready */
   async function renderPage(p) {
-    if (!st || p.busy) return;
+    if (!st) return;
     const w = parseFloat(p.el.style.width);
-    if (p.canvas && Math.abs(p.w - w) < 2) return;
+    if (p.canvas && Math.abs(p.w - w) < 2 && !p.low) return;
+    if (p.busy) { p.again = true; return; }
     p.busy = true;
     const token = st.token;
     try {
       const page = await st.pdf.getPage(p.n);
       const vp1 = page.getViewport({ scale: 1 });
       if (Math.abs(vp1.height / vp1.width - p.aspect) > 0.01) { p.aspect = vp1.height / vp1.width; p.el.style.height = Math.round(w * p.aspect) + 'px'; }
+      const draw = async (scale) => {
+        const vp = page.getViewport({ scale });
+        const c = h('canvas', { class: 'rd-canvas' });
+        c.width = Math.max(1, Math.round(vp.width)); c.height = Math.max(1, Math.round(vp.height));
+        const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+        await page.render({ canvasContext: ctx, viewport: vp }).promise;
+        return c;
+      };
+      const swap = (c, low) => {
+        if (!st || token !== st.token) return;
+        const old = p.canvas;
+        p.el.insertBefore(c, p.ink || p.ov);
+        if (old) { c.classList.add('rd-fade'); setTimeout(() => old.remove(), 140); }
+        p.canvas = c; p.w = w; p.low = low;
+        p.el.classList.add('rendered');
+      };
+      if (!p.canvas) swap(await draw((w / vp1.width) * 0.45), true);
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const vp = page.getViewport({ scale: (w / vp1.width) * dpr });
-      const c = h('canvas', { class: 'rd-canvas' });
-      c.width = Math.round(vp.width); c.height = Math.round(vp.height);
-      const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
-      await page.render({ canvasContext: ctx, viewport: vp }).promise;
-      if (!st || token !== st.token) return;
-      if (p.canvas) p.canvas.remove();
-      p.canvas = c; p.w = w;
-      p.el.insertBefore(c, p.ink || p.ov);
+      swap(await draw((w / vp1.width) * dpr), false);
       drawInkPage(p);
-      st.pages.forEach((q) => { if (q.canvas && Math.abs(q.n - st.page) > 5) { q.canvas.remove(); q.canvas = null; } });
-    } catch (e) { /* keep placeholder */ }
+      st.pages.forEach((q) => { if (q.canvas && Math.abs(q.n - st.page) > 6) { q.canvas.remove(); q.canvas = null; q.el.classList.remove('rendered'); } });
+    } catch (e) { /* keep what is there */ }
     p.busy = false;
+    if (p.again) { p.again = false; if (p.visible) renderPage(p); }
   }
   const regionImage = async (n, r, maxPx = 1500) => {
     const page = await st.pdf.getPage(n);
@@ -8451,9 +8842,11 @@ A.fmtDate = (t) => {
     if (!p) return;
     p.ov.innerHTML = '';
     st.ann.highlights.filter((hl) => hl.page === n).forEach((hl) => {
-      const el = box(hl.rect, 'rd-hl ' + (hl.color || 'yellow'), { title: 'Highlight · tap for options' });
-      el.addEventListener('click', (e) => { e.stopPropagation(); highlightMenu(el, hl); });
-      p.ov.append(el);
+      (hl.rects || [hl.rect]).forEach((rc) => {
+        const el = box(rc, 'rd-hl ' + (hl.color || 'yellow'), { title: 'Highlight · tap for options' });
+        el.addEventListener('click', (e) => { e.stopPropagation(); highlightMenu(el, hl); });
+        p.ov.append(el);
+      });
     });
     (st.cites || []).filter((c) => c.page === n).forEach((c) => c.rects.forEach((r) => p.ov.append(box(r, 'rd-cite' + (c.flash ? ' flash' : '')))));
     if (st.focus && st.focus.page === n) {
@@ -8612,16 +9005,16 @@ A.fmtDate = (t) => {
     const send = h('button', { class: 'ab-send', 'aria-label': 'Send question', html: A.icon('send'), onclick: go });
     const chip = (label, fn) => h('button', { class: 'ab-chip', onclick: fn }, label);
     bar.append(
+      h('div', { class: 'ab-head' }, h('span', null, 'Ask about this selection'),
+        h('button', { class: 'ab-ic', title: 'Highlight', 'aria-label': 'Highlight', html: A.icon('b-highlighter'), onclick: () => { addHighlight(n, r); st.focus = null; drawOverlays(n); clearActions(); } }),
+        h('button', { class: 'ab-ic', title: 'Copy text', 'aria-label': 'Copy text', html: A.icon('copy'), onclick: async () => { const t = linesIn(await RD.lines(n), r).map((l) => l.text).join('\n'); copyText(t); } }),
+        h('button', { class: 'ab-ic', title: 'Close', 'aria-label': 'Close', html: A.icon('close'), onclick: () => { st.focus = null; drawOverlays(n); clearActions(); } })),
       h('div', { class: 'ab-row' }, inp, send),
       h('div', { class: 'ab-chips' },
         chip('Explain', () => ask('explain', n, r)),
         chip('Fill in steps', () => ask('prove', n, r)),
         chip('Hint', () => ask('hint', n, r)),
-        chip('Solve', () => solveFrom(n, r)),
-        h('i', { class: 'ab-sep' }),
-        h('button', { class: 'ab-ic', title: 'Highlight', 'aria-label': 'Highlight', html: A.icon('rename'), onclick: () => { addHighlight(n, r); st.focus = null; drawOverlays(n); clearActions(); } }),
-        h('button', { class: 'ab-ic', title: 'Copy text', 'aria-label': 'Copy text', html: A.icon('copy'), onclick: async () => { const t = linesIn(await RD.lines(n), r).map((l) => l.text).join('\n'); copyText(t); } }),
-        h('button', { class: 'ab-ic', title: 'Clear selection', 'aria-label': 'Clear selection', html: A.icon('close'), onclick: () => { st.focus = null; drawOverlays(n); clearActions(); } })));
+        chip('Solve beside', () => solveFrom(n, r))));
     host.append(bar);
     const bw = bar.offsetWidth, bh = bar.offsetHeight;
     let x = pr.left + ((r[0] + r[2]) / 2) * pr.width - bw / 2 - hr.left;
@@ -8645,8 +9038,10 @@ A.fmtDate = (t) => {
     if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => A.toast('Text copied'), () => A.toast('Copy is not allowed here'));
   };
   async function addHighlight(n, r) {
-    const text = linesIn(await RD.lines(n), r).map((l) => l.text).join(' ');
-    st.ann.highlights.push({ id: A.uid(), page: n, rect: r, color: 'yellow', text, created: Date.now() });
+    const sel = linesIn(await RD.lines(n), r);
+    const text = sel.map((l) => l.text).join(' ');
+    const rects = sel.map((l) => [Math.max(r[0], l.r[0]) - 0.003, l.r[1] - 0.002, Math.min(r[2], l.r[2]) + 0.003, l.r[3] + 0.002]);
+    st.ann.highlights.push({ id: A.uid(), page: n, rect: r, rects: rects.length ? rects : null, color: 'yellow', text, created: Date.now() });
     saveAnn(); drawOverlays(n); renderRail();
     A.toast('Highlighted');
   }
@@ -8680,7 +9075,7 @@ A.fmtDate = (t) => {
     onRemoveAtt: (a) => { if (st.focus && a.page === st.focus.page) { st.focus = null; drawOverlays(a.page); } },
     systemExtra: () => (st.kind === 'epub'
       ? `The student is reading the EPUB book "${st.meta.name}" in Axiom's reader. The text of the chapter on screen is provided. When you refer to a passage, quote it briefly in a > blockquote; line citations are not available in EPUBs.`
-      : `The student is reading "${st.meta.name}" (${st.pdf ? st.pdf.numPages + ' pages' : ''}) in Axiom's reader. Each message comes with the book, chapter and section, an outline of the book so far, the definitions and results stated earlier (in full for the current chapter, shortened before that), the full statements of any results the passage cites by number, the text of the current section before this page, the page text as numbered lines, and the region they selected (as an image plus its text). Lean on that material: when the book uses an earlier result, name it (e.g. Theorem 26.3) and state what it gives. Their own handwriting on the page may appear in those images. Use the book's own notation and the results stated earlier in the chapter; if the question depends on something defined earlier that you were not shown, say what you are assuming.`),
+      : `The student is reading "${st.meta.name}" (${st.pdf ? st.pdf.numPages + ' pages' : ''}) in Axiom's reader. Each message comes with the book, chapter and section, an outline of the book so far (with how each section opens), the definitions and results stated earlier (including definitions written in prose, named laws and numbered equations) (in full for the current chapter, shortened before that), the full statements of any results the passage cites by number, the text of the current section before this page, the page text as numbered lines, and the region they selected (as an image plus its text). Lean on that material: when the book uses an earlier result, name it (e.g. Theorem 26.3) and state what it gives. Their own handwriting on the page may appear in those images. Use the book's own notation and the results stated earlier in the chapter; if the question depends on something defined earlier that you were not shown, say what you are assuming.`),
     contextText: async (atts) => {
       if (st.kind === 'epub') {
         const chap = epubChapterText();
@@ -8755,9 +9150,13 @@ A.fmtDate = (t) => {
     const mid = st.main.scrollTop + st.main.clientHeight * 0.4;
     let n = 1;
     for (const p of st.pages) { if (p.el.offsetTop <= mid) n = p.n; else break; }
+    // reading chrome: hide while scrolling down, show on scroll up
+    const y = st.main.scrollTop, dy = y - (st._lastY || 0);
+    st._lastY = y;
+    if (Math.abs(dy) > 6 && !st.tool.startsWith('w')) host.classList.toggle('chrome-hidden', dy > 0 && y > 120 && !host.querySelector('.rd-actions'));
     if (n !== st.page) {
       st.page = n;
-      st.pageLbl.textContent = `${n}`;
+      setPageLabel(n);
       st.scrub.value = n;
       clearTimeout(st._sv);
       st._sv = setTimeout(() => { const d = A.ST.doc(st.meta.id); if (d) { d.lastPage = n; d.lastRead = Date.now(); A.saveSettings(); } }, 600);
@@ -8766,6 +9165,27 @@ A.fmtDate = (t) => {
       if (th) th.classList.add('on');
     }
   }
+
+  function setPageLabel(n) {
+    if (!st || !st.pdf) { if (st) st.pageLbl.textContent = String(n); return; }
+    const lab = RD.index && RD.index.labels && RD.index.labels[n - 1];
+    st.pageLbl.textContent = lab && lab !== String(n) ? 'p. ' + lab : 'Page ' + n;
+    st.totalEl.textContent = `${n} of ${st.pdf.numPages}`;
+    clearTimeout(st._loc);
+    st._loc = setTimeout(async () => {
+      if (!st) return;
+      const loc = await RD.locationOf(n);
+      if (!lab && loc.printed && loc.printed !== n) st.pageLbl.textContent = 'p. ' + loc.printed;
+      const ch = loc.trail[loc.trail.length - 1];
+      if (ch && st.subEl) { st.subEl.textContent = ch; st.subEl.title = loc.trail.join(' › '); }
+    }, 250);
+  }
+  RD.setPageLabel = setPageLabel;
+  /* title from the PDF's own metadata when the file name is just a file name */
+  function cleanTitle(t) {
+    return String(t || '').replace(/[_]+/g, ' ').replace(/\s*\(?z-?lib(?:rary)?(?:\.org)?\)?.*$/i, '').replace(/\s*-\s*(libgen|annas?-archive).*$/i, '').replace(/\s+/g, ' ').trim();
+  }
+  RD.cleanTitle = cleanTitle;
 
   /* ---------- side rail: pages, contents, highlights ---------- */
   function renderRail() {
@@ -8878,6 +9298,7 @@ A.fmtDate = (t) => {
     t.hidden = !open;
     host.classList.toggle('with-tutor', open);
     host.querySelector('#rd-btn-tutor').classList.toggle('on', open);
+    host.classList.remove('chrome-hidden');
     S.readerTutor = open; A.saveSettings();
     if (open && !t.querySelector('.tutor')) { t.querySelector('.rd-tutor-body').innerHTML = ''; A.AI.mount(t.querySelector('.rd-tutor-body'), readerCtx); }
     requestAnimationFrame(() => layout());
@@ -9010,7 +9431,7 @@ A.fmtDate = (t) => {
     const toolSeg = h('div', { class: 'seg rd-tools' });
     const inkBar = h('div', { class: 'rd-group panel rd-inkbar', hidden: true });
     const setTool = (t) => { st.tool = t; [...toolSeg.children].forEach((b) => b.classList.toggle('on', b.dataset.t === t)); host.dataset.tool = t; inkBar.hidden = t !== 'write'; clearActions(); };
-    [['read', 'Ask', 'b-select', 'Pencil draws a box or loop to ask about'], ['highlight', 'Highlight', 'rename', 'Pencil highlights passages'], ['write', 'Write', 'b-pen', 'Write on the page with the Pencil']].forEach(([t, l, ic, tip]) => { const b = h('button', { dataset: { t }, title: tip }); b.innerHTML = A.icon(ic); b.append(l); b.addEventListener('click', () => setTool(t)); toolSeg.append(b); });
+    [['read', 'Read', 'book', 'Read: circle any passage with the Pencil to ask about it'], ['highlight', 'Highlight', 'b-highlighter', 'Highlight passages with the Pencil'], ['write', 'Write', 'b-pen', 'Write on the page with the Pencil']].forEach(([t, l, ic, tip]) => { const b = h('button', { dataset: { t }, title: tip }); b.innerHTML = A.icon(ic); b.append(l); b.addEventListener('click', () => setTool(t)); toolSeg.append(b); });
     const drawInkBar = () => {
       inkBar.innerHTML = '';
       Object.entries(INK).forEach(([k, c]) => inkBar.append(h('button', { class: 'rd-ink-c' + (st.inkTool === 'pen' && st.inkColor === k ? ' on' : ''), style: { background: c }, 'aria-label': k + ' pen', onclick: () => { st.inkTool = 'pen'; st.inkColor = k; drawInkBar(); } })));
@@ -9021,17 +9442,22 @@ A.fmtDate = (t) => {
       inkBar.append(ib('undo', 'Undo', () => RD.inkUndo()));
     };
     drawInkBar();
-    const moreBtn = ib('more', 'View and options', (e) => {
+    const moreBtn = { _open: null };
+    moreBtn._open = ((e) => {
       const m = h('div', { class: 'menu' });
-      const row = h('div', { class: 'rd-zoomrow' },
-        h('button', { class: 'ibtn', 'aria-label': isEpub ? 'Smaller text' : 'Zoom out', html: A.icon('minus'), onclick: () => { if (isEpub) { S.epubFont = A.clamp((S.epubFont || 1) - 0.1, 0.7, 2); A.saveSettings(); applyEpubTheme(); } else { st.zoom = A.clamp(st.zoom / 1.2, 0.5, 3); layout(); } } }),
-        h('span', { class: 'small muted' }, isEpub ? 'Text size' : 'Zoom'),
-        h('button', { class: 'ibtn', 'aria-label': isEpub ? 'Larger text' : 'Zoom in', html: A.icon('plus'), onclick: () => { if (isEpub) { S.epubFont = A.clamp((S.epubFont || 1) + 0.1, 0.7, 2); A.saveSettings(); applyEpubTheme(); } else { st.zoom = A.clamp(st.zoom * 1.2, 0.5, 3); layout(); } } }));
-      m.append(row, h('hr'));
-      [['paper', 'Paper'], ['sepia', 'Sepia'], ['night', 'Night']].forEach(([id, l]) => m.append(h('button', { class: (S.readerTheme || 'paper') === id ? 'on' : '', onclick: () => { S.readerTheme = id; A.saveSettings(); host.dataset.theme = id; applyEpubTheme(); A.closePopovers(); } }, h('i', { class: 'rd-theme-dot ' + id }), l)));
+      const val = h('span', { class: 'rd-zoomval num' }, isEpub ? Math.round((S.epubFont || 1) * 100) + '%' : Math.round(st.zoom * 100) + '%');
+      const bump = (dir) => { if (isEpub) { S.epubFont = A.clamp((S.epubFont || 1) + dir * 0.1, 0.7, 2); A.saveSettings(); applyEpubTheme(); val.textContent = Math.round(S.epubFont * 100) + '%'; } else { st.zoom = A.clamp(st.zoom * (dir > 0 ? 1.2 : 1 / 1.2), 0.5, 3); layout(); val.textContent = Math.round(st.zoom * 100) + '%'; } };
+      m.classList.add('rd-aa');
+      m.append(h('div', { class: 'sub' }, isEpub ? 'Text size' : 'Zoom'),
+        h('div', { class: 'rd-zoomrow' }, h('button', { class: 'ibtn', 'aria-label': 'Smaller', html: A.icon('minus'), onclick: () => bump(-1) }), val, h('button', { class: 'ibtn', 'aria-label': 'Larger', html: A.icon('plus'), onclick: () => bump(1) })));
+      if (!isEpub) m.append(h('div', { class: 'seg rd-fitseg' }, ...[['width', 'Fit width'], ['page', 'Fit page']].map(([v, l]) => h('button', { class: st.fit === v ? 'on' : '', onclick: () => { st.fit = v; S.readerFit = v; A.saveSettings(); st.zoom = 1; layout(); val.textContent = '100%'; [...m.querySelectorAll('.rd-fitseg button')].forEach((b) => b.classList.toggle('on', b.textContent === l)); } }, l))));
+      m.append(h('div', { class: 'sub' }, 'Page'));
+      const sw = h('div', { class: 'rd-swatches' });
+      [['paper', 'Paper'], ['sepia', 'Sepia'], ['night', 'Night']].forEach(([id, l]) => sw.append(h('button', { class: 'rd-swatch ' + id + ((S.readerTheme || 'paper') === id ? ' on' : ''), onclick: () => { S.readerTheme = id; A.saveSettings(); host.dataset.theme = id; applyEpubTheme(); sw.querySelectorAll('.rd-swatch').forEach((b) => b.classList.toggle('on', b.classList.contains(id))); } }, h('i', { html: A.icon('check') }), h('span', null, l))));
+      m.append(sw);
+      if (false) m.append(h('hr'));
       if (!isEpub) {
-        m.append(h('hr'), h('button', { onclick: () => { st.fit = st.fit === 'width' ? 'page' : 'width'; S.readerFit = st.fit; A.saveSettings(); st.zoom = 1; layout(); A.closePopovers(); } }, A.iconEl('scale'), st.fit === 'width' ? 'Fit whole page' : 'Fit page width'));
-        m.append(h('button', { onclick: () => { A.closePopovers(); A.UI.solveBeside(A.ST.doc(meta.id), st.page); } }, A.iconEl('rename'), 'Solve beside this page…'));
+        m.append(h('hr'), h('button', { onclick: () => { A.closePopovers(); A.UI.solveBeside(A.ST.doc(meta.id), st.page); } }, A.iconEl('rename'), 'Solve beside this page…'));
       }
       A.popover(m, e.currentTarget, { side: 'down' });
     });
@@ -9039,24 +9465,31 @@ A.fmtDate = (t) => {
     const scrub = h('input', { type: 'range', class: 'rd-scrub', id: 'rd-scrub', min: 1, max: 1, value: st.page, 'aria-label': 'Page' });
     scrub.addEventListener('input', () => { pageLbl.textContent = scrub.value; });
     scrub.addEventListener('change', () => goto(+scrub.value, 0, false));
-    const total = h('span', { class: 'num muted' }, '');
-    const top = h('header', { class: 'rd-top' },
-      h('div', { class: 'rd-group panel' },
+    const total = h('span', { class: 'num' }, '');
+    const titleEl = h('div', { class: 'rd-title-main' }, cleanTitle(meta.title || meta.name));
+    const subEl = h('div', { class: 'rd-title-sub' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, meta.author || (subj ? subj.name : (meta.kind === 'sheet' ? 'Problem set' : '')));
+    const top = h('header', { class: 'rd-top rd-bar' },
+      h('div', { class: 'rd-slot rd-left' },
         ib('chev', 'Back to library', () => { RD.close(); A.emit('go:gallery'); }, 'rd-back'),
-        h('div', { class: 'rd-title' }, h('div', { class: 'rd-title-main' }, meta.name), h('div', { class: 'rd-title-sub' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, subj ? subj.name : (meta.kind === 'sheet' ? 'Problem set' : 'Book'))),
-        h('div', { class: 'sb-sep' }), ib('gallery', isEpub ? 'Contents and highlights' : 'Pages, contents and highlights', () => toggleRail(), 'rd-btn-rail'), isEpub ? null : ib('search', 'Search', (e) => openSearch(e.currentTarget))),
-      isEpub ? null : h('div', { class: 'rd-group-wrap' }, h('div', { class: 'rd-group panel' }, toolSeg), inkBar),
-      h('div', { class: 'rd-group panel' }, moreBtn, h('div', { class: 'sb-sep' }), ib('spark', 'Tutor', () => toggleTutor(), 'rd-btn-tutor')));
+        h('div', { class: 'rd-title' }, titleEl, subEl)),
+      h('div', { class: 'rd-slot rd-center' }, isEpub ? null : h('div', { class: 'rd-group-wrap' }, toolSeg, inkBar)),
+      h('div', { class: 'rd-slot rd-right' },
+        isEpub ? null : ib('search', 'Search', (e) => openSearch(e.currentTarget)),
+        ib('gallery', isEpub ? 'Contents and highlights' : 'Pages, contents and highlights', () => toggleRail(), 'rd-btn-rail'),
+        (() => { const b = h('button', { class: 'ibtn rd-aa-btn', title: 'Appearance', 'aria-label': 'Appearance' }, 'Aa'); b.addEventListener('click', (e) => moreBtn._open(e)); return b; })(),
+        ib('spark', 'Tutor', () => toggleTutor(), 'rd-btn-tutor')));
     const main = h('main', { class: 'rd-main', tabindex: 0 });
     const pagesWrap = h('div', { class: 'rd-pages' });
     main.append(pagesWrap);
     const rail = h('aside', { class: 'rd-rail', hidden: true });
-    const tutor = h('aside', { class: 'rd-tutor', hidden: true }, h('div', { class: 'rd-grip', title: 'Drag to resize' }), h('div', { class: 'rd-tutor-body' }));
-    const bottom = h('footer', { class: 'rd-bottom panel' }, h('span', { class: 'muted small' }, isEpub ? '' : 'Page'), pageLbl, total, scrub);
+    const tutor = h('aside', { class: 'rd-tutor', hidden: true }, h('div', { class: 'rd-grip', title: 'Drag to resize' }),
+      h('div', { class: 'rd-tutor-h' }, h('span', { class: 'rd-tutor-t' }, A.iconEl('spark'), 'Tutor'), h('button', { class: 'ibtn', 'aria-label': 'Close tutor', html: A.icon('close'), onclick: () => toggleTutor(false) })),
+      h('div', { class: 'rd-tutor-body' }));
+    const bottom = h('footer', { class: 'rd-bottom rd-bar' }, h('span', { class: 'rd-pg' }, pageLbl, h('span', { class: 'rd-pg-of' }, total)), scrub);
     host.append(top, rail, main, tutor, bottom);
     host.dataset.theme = S.readerTheme || 'paper';
     host.style.setProperty('--rd-filter', '');
-    Object.assign(st, { main, rail, pageLbl, scrub });
+    Object.assign(st, { main, rail, pageLbl, scrub, titleEl, subEl, totalEl: total });
     setTool('read');
     applyWidth();
     // resize tutor
@@ -9092,19 +9525,35 @@ A.fmtDate = (t) => {
     if (!st || st.token !== token) return;
     const n = st.pdf.numPages;
     RD.index = null;
-    setTimeout(() => { if (st && st.token === token) RD.buildIndex().then(() => { if (st && st.railTab === 'toc') renderRail(); }); }, 1200);
-    total.textContent = '/ ' + n;
+    setTimeout(() => { if (st && st.token === token) RD.buildIndex().then(() => { if (st && st.railTab === 'toc') renderRail(); if (st) setPageLabel(st.page); }); }, 1200);
+    RD.bookInfo().then((info) => {
+      if (!st || st.token !== token) return;
+      const good = info.title && info.title.length > 2 && info.title.length < 90 && !/untitled|microsoft|\.(pdf|docx?|tex)$|^document$/i.test(info.title);
+      const patch = {};
+      if (good && !meta.title) patch.title = cleanTitle(info.title);
+      if (info.author && !meta.author && info.author.length < 80) patch.author = info.author;
+      if (Object.keys(patch).length) { A.ST.updateDoc(meta.id, patch); if (patch.title) titleEl.textContent = patch.title; if (patch.author) subEl.textContent = patch.author; }
+    }).catch(() => {});
+    total.textContent = '';
     scrub.max = n;
     const p1 = await st.pdf.getPage(1), vp = p1.getViewport({ scale: 1 });
     for (let i = 1; i <= n; i++) {
       const ov = h('div', { class: 'rd-ov' });
-      const el = h('div', { class: 'rd-page', dataset: { n: i } }, h('span', { class: 'rd-pg-ph num' }, String(i)), ov);
+      const el = h('div', { class: 'rd-page', dataset: { n: i } }, ov);
       pagesWrap.append(el);
       st.pages.push({ n: i, el, ov, aspect: vp.height / vp.width, canvas: null, w: 0 });
     }
     st.io = new IntersectionObserver((ents) => ents.forEach((en) => { const p = st.pages[+en.target.dataset.n - 1]; if (!p) return; p.visible = en.isIntersecting; if (en.isIntersecting) { renderPage(p); drawOverlays(p.n); } }), { root: main, rootMargin: '1200px 0px' });
     st.pages.forEach((p) => st.io.observe(p.el));
     main.addEventListener('scroll', onScroll, { passive: true });
+    let tap = null;
+    main.addEventListener('pointerdown', (e) => { tap = e.pointerType === 'touch' ? { x: e.clientX, y: e.clientY, t: performance.now() } : null; });
+    main.addEventListener('pointerup', (e) => {
+      if (!tap || e.pointerType !== 'touch') return;
+      const still = Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 8 && performance.now() - tap.t < 320;
+      tap = null;
+      if (still && !e.target.closest('.rd-hl, .rd-actions, .cite')) host.classList.toggle('chrome-hidden');
+    });
     bindSelect(main);
     bindPinch(main, pagesWrap);
     layout(false);
@@ -9330,7 +9779,7 @@ A.fmtDate = (t) => {
       if (!on()) return;
       const cur = R.currentPage();
       requestAnimationFrame(() => {
-        if (lastFit || D.doc.view.zoom > R.fitPageZoom()) D.doc.view.zoom = R.fitPageZoom();
+        D.doc.view.zoom = R.fitPageZoom(); // like Notability: the page refits whenever the space changes
         R.constrainNotebook(); R.showPage(cur); syncCounter();
       });
     });
@@ -9399,7 +9848,10 @@ A.fmtDate = (t) => {
   function syncCounter() {
     if (!els.count) return;
     const n = D.doc.pages.length, cur = R.currentPage() + 1;
-    els.count.innerHTML = `<b>${cur}</b><span>/</span>${n}`;
+    els.count.innerHTML = `<b>${cur}</b><span> / ${n}</span>`;
+    const [up, down] = els.counter.querySelectorAll('.ibtn');
+    if (up) up.disabled = cur <= 1;
+    if (down) down.disabled = cur >= n;
     if (els.side && !els.side.hidden) els.side.querySelectorAll('.nb-th').forEach((t) => t.classList.toggle('on', +t.dataset.i === cur - 1));
   }
   async function goToPageDialog() {
@@ -9988,9 +10440,14 @@ A.fmtDate = (t) => {
     const s = Math.min((pw - margin * 2) / iw, opts.full ? (rc[3] - rc[1] - margin * 2) / ih : (rc[3] - rc[1]) * 0.45 / ih);
     const it = { id: A.uid(), t: 'i', src: url, iw, ih, m: [s, 0, 0, s, rc[0] + (pw - iw * s) / 2, rc[1] + margin], o: 1, ref: opts.label || 'reference' };
     it.bb = B.imageBB(it);
-    let l = D.active();
-    if (l.locked || l.pdfLayer) l = doc.layers.slice().reverse().find((x) => !x.locked && !x.pdfLayer && x.visible) || D.addLayer();
-    D.begin(); D.addItems([it], l); D.commit();
+    // pages and problems are the paper you write on: they live on a locked background layer, so the pen never picks them up
+    D.begin();
+    let l = doc.layers.find((x) => x.pdfLayer);
+    if (!l) { l = D.newLayer('Imported pages'); l.pdfLayer = true; doc.layers.unshift(l); }
+    l.locked = true;
+    l.items = l.items.concat([it]);
+    D.commit('all');
+    A.emit('layers');
     R.showPage(at, true); R.render(); A.emit('layers:thumbs');
     return it;
   };
@@ -10150,6 +10607,79 @@ A.fmtDate = (t) => {
     return doc;
   };
 
+  /* ---------- folders, one set per section (notebooks, canvases, books) ---------- */
+  const FD = (UI.folders = {
+    list: (section) => (S.folders || []).filter((f) => f.section === section),
+    get: (id) => (S.folders || []).find((f) => f.id === id),
+    add: (section, name) => { const f = { id: A.uid(), section, name: name.slice(0, 40), created: Date.now() }; S.folders = (S.folders || []).concat([f]); A.saveSettings(); return f; },
+    rename: (id, name) => { const f = FD.get(id); if (f) { f.name = name.slice(0, 40); A.saveSettings(); } },
+    remove: (id) => { S.folders = (S.folders || []).filter((f) => f.id !== id); if (S.openFolder === id) S.openFolder = null; A.saveSettings(); },
+  });
+  const sectionOf = (m) => (m.type ? 'books' : m.kind === 'notebook' ? 'notebooks' : 'canvases');
+  /* move a notebook/canvas (meta from listMeta) or a book (doc meta) into a folder */
+  async function moveToFolder(m, folderId) {
+    if (m.type) { A.ST.updateDoc(m.id, { folder: folderId }); return; }
+    const doc = await A.store.loadDoc(m.id);
+    if (!doc) return;
+    doc.folder = folderId;
+    await A.store.saveDoc(doc, m.thumb);
+  }
+  function folderMenu(m, anchor, after) {
+    const section = sectionOf(m);
+    const box = h('div', { class: 'menu' });
+    box.append(h('div', { class: 'sub' }, 'Move to folder'));
+    const it = (icon, label, fn, on) => box.append(h('button', { class: on ? 'on' : '', onclick: async () => { A.closePopovers(); await fn(); after(); } }, A.iconEl(icon), label));
+    it('minus', 'No folder', () => moveToFolder(m, null), !m.folder);
+    FD.list(section).forEach((f) => it('folder', f.name, () => moveToFolder(m, f.id), m.folder === f.id));
+    box.append(h('hr'));
+    it('plus', 'New folder…', async () => { const n = await A.dialog({ title: 'New folder', input: '', okText: 'Create' }); if (n && n.trim()) { const f = FD.add(section, n.trim()); await moveToFolder(m, f.id); } });
+    A.popover(box, anchor, { side: 'down' });
+  }
+  UI.folderMenu = folderMenu;
+  /* folder tiles row + breadcrumb for a section page */
+  function folderBar(section, items, rerender) {
+    const open = S.openFolder && FD.get(S.openFolder) && FD.get(S.openFolder).section === section ? FD.get(S.openFolder) : null;
+    if (open) {
+      return h('div', { class: 'fd-crumb' },
+        h('button', { class: 'fd-back', onclick: () => { S.openFolder = null; A.saveSettings(); rerender(); } }, A.iconEl('chev'), { notebooks: 'Notebooks', canvases: 'Canvases', books: 'Books' }[section]),
+        h('span', { class: 'fd-sep' }, '/'),
+        h('span', { class: 'fd-cur' }, A.iconEl('folder'), open.name),
+        (() => { const b = h('button', { class: 'ibtn fd-more', 'aria-label': 'Folder options', html: A.icon('more') }); b.addEventListener('click', () => {
+          const box = h('div', { class: 'menu' });
+          box.append(h('button', { onclick: async () => { A.closePopovers(); const n = await A.dialog({ title: 'Rename folder', input: open.name, okText: 'Rename' }); if (n && n.trim()) { FD.rename(open.id, n.trim()); rerender(); } } }, A.iconEl('rename'), 'Rename'));
+          box.append(h('button', { class: 'danger', onclick: async () => { A.closePopovers(); if (!(await A.dialog({ title: `Delete the folder “${open.name}”?`, body: 'Everything inside moves back to the section. Nothing is deleted.', okText: 'Delete folder', danger: true }))) return; for (const m of items.filter((x) => x.folder === open.id)) await moveToFolder(m, null); FD.remove(open.id); rerender(); } }, A.iconEl('trash'), 'Delete folder'));
+          A.popover(box, b, { side: 'down' });
+        }); return b; })());
+    }
+    const row = h('div', { class: 'fd-row' });
+    FD.list(section).forEach((f) => {
+      const n = items.filter((x) => x.folder === f.id).length;
+      row.append(h('button', { class: 'fd-tile', onclick: () => { S.openFolder = f.id; A.saveSettings(); rerender(); } }, h('span', { class: 'fd-ic', html: A.icon('folder') }), h('span', { class: 'fd-name' }, f.name), h('span', { class: 'fd-n num' }, String(n))));
+    });
+    row.append(h('button', { class: 'fd-tile add', onclick: async () => { const n = await A.dialog({ title: 'New folder', input: '', okText: 'Create' }); if (n && n.trim()) { FD.add(section, n.trim()); rerender(); } } }, h('span', { class: 'fd-ic', html: A.icon('plus') }), h('span', { class: 'fd-name' }, 'New folder')));
+    return row;
+  }
+  const inFolderView = (section, m) => {
+    const open = S.openFolder && FD.get(S.openFolder) && FD.get(S.openFolder).section === section ? S.openFolder : null;
+    return open ? m.folder === open : !m.folder || !FD.get(m.folder);
+  };
+
+  /* long-press that never fires while scrolling: cancelled by movement, pointercancel or scroll */
+  UI.longPress = (el, fn, clickEl = el) => {
+    let t = 0, fired = false, x0 = 0, y0 = 0;
+    const cancel = () => { clearTimeout(t); t = 0; el.classList.remove('pressing'); removeEventListener('scroll', cancel, true); };
+    el.addEventListener('pointerdown', (e) => {
+      fired = false; x0 = e.clientX; y0 = e.clientY;
+      el.classList.add('pressing');
+      addEventListener('scroll', cancel, { capture: true, passive: true });
+      t = setTimeout(() => { t = 0; fired = true; el.classList.remove('pressing'); fn(); }, 600);
+    });
+    el.addEventListener('pointermove', (e) => { if (t && Math.hypot(e.clientX - x0, e.clientY - y0) > 8) cancel(); });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach((n) => el.addEventListener(n, cancel));
+    el.addEventListener('contextmenu', (e) => e.preventDefault());
+    clickEl.addEventListener('click', (e) => { if (fired) { e.preventDefault(); e.stopImmediatePropagation(); fired = false; } }, true);
+  };
+
   /* ---------- gallery ---------- */
   let onboarded = false;
   async function render() {
@@ -10164,7 +10694,7 @@ A.fmtDate = (t) => {
     const notebooks = metas.filter(isNb), canvases = metas.filter((m) => !isNb(m));
     host.innerHTML = '';
     const count = (fn) => metas.filter(fn).length;
-    const go = (id) => { S.galleryFilter = id; A.saveSettings(); query = ''; render(); };
+    const go = (id) => { S.galleryFilter = id; S.openFolder = null; A.saveSettings(); query = ''; render(); };
 
     // sidebar
     const side = h('nav', { class: 'g-side', 'aria-label': 'Sections' });
@@ -10174,7 +10704,7 @@ A.fmtDate = (t) => {
         dotColor ? h('i', { class: 'dot', style: { background: dotColor } }) : A.iconEl(icon || 'gallery'), h('span', { class: 'grow' }, label), n != null ? h('span', { class: 'g-count num' }, String(n)) : null);
       return b;
     };
-    side.append(item('home', 'Home', null, null, 'spark'), item('library', 'Books', docs.length, null, 'book'), item('notebooks', 'Notebooks', notebooks.length, null, 'notebook'), item('canvases', 'Canvases', canvases.length, null, 'canvas'));
+    side.append(item('home', 'Home', null, null, 'home'), item('library', 'Books', docs.length, null, 'book'), item('notebooks', 'Notebooks', notebooks.length, null, 'notebook'), item('canvases', 'Canvases', canvases.length, null, 'infinite'));
     if (metas.some((m) => m.fav)) side.append(item('favorites', 'Favorites', metas.filter((m) => m.fav).length, null, 'fav'));
     side.append(h('div', { class: 'g-side-h' }, h('span', null, 'Courses'), h('button', { class: 'ibtn', title: 'Add a course', 'aria-label': 'Add a course', html: A.icon('plus'), onclick: async () => { const n = await A.dialog({ title: 'New course', input: '', okText: 'Add' }); if (n && A.SU.add(n)) render(); } })));
     A.SU.list().forEach((s) => {
@@ -10185,7 +10715,7 @@ A.fmtDate = (t) => {
     });
     if (!A.SU.list().length) side.append(h('button', { class: 'g-nav ghost', onclick: async () => { await A.SU.openSetup(); render(); } }, A.iconEl('plus'), 'Add your courses'));
     const none = count((m) => !m.subject);
-    if (A.SU.list().length && none) side.append(item('none', 'No course', none, 'var(--line-strong)'));
+    if (A.SU.list().length && none) side.append(item('none', 'Unfiled', none, null, 'tray'));
     side.append(h('div', { class: 'grow' }), h('button', { class: 'g-nav ghost', onclick: () => A.UI.openSettings() }, A.iconEl('settings'), 'Settings'), h('div', { class: 'g-ver num' }, `Axiom ${A.VERSION} · build ${window.AXIOM_BUILD || 'dev'}`));
 
     const main = h('main', { class: 'g-main' });
@@ -10209,7 +10739,7 @@ A.fmtDate = (t) => {
     };
     const sortBtn = () => {
       const labels = { updated: 'Last edited', created: 'Date created', name: 'Name' };
-      const b = h('button', { class: 'btn ghost-btn', title: 'Sort' }, A.iconEl('chevdown'), labels[S.sort] || labels.updated);
+      const b = h('button', { class: 'btn ghost-btn sort-btn', title: 'Sort' }, labels[S.sort] || labels.updated, A.iconEl('chevdown'));
       b.addEventListener('click', () => {
         const box = h('div', { class: 'menu' });
         Object.entries(labels).forEach(([v, l]) => box.append(h('button', { class: (S.sort || 'updated') === v ? 'on' : '', onclick: () => { A.closePopovers(); S.sort = v; A.saveSettings(); render(); } }, A.iconEl((S.sort || 'updated') === v ? 'check' : 'minus'), l)));
@@ -10247,7 +10777,7 @@ A.fmtDate = (t) => {
       const recentCv = canvases.slice().sort(sorters.updated).slice(0, 4);
       if (recentCv.length) { const g = h('div', { class: 'g-grid' }); recentCv.forEach((m) => g.append(card(m))); main.append(section('Canvases', h('button', { class: 'link-btn', onclick: () => go('canvases') }, 'See all'), g)); }
       const shelfDocs = docs.slice().sort((a, b) => (b.lastRead || b.added) - (a.lastRead || a.added)).slice(0, 8);
-      main.append(section('Books', h('button', { class: 'link-btn', onclick: () => go('library') }, shelfDocs.length ? 'Open Books' : ''), shelfDocs.length ? shelf(shelfDocs) : emptyLibrary()));
+      main.append(section('Books', h('button', { class: 'link-btn', onclick: () => go('library') }, shelfDocs.length ? 'See all' : ''), shelfDocs.length ? shelf(shelfDocs) : emptyLibrary()));
       if (A.SU.list().length) {
         const cg = h('div', { class: 'course-grid' });
         A.SU.list().forEach((s) => cg.append(h('button', { class: 'course-tile', style: { '--c': s.color }, onclick: () => go(s.id) },
@@ -10259,34 +10789,60 @@ A.fmtDate = (t) => {
     }
 
     if (filter === 'library') {
-      main.append(h('header', { class: 'page-hero' }, h('div', null, h('h1', { class: 'page-title' }, 'Books'), h('p', { class: 'home-sub' }, 'Textbooks, problem sets and notes (PDF or EPUB). Open one to read with the tutor beside you.')), h('div', { class: 'g-actions' }, goalRing(), h('button', { class: 'btn primary', onclick: importDocs }, A.iconEl('plus'), 'Add'))));
+      main.append(h('header', { class: 'page-hero' }, h('div', null, h('h1', { class: 'page-title' }, 'Books')), h('div', { class: 'g-actions' }, goalRing(), h('button', { class: 'btn primary', onclick: importDocs }, A.iconEl('plus'), 'Add'))));
       if (!docs.length) { main.append(emptyLibrary()); return; }
-      const reading = docs.filter((d) => !d.finished && d.lastRead && ((d.lastPage || 1) > 1 || d.progress > 0.01)).sort((a, b) => b.lastRead - a.lastRead);
-      if (reading.length) main.append(section('Continue reading', null, shelf(reading.slice(0, 8))));
-      const books = docs.filter((d) => !d.finished && (d.kind || 'book') === 'book').sort((a, b) => a.name.localeCompare(b.name));
-      const sheets = docs.filter((d) => !d.finished && d.kind === 'sheet').sort((a, b) => b.added - a.added);
-      const done = docs.filter((d) => d.finished).sort((a, b) => b.finished - a.finished);
-      if (books.length) main.append(section('Books', null, shelf(books, true)));
-      if (sheets.length) main.append(section('Problem sets & notes', null, shelf(sheets, true)));
-      if (done.length) main.append(section('Finished', null, shelf(done, true)));
+      const bf = S.booksFilter || 'all';
+      const search = h('input', { type: 'search', placeholder: 'Search', value: query, 'aria-label': 'Search books' });
+      const seg = h('div', { class: 'seg' }, ...[['all', 'All'], ['book', 'Books'], ['sheet', 'Problem sets'], ['done', 'Finished']].map(([v, l]) => h('button', { class: bf === v ? 'on' : '', onclick: () => { S.booksFilter = v; A.saveSettings(); render(); } }, l)));
+      main.append(h('div', { class: 'g-tools' }, h('div', { class: 'g-search' }, A.iconEl('search'), search), seg));
+      const body = h('div');
+      main.append(body);
+      const draw = () => {
+        body.innerHTML = '';
+        const q = query.trim().toLowerCase();
+        const atRoot = !(S.openFolder && FD.get(S.openFolder));
+        if (!q && bf === 'all' && atRoot) {
+          const reading = docs.filter((d) => !d.finished && d.lastRead && ((d.lastPage || 1) > 1 || d.progress > 0.01)).sort((x, y) => y.lastRead - x.lastRead);
+          if (reading.length) {
+            body.append(h('div', { class: 'bk-hero' }, continueBook(reading[0]), reading.length > 1 ? h('div', { class: 'bk-up' }, h('div', { class: 'bk-up-h' }, 'Also reading'), ...reading.slice(1, 4).map((d) => h('button', { class: 'bk-mini', onclick: () => A.emit('read', d.id) }, cover(d), h('span', { class: 'grow' }, h('b', null, d.title || d.name), h('small', { class: 'num' }, d.type === 'epub' ? `${Math.round((d.progress || 0) * 100)}%` : `p. ${d.lastPage || 1} of ${d.pages || '?'}`))))) : null));
+          }
+        }
+        body.append(folderBar('books', docs, draw));
+        let list = docs.filter((d) => (bf === 'done' ? d.finished : bf === 'all' ? true : !d.finished && (d.kind || 'book') === bf));
+        if (!q) list = list.filter((d) => inFolderView('books', d));
+        if (q) list = list.filter((d) => d.name.toLowerCase().includes(q) || (d.author || '').toLowerCase().includes(q));
+        list.sort((x, y) => (y.lastRead || y.added) - (x.lastRead || x.added));
+        const grid = h('div', { class: 'bk-grid' });
+        list.forEach((d) => grid.append(bookCard(d)));
+        if (!list.length) body.append(h('p', { class: 'empty-note' }, q ? `Nothing matches “${query}”.` : bf === 'done' ? 'Books you mark as finished appear here.' : 'Nothing here yet.'));
+        else body.append(grid);
+      };
+      search.addEventListener('input', () => { query = search.value; draw(); });
+      draw();
       return;
     }
 
     // notebooks / canvases / favorites / course / no course
     const subj = A.SU.get(filter);
-    const title = { notebooks: 'Notebooks', canvases: 'Canvases', favorites: 'Favorites', none: 'No course' }[filter] || subj.name;
+    const title = { notebooks: 'Notebooks', canvases: 'Canvases', favorites: 'Favorites', none: 'Unfiled' }[filter] || subj.name;
     const search = h('input', { type: 'search', id: 'g-search', placeholder: 'Search', value: query, 'aria-label': 'Search' });
-    const acts = filter === 'notebooks' ? [h('button', { class: 'btn primary', onclick: newNotebook }, A.iconEl('plus'), 'New')] : filter === 'canvases' ? [h('button', { class: 'btn primary', onclick: newDrawing }, A.iconEl('plus'), 'New')] : [newMenuBtn()];
+    const acts = filter === 'notebooks' ? [h('button', { class: 'btn primary', onclick: newNotebook }, A.iconEl('plus'), 'New')] : filter === 'canvases' ? [h('button', { class: 'btn primary', onclick: newDrawing }, A.iconEl('plus'), 'New')] : (subj && !metas.some((m) => m.subject === filter) && !docs.some((d) => d.subject === filter)) ? [] : [newMenuBtn()];
     main.append(h('header', { class: 'page-hero' },
       h('div', null, h('h1', { class: 'page-title' }, subj ? h('i', { class: 'dot big', style: { background: subj.color } }) : null, title)),
       h('div', { class: 'g-actions' }, ...acts)));
-    main.append(h('div', { class: 'g-tools' }, h('div', { class: 'g-search' }, A.iconEl('search'), search), sortBtn()));
+    const anyHere = metas.some((m) => filter === 'notebooks' ? isNb(m) : filter === 'canvases' ? !isNb(m) : filter === 'favorites' ? m.fav : filter === 'none' ? !m.subject : m.subject === filter);
+    if (anyHere) main.append(h('div', { class: 'g-tools' }, h('div', { class: 'g-search' }, A.iconEl('search'), search), sortBtn()));
     const body = h('div');
     main.append(body);
     const renderGrid = () => {
       const q = query.trim().toLowerCase();
       body.innerHTML = '';
       let list = metas.filter((m) => filter === 'notebooks' ? isNb(m) : filter === 'canvases' ? !isNb(m) : filter === 'favorites' ? m.fav : filter === 'none' ? !m.subject : m.subject === filter);
+      if (filter === 'notebooks' || filter === 'canvases') {
+        const sectionAll = list;
+        body.append(folderBar(filter, sectionAll, renderGrid));
+        if (!q) list = list.filter((m) => inFolderView(filter, m));
+      }
       list = list.filter((m) => !q || m.name.toLowerCase().includes(q)).sort(sorters[S.sort] || sorters.updated);
       const grid = (items, nb, withNew) => {
         const g = h('div', { class: 'g-grid' + (nb ? ' nb-grid' : ''), id: 'g-grid' });
@@ -10294,12 +10850,15 @@ A.fmtDate = (t) => {
         items.forEach((m) => g.append(card(m)));
         return g;
       };
-      if (filter === 'notebooks' || filter === 'canvases') body.append(grid(list, filter === 'notebooks', true));
+      if (filter === 'notebooks' || filter === 'canvases') body.append(grid(list, filter === 'notebooks', !S.openFolder));
       else if (!list.length && !q) {
         body.append(h('div', { class: 'course-empty' },
           h('h3', null, subj ? `Nothing in ${subj.name} yet` : filter === 'favorites' ? 'No favourites yet' : 'Everything has a course'),
           h('p', null, subj ? 'Start a notebook for lectures, a canvas for problem solving, or add the course textbook.' : filter === 'favorites' ? 'Mark notebooks and canvases as favourites from their ••• menu.' : 'Notebooks and canvases without a course appear here.'),
-          subj ? newMenuBtn() : null));
+          subj ? h('div', { class: 'ce-acts' },
+            h('button', { class: 'btn primary', onclick: newNotebook }, A.iconEl('notebook'), 'New notebook'),
+            h('button', { class: 'btn', onclick: newDrawing }, A.iconEl('infinite'), 'New canvas'),
+            h('button', { class: 'btn', onclick: importDocs }, A.iconEl('book'), 'Add textbook')) : null));
       } else {
         const nbs = list.filter(isNb), cvs = list.filter((m) => !isNb(m));
         if (nbs.length) body.append(section('Notebooks', null, grid(nbs, true, false)));
@@ -10360,11 +10919,7 @@ A.fmtDate = (t) => {
     const subj = m.subject && A.SU.get(m.subject);
     const el = h('div', { class: 'card' + (nb ? ' nbcard' : '') }, open, h('div', { class: 'meta' }, h('div', { class: 't' }, h('div', { class: 'name' }, m.name),
       h('div', { class: 'date' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, (subj ? subj.name + ' · ' : '') + A.fmtDate(m.updated))), more));
-    let lp;
-    thumb.addEventListener('pointerdown', () => { lp = setTimeout(() => { lp = 'fired'; cardMenu(m, thumb); }, 550); });
-    thumb.addEventListener('pointerup', () => { if (lp !== 'fired') clearTimeout(lp); });
-    thumb.addEventListener('pointerleave', () => { if (lp !== 'fired') clearTimeout(lp); });
-    open.addEventListener('click', (e) => { if (lp === 'fired') { e.stopImmediatePropagation(); lp = null; } }, true);
+    UI.longPress(thumb, () => cardMenu(m, thumb), open);
     return el;
   }
 
@@ -10372,8 +10927,9 @@ A.fmtDate = (t) => {
     const box = h('div', { class: 'menu' });
     const it = (icon, label, fn, cls) => { const b = h('button', { class: cls || '', onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); box.append(b); };
     it('chev', 'Open', () => A.emit('open', m.id));
+    it('folder', 'Move to folder…', () => folderMenu(m, anchor, render));
     it('fav', m.fav ? 'Remove from favourites' : 'Add to favourites', async () => { const doc = await A.store.loadDoc(m.id); if (!doc) return; doc.fav = !m.fav; await A.store.saveDoc(doc, m.thumb); render(); });
-    it('folder', 'Course: ' + (A.SU.name(m.subject) || 'none'), () => A.SU.pickMenu(anchor, m.subject, async (sid) => {
+    it('moveto', 'Course: ' + (A.SU.name(m.subject) || 'none'), () => A.SU.pickMenu(anchor, m.subject, async (sid) => {
       const doc = await A.store.loadDoc(m.id); if (!doc) return;
       doc.subject = sid; await A.store.saveDoc(doc, m.thumb); render();
     }));
@@ -10413,18 +10969,20 @@ A.fmtDate = (t) => {
     const subj = d.subject && A.SU.get(d.subject);
     const c = h('span', { class: 'cover' + (d.kind === 'sheet' ? ' sheet' : ''), style: { '--c': subj ? subj.color : '#5b6b86' } });
     if (d.cover) c.append(h('img', { src: d.cover, alt: '' }));
-    else c.append(h('span', { class: 'cover-ph' }, h('span', { class: 'cover-ph-t' }, d.name)));
+    else c.append(h('span', { class: 'cover-ph' }, h('span', { class: 'cover-ph-t' }, d.title || d.name)));
     return c;
   }
   function bookCard(d) {
     const subj = d.subject && A.SU.get(d.subject);
     const p = progressOf(d);
-    const more = h('button', { class: 'ibtn', 'aria-label': 'More for ' + d.name, html: A.icon('more') });
+    const more = h('button', { class: 'ibtn bk-more', 'aria-label': 'More for ' + d.name, html: A.icon('more') });
     more.addEventListener('click', (e) => { e.stopPropagation(); docMenu(d, more); });
+    const openBtn = h('button', { class: 'book-open', onclick: () => A.emit('read', d.id), 'aria-label': 'Read ' + d.name }, cover(d));
+    UI.longPress(openBtn, () => docMenu(d, openBtn));
     const el = h('div', { class: 'book', dataset: { id: d.id } },
-      h('button', { class: 'book-open', onclick: () => A.emit('read', d.id), 'aria-label': 'Read ' + d.name }, cover(d)),
+      openBtn,
       h('div', { class: 'book-meta' },
-        h('div', { class: 'grow' }, h('div', { class: 'book-title' }, d.name),
+        h('div', { class: 'grow' }, h('div', { class: 'book-title' }, d.title || d.name),
           h('div', { class: 'book-sub' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, d.finished ? '✓ Finished' : d.type === 'epub' ? (d.progress ? `${Math.round(d.progress * 100)}% read` : (d.author || 'EPUB')) : d.pages ? (d.lastRead && (d.lastPage || 1) > 1 ? `Page ${d.lastPage} of ${d.pages}` : `${d.pages} page${d.pages === 1 ? '' : 's'}`) : fmtSize(d.size || 0))),
         more),
       p > 0 && d.lastRead ? h('div', { class: 'book-progress' }, h('span', { style: { width: Math.round(p * 100) + '%' } })) : null);
@@ -10434,7 +10992,7 @@ A.fmtDate = (t) => {
   function continueBook(d) {
     const p = progressOf(d);
     return h('button', { class: 'cont-card cont-book', onclick: () => A.emit('read', d.id) }, cover(d),
-      h('div', { class: 'cont-info' }, h('span', { class: 'cont-kicker' }, 'Reading'), h('span', { class: 'cont-title' }, d.name),
+      h('div', { class: 'cont-info' }, h('span', { class: 'cont-kicker' }, 'Reading'), h('span', { class: 'cont-title' }, d.title || d.name),
         h('span', { class: 'cont-sub num' }, d.type === 'epub' ? `${Math.round(p * 100)}% read` : d.pages ? `Page ${d.lastPage || 1} of ${d.pages} · ${Math.round(p * 100)}%` : ''),
         h('span', { class: 'book-progress wide' }, h('span', { style: { width: Math.round(p * 100) + '%' } })),
         h('span', { class: 'cont-cta' }, 'Continue reading', A.iconEl('chev'))));
@@ -10444,7 +11002,7 @@ A.fmtDate = (t) => {
     if (m.thumb) thumb.append(h('img', { src: m.thumb, alt: '' }));
     return h('button', { class: 'cont-card cont-draw', onclick: () => A.emit('open', m.id) }, thumb,
       h('div', { class: 'cont-info' }, h('span', { class: 'cont-kicker' }, m.kind === 'notebook' ? 'Notebook' : 'Canvas'), h('span', { class: 'cont-title' }, m.name),
-        h('span', { class: 'cont-sub' }, (A.SU.name(m.subject) ? A.SU.name(m.subject) + ' · ' : '') + 'edited ' + A.fmtDate(m.updated)),
+        h('span', { class: 'cont-sub' }, (A.SU.name(m.subject) ? A.SU.name(m.subject) + ' · ' : '') + 'Edited ' + A.fmtDate(m.updated).replace(/^Today, /, 'today, ').replace(/^Yesterday, /, 'yesterday, ')),
         h('span', { class: 'cont-cta' }, 'Open', A.iconEl('chev'))));
   }
   function docMenu(d, anchor) {
@@ -10452,7 +11010,8 @@ A.fmtDate = (t) => {
     const it = (icon, label, fn, cls) => { const b = h('button', { class: cls || '', onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); box.append(b); };
     it('book', 'Read', () => A.emit('read', d.id));
     it('rename', 'Solve beside it…', () => UI.solveBeside(d, d.lastPage || 1));
-    it('folder', 'Course: ' + (A.SU.name(d.subject) || 'none'), () => A.SU.pickMenu(anchor, d.subject, (sid) => { A.ST.updateDoc(d.id, { subject: sid }); render(); }));
+    it('folder', 'Move to folder…', () => folderMenu(d, anchor, render));
+    it('moveto', 'Course: ' + (A.SU.name(d.subject) || 'none'), () => A.SU.pickMenu(anchor, d.subject, (sid) => { A.ST.updateDoc(d.id, { subject: sid }); render(); }));
     it('check', d.finished ? 'Mark as unfinished' : 'Mark as finished', () => { A.ST.updateDoc(d.id, { finished: d.finished ? null : Date.now() }); render(); });
     it('layers', d.kind === 'sheet' ? 'Show under Books' : 'Show under Problem sets', () => { A.ST.updateDoc(d.id, { kind: d.kind === 'sheet' ? 'book' : 'sheet' }); render(); });
     it('rename', 'Rename', async () => { const n = await A.dialog({ title: 'Rename', input: d.name, okText: 'Rename' }); if (n) { A.ST.updateDoc(d.id, { name: n.slice(0, 80) }); render(); } });
@@ -10504,7 +11063,7 @@ A.fmtDate = (t) => {
     };
     const opt = (icon, title, sub, fn) => h('button', { class: 'sb-opt', onclick: fn }, h('span', { class: 'sb-ic', html: A.icon(icon) }), h('span', { class: 'grow' }, h('b', null, title), h('small', null, sub)));
     const list = h('div', { class: 'sb-list' });
-    recent.forEach((m) => list.append(opt(m.kind === 'notebook' ? 'notebook' : 'canvas', m.name, (A.SU.name(m.subject) ? A.SU.name(m.subject) + ' · ' : '') + 'edited ' + A.fmtDate(m.updated), () => go(m.id))));
+    recent.forEach((m) => list.append(opt(m.kind === 'notebook' ? 'notebook' : 'canvas', m.name, (A.SU.name(m.subject) ? A.SU.name(m.subject) + ' · ' : '') + 'Edited ' + A.fmtDate(m.updated).replace(/^Today, /, 'today, ').replace(/^Yesterday, /, 'yesterday, '), () => go(m.id))));
     back.append(h('div', { class: 'modal solve-modal', role: 'dialog', 'aria-label': 'Solve beside this page' },
       h('h3', null, 'Solve beside page ' + page),
       h('p', { class: 'muted small' }, problem ? 'The problem goes on a fresh page, with the book open beside it at this page.' : 'The book stays open beside your work, at this page.'),
@@ -10632,6 +11191,7 @@ A.fmtDate = (t) => {
   addEventListener('pagehide', () => { if (D.doc) autosave.flush(); });
 
   /* ---------- views ---------- */
+  const enter = (el, kind = 'in') => { el.classList.remove('view-in', 'view-back'); void el.offsetWidth; el.classList.add(kind === 'back' ? 'view-back' : 'view-in'); };
   const gallery = () => A.$('#gallery-view'), canvasView = () => A.$('#canvas-view');
   /* reading time for the daily goal on the Books page */
   const endReading = () => {
@@ -10654,6 +11214,7 @@ A.fmtDate = (t) => {
     A.$('#reader-view').hidden = true;
     canvasView().hidden = true;
     gallery().hidden = false;
+    enter(gallery(), 'back');
     updateChrome();
     await UI.renderGallery();
   }
@@ -10671,12 +11232,14 @@ A.fmtDate = (t) => {
     B.useToolset(D.isNotebook(doc) ? 'notebook' : 'canvas');
     gallery().hidden = true;
     canvasView().hidden = false;
+    enter(canvasView());
     canvasView().classList.remove('ui-hidden');
     canvasView().classList.toggle('nb-mode', D.isNotebook(doc));
     R.resize();
     const v = doc.view;
     if (D.isNotebook(doc)) {
       if (!v.tx && !v.ty) { v.zoom = R.fitPageZoom(); v.rot = 0; v.ty = 1e9; }
+      else if (Math.abs(v.zoom - R.fitPageZoom()) > R.fitPageZoom() * 0.02 && v.zoom < R.fitPageZoom()) { const keep = R.toWorld(R.w / 2, 80); v.zoom = R.fitPageZoom(); v.ty = 80 - keep[1] * v.zoom; }
       R.constrainNotebook();
     } else if (!v.tx && !v.ty) {
       const bb = D.allBB() || (doc.artboards.length ? [doc.artboards[0].x, doc.artboards[0].y, doc.artboards[0].x + doc.artboards[0].w, doc.artboards[0].y + doc.artboards[0].h] : null);
@@ -10699,6 +11262,7 @@ A.fmtDate = (t) => {
     updateChrome();
     S.readStart = Date.now();
     A.RD.open(meta);
+    enter(A.$('#reader-view'));
   });
   A.on('app:background', () => { if (D.doc) autosave.flush(); });
   A.on('open', openDoc);
@@ -10784,6 +11348,7 @@ A.fmtDate = (t) => {
     A.TE.mount(A.$('#stage'));
     A.RD.mount(A.$('#reader-view'));
     UI.purgeTrash().catch(() => {});
+    if (!S.calmDefaults) { S.calmDefaults = true; S.tapHoldSelect = false; S.highlightSelection = false; A.saveSettings(); }
     if (!S.slimBar) { S.slimBar = true; S.showPalette = false; A.saveSettings(); }
     if (window.AXIOM_NATIVE && A.native) {
       S.orientationLock = !!window.AXIOM_NATIVE.orientationLock;

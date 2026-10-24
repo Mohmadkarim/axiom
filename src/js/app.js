@@ -21,6 +21,7 @@
   addEventListener('pagehide', () => { if (D.doc) autosave.flush(); });
 
   /* ---------- views ---------- */
+  const enter = (el, kind = 'in') => { el.classList.remove('view-in', 'view-back'); void el.offsetWidth; el.classList.add(kind === 'back' ? 'view-back' : 'view-in'); };
   const gallery = () => A.$('#gallery-view'), canvasView = () => A.$('#canvas-view');
   /* reading time for the daily goal on the Books page */
   const endReading = () => {
@@ -43,6 +44,7 @@
     A.$('#reader-view').hidden = true;
     canvasView().hidden = true;
     gallery().hidden = false;
+    enter(gallery(), 'back');
     updateChrome();
     await UI.renderGallery();
   }
@@ -60,12 +62,14 @@
     B.useToolset(D.isNotebook(doc) ? 'notebook' : 'canvas');
     gallery().hidden = true;
     canvasView().hidden = false;
+    enter(canvasView());
     canvasView().classList.remove('ui-hidden');
     canvasView().classList.toggle('nb-mode', D.isNotebook(doc));
     R.resize();
     const v = doc.view;
     if (D.isNotebook(doc)) {
       if (!v.tx && !v.ty) { v.zoom = R.fitPageZoom(); v.rot = 0; v.ty = 1e9; }
+      else if (Math.abs(v.zoom - R.fitPageZoom()) > R.fitPageZoom() * 0.02 && v.zoom < R.fitPageZoom()) { const keep = R.toWorld(R.w / 2, 80); v.zoom = R.fitPageZoom(); v.ty = 80 - keep[1] * v.zoom; }
       R.constrainNotebook();
     } else if (!v.tx && !v.ty) {
       const bb = D.allBB() || (doc.artboards.length ? [doc.artboards[0].x, doc.artboards[0].y, doc.artboards[0].x + doc.artboards[0].w, doc.artboards[0].y + doc.artboards[0].h] : null);
@@ -88,6 +92,7 @@
     updateChrome();
     S.readStart = Date.now();
     A.RD.open(meta);
+    enter(A.$('#reader-view'));
   });
   A.on('app:background', () => { if (D.doc) autosave.flush(); });
   A.on('open', openDoc);
@@ -173,6 +178,7 @@
     A.TE.mount(A.$('#stage'));
     A.RD.mount(A.$('#reader-view'));
     UI.purgeTrash().catch(() => {});
+    if (!S.calmDefaults) { S.calmDefaults = true; S.tapHoldSelect = false; S.highlightSelection = false; A.saveSettings(); }
     if (!S.slimBar) { S.slimBar = true; S.showPalette = false; A.saveSettings(); }
     if (window.AXIOM_NATIVE && A.native) {
       S.orientationLock = !!window.AXIOM_NATIVE.orientationLock;

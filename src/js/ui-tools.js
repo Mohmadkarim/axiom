@@ -219,7 +219,8 @@
     bar.append(props);
     const cb = h('button', { class: 'colorbtn slim', 'aria-label': 'Colour', title: 'Colour', style: { background: s.color } });
     cb.addEventListener('click', () => UI.openColor(cb));
-    if (B.isDrawing(s.b) || c.kind === 'tool' && s.b === 'text') bar.append(cb);
+    if (!(B.isDrawing(s.b) || s.b === 'text')) { cb.disabled = true; cb.style.background = 'transparent'; cb.title = 'This tool has no colour'; }
+    bar.append(cb); // always present, so the rail never shifts when tools change
     if (S.showPalette && UI.activePaletteColors) {
       const strip = h('div', { class: 'palette-strip slim' });
       UI.activePaletteColors().slice(0, 4).forEach((col) => strip.append(h('button', {

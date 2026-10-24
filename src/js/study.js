@@ -254,8 +254,6 @@
       this.bar.append(
         m.type === 'pdf' ? h('div', { class: 'row', style: { gap: '4px' } }, ib('chevup', 'Previous page', () => this.goto(this.page - 1)), pageLbl, this.countLbl, ib('chevdown', 'Next page', () => this.goto(this.page + 1))) : h('span', { class: 'muted small' }, 'Photo'),
         h('div', { class: 'grow' }),
-        ib('minus', 'Zoom out', () => this.setZoom(this.zoom / 1.25)),
-        ib('plus', 'Zoom in', () => this.setZoom(this.zoom * 1.25)),
         ib('spark', 'Ask the tutor about this page', () => this.askTutor()),
         ib('more', 'More', (e) => this.more(e.currentTarget)));
       if (m.type === 'epub') {
@@ -278,12 +276,14 @@
         return;
       }
       const n = this.pdf.numPages;
-      this.countLbl.textContent = '/ ' + n;
+      try { const lb = await this.pdf.getPageLabels(); if (lb && lb.some((x, i) => x && x !== String(i + 1))) this.labels = lb; } catch (e) { /* none */ }
+      this.syncCount = () => { const lab = this.labels && this.labels[this.page - 1]; this.countLbl.textContent = lab && lab !== String(this.page) ? `of ${n} · p. ${lab}` : `of ${n}`; };
+      this.syncCount();
       const p1 = await this.pdf.getPage(1);
       const vp = p1.getViewport({ scale: 1 });
       this.aspect = vp.height / vp.width;
       for (let i = 1; i <= n; i++) {
-        const d = h('div', { class: 'dv-pg', dataset: { n: i } }, h('span', { class: 'dv-pgnum num' }, String(i)));
+        const d = h('div', { class: 'dv-pg', dataset: { n: i } });
         this.inner.append(d);
         this.pages.push({ el: d, n: i, canvas: null, scale: 0, aspect: this.aspect });
       }
@@ -298,7 +298,7 @@
       if (!this.pages.length) return;
       const w = this.width();
       this.inner.style.width = w + 'px';
-      this.pages.forEach((p) => { p.el.style.width = w + 'px'; p.el.style.height = Math.round(w * p.aspect) + 'px'; if (p.canvas && Math.abs(p.scale - w) > 2) { p.canvas.remove(); p.canvas = null; if (p.visible) this.renderPage(p); } });
+      this.pages.forEach((p) => { p.el.style.width = w + 'px'; p.el.style.height = Math.round(w * p.aspect) + 'px'; if (p.canvas && Math.abs(p.scale - w) > 2 && p.visible) this.renderPage(p); });
       if (restore) requestAnimationFrame(() => this.goto(this.page, true));
     }
     setZoom(z) {
@@ -317,18 +317,20 @@
         const vp1 = page.getViewport({ scale: 1 });
         p.aspect = vp1.height / vp1.width;
         p.el.style.height = Math.round(w * p.aspect) + 'px';
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const vp = page.getViewport({ scale: (w / vp1.width) * dpr });
-        const c = h('canvas', { class: 'dv-canvas' });
-        c.width = Math.round(vp.width); c.height = Math.round(vp.height);
-        const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
-        await page.render({ canvasContext: ctx, viewport: vp }).promise;
-        if (p.canvas) p.canvas.remove();
-        p.canvas = c; p.scale = w;
-        p.el.append(c);
+        const draw = async (scale) => {
+          const vp = page.getViewport({ scale });
+          const c = h('canvas', { class: 'dv-canvas' });
+          c.width = Math.max(1, Math.round(vp.width)); c.height = Math.max(1, Math.round(vp.height));
+          const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+          await page.render({ canvasContext: ctx, viewport: vp }).promise;
+          return c;
+        };
+        const swap = (c) => { const old = p.canvas; p.el.append(c); if (old) setTimeout(() => old.remove(), 120); p.canvas = c; p.scale = w; p.el.classList.add('rendered'); };
+        if (!p.canvas) swap(await draw((w / vp1.width) * 0.45));
+        swap(await draw((w / vp1.width) * Math.min(window.devicePixelRatio || 1, 2)));
         // free far-away pages
         const near = this.page;
-        this.pages.forEach((q) => { if (q.canvas && Math.abs(q.n - near) > 6) { q.canvas.remove(); q.canvas = null; } });
+        this.pages.forEach((q) => { if (q.canvas && Math.abs(q.n - near) > 6) { q.canvas.remove(); q.canvas = null; q.el.classList.remove('rendered'); } });
       } catch (e) { /* page render failed; keep placeholder */ }
       p.busy = false;
     }
@@ -336,12 +338,12 @@
       const mid = this.scroller.scrollTop + this.scroller.clientHeight * 0.35;
       let n = 1;
       for (const p of this.pages) { if (p.el.offsetTop <= mid) n = p.n; else break; }
-      if (n !== this.page) { this.page = n; this.pageLbl.value = String(n); clearTimeout(this._st); this._st = setTimeout(() => ST.updateDoc(this.meta.id, { lastPage: n }), 500); }
+      if (n !== this.page) { this.page = n; this.pageLbl.value = String(n); if (this.syncCount) this.syncCount(); clearTimeout(this._st); this._st = setTimeout(() => ST.updateDoc(this.meta.id, { lastPage: n }), 500); }
     }
     goto(n, instant) {
       if (!this.pages.length) return;
       n = A.clamp(n, 1, this.pages.length);
-      this.page = n; this.pageLbl.value = String(n);
+      this.page = n; this.pageLbl.value = String(n); if (this.syncCount) this.syncCount();
       this.scroller.scrollTo({ top: this.pages[n - 1].el.offsetTop - 8, behavior: instant ? 'auto' : 'smooth' });
     }
     bindPinch() {
@@ -371,9 +373,10 @@
       it('image', nb ? 'Put this page in the notebook' : 'Put this page on the canvas', async () => {
         if (this.meta.type === 'pdf') {
           const r = await ST.renderPage(this.meta, this.page, 2);
-          if (nb) A.NB.placeReference(r.url, r.canvas.width, r.canvas.height); else A.UI.placeImage(r.url, r.canvas.width, r.canvas.height, { width: r.w1 * (96 / 72) });
+          if (nb) A.NB.placeReference(r.url, r.canvas.width, r.canvas.height, { full: true });
+          else { const vb = R.visibleBB(); const fitW = Math.min((vb[2] - vb[0]) * 0.55, (vb[3] - vb[1]) * 0.72 * (r.canvas.width / r.canvas.height)); A.UI.placeImage(r.url, r.canvas.width, r.canvas.height, { width: Math.min(r.w1 * (96 / 72), fitW) }); }
         } else { const url = await this.pageImage(); const im = new Image(); im.onload = () => (nb ? A.NB.placeReference(url, im.naturalWidth, im.naturalHeight) : A.UI.placeImage(url, im.naturalWidth, im.naturalHeight)); im.src = url; }
-        A.toast(nb ? 'Page added to your notebook: write on it with the Pencil' : 'Page placed on the canvas: write on it with the Pencil');
+        A.toast('Page added', 1400);
       });
       if (this.meta.type === 'pdf') it('layers', 'Import all pages to annotate', async () => {
         const blob = await A.store.loadFile('doc_' + this.meta.id, 'application/pdf');

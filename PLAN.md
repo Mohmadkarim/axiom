@@ -167,6 +167,63 @@ Source: a frame-by-frame review of the user's screen recording (169 frames), plu
 
 **Design rule (from user feedback):** show only the primary actions; everything secondary goes behind one "+" or "…". No rows of text chips where a segmented control or a menu will do.
 
+## 4f. Polish pass from the user's second recording (Oct 24 2026, 23:14)
+Three reviewers went frame by frame through the recording. Their findings, merged into one checklist (P0 = broken, P1 = unpolished, P2 = refinement).
+
+**System (applies everywhere)**
+- [x] Tokens: radii 8/12/20 plus capsule; 4pt spacing base (12 chrome margin, 16 gutter, 24–32 sections); one accent; one floating-surface style (material blur, 0.5px hairline, shared shadow).
+- [x] Type: serif only for the wordmark and page titles; sans with tabular figures for every number (no monospace in the UI).
+- [x] Motion: one easing curve; views fade/scale in; sheets slide up over an opaque scrim; popovers scale in; momentum on finger pans; no layout jumps.
+- [x] Toasts: a single capsule centred in the active pane above the bottom chrome, short copy, never stacked.
+- [x] Gestures: Pencil draws, one finger pans, two fingers zoom or pan the canvas. A selection transforms only with its handles or with two fingers that both start inside it. Tap-and-hold needs a still single touch and never fires during or right after a pinch.
+
+**Library**
+- [x] One header component: title and primary button on one row; search with a right-aligned sort below it; the same on every section.
+- [x] One adaptive grid; consistent card radius; thumbnails with a hairline and a shadow; titles clamped to 2 lines (the ••• button no longer steals the width); relative dates.
+- [x] Continue cards: a fixed thumbnail slot and an aligned text column; no orphan cells.
+- [x] Sidebar: house icon for Home; distinct Canvases icon; "Unfiled" instead of "No course"; readable counts; build string only in Settings.
+- [x] Empty states: centred, with explicit New notebook / New canvas / Add textbook buttons; no search or sort while empty.
+- [x] Folders in Notebooks, Canvases and Books.
+- [x] Long-press that never fires while scrolling.
+- [x] Books page: hero card, filter, folders, grid.
+
+**Books reader**
+- [x] Pages never blank: keep the old bitmap while re-rendering; low-res preview first; quiet loading lines instead of a page number.
+- [x] One full-width material top bar with content inset. Chrome auto-hides when reading (scroll down / tap) and returns on scroll up or tap. The scrubber is docked in a bottom bar.
+- [x] Modes Read / Highlight / Write, centred on the reading column. Right side: search, pages, Aa, tutor.
+- [x] Title from PDF metadata with the current chapter underneath; printed page labels in the scrubber.
+- [x] Aa popover: zoom stepper with value, fit width/page, theme swatches with a check.
+- [x] Ask card: one card (header, field with inline send, chips) that never covers the selection.
+- [x] Tutor panel: header with a title and close; content top-aligned; the toggle state bound to the panel.
+- [x] Highlights snapped to text lines; a night-mode palette that keeps text readable.
+
+**Canvas and split view**
+- [x] One selection bar (4 actions + …), clamped clear of the rail, the top pills and the bottom bar.
+- [x] Selection bar hidden during transforms and back right after; rotation handle moves to the bottom near the top edge.
+- [ ] Mid-edge handles for one-axis scaling; auto-pan when the selection runs under the chrome; no stray dimension labels.
+- [x] "Highlight selection" dims ink only, gently; off by default.
+- [x] Inserted pages sized to the view; a short toast centred in the pane.
+- [x] Zoom readout: fixed width, centred on the pane, rotation shown only when it isn't 0.
+- [x] Rail: fixed layout (colour slot always present); readable disabled states.
+- [x] Highlighter on dark paper uses a glowing blend. Visible lasso. Ignore stray Pencil dabs by the tool bar.
+- [ ] Canvas dot grid: crossfading level of detail (notebook templates done).
+- [x] Split-view book pane: one-row toolbar, printed page labels, never blank.
+
+**Notebooks**
+- [x] Book pages and problems added to a notebook become locked page backgrounds (never picked up by a tap).
+- [x] Pencil with a drawing tool never selects or opens a menu; finger hold selects only when the finger isn't drawing, with a visible progress ring.
+- [x] Page counter "2 / 3" on one line; next-page disabled on the last page.
+- [x] With the side panel open, the page is inset so the rail never covers it; one smooth refit.
+- [x] Dark pages: a lighter page fill and a hairline edge. Ink stays visible on dark paper (adaptive colours).
+- [x] Dot and grid templates: constant-size dots in screen pixels and level of detail when zoomed out.
+- [x] One title chip shared by the notebook, canvas and reader (back chevron, title, small subtitle).
+
+**Settings**
+- [x] Visible selected state for every segmented control; menus for choices with more than 3 options; one control column; readable subtitles; consistent copy.
+
+**Context understanding**
+- [x] Prose definitions ("is called", "we say"), named laws, numbered equations (resolving "Eq. (3.12)"), and section openings, so it works for books that never label results.
+
 ## 5. Stage 2 roadmap: STEM study features (Notability and beyond)
 1. **PDF workspace:** a page view with a thumbnail rail and annotation directly on top. The split view beside your work is done; see 4c.
 2. **Math typesetting:** LaTeX blocks (KaTeX) and handwriting-to-LaTeX conversion.

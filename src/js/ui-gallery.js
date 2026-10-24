@@ -143,6 +143,79 @@
     return doc;
   };
 
+  /* ---------- folders, one set per section (notebooks, canvases, books) ---------- */
+  const FD = (UI.folders = {
+    list: (section) => (S.folders || []).filter((f) => f.section === section),
+    get: (id) => (S.folders || []).find((f) => f.id === id),
+    add: (section, name) => { const f = { id: A.uid(), section, name: name.slice(0, 40), created: Date.now() }; S.folders = (S.folders || []).concat([f]); A.saveSettings(); return f; },
+    rename: (id, name) => { const f = FD.get(id); if (f) { f.name = name.slice(0, 40); A.saveSettings(); } },
+    remove: (id) => { S.folders = (S.folders || []).filter((f) => f.id !== id); if (S.openFolder === id) S.openFolder = null; A.saveSettings(); },
+  });
+  const sectionOf = (m) => (m.type ? 'books' : m.kind === 'notebook' ? 'notebooks' : 'canvases');
+  /* move a notebook/canvas (meta from listMeta) or a book (doc meta) into a folder */
+  async function moveToFolder(m, folderId) {
+    if (m.type) { A.ST.updateDoc(m.id, { folder: folderId }); return; }
+    const doc = await A.store.loadDoc(m.id);
+    if (!doc) return;
+    doc.folder = folderId;
+    await A.store.saveDoc(doc, m.thumb);
+  }
+  function folderMenu(m, anchor, after) {
+    const section = sectionOf(m);
+    const box = h('div', { class: 'menu' });
+    box.append(h('div', { class: 'sub' }, 'Move to folder'));
+    const it = (icon, label, fn, on) => box.append(h('button', { class: on ? 'on' : '', onclick: async () => { A.closePopovers(); await fn(); after(); } }, A.iconEl(icon), label));
+    it('minus', 'No folder', () => moveToFolder(m, null), !m.folder);
+    FD.list(section).forEach((f) => it('folder', f.name, () => moveToFolder(m, f.id), m.folder === f.id));
+    box.append(h('hr'));
+    it('plus', 'New folder…', async () => { const n = await A.dialog({ title: 'New folder', input: '', okText: 'Create' }); if (n && n.trim()) { const f = FD.add(section, n.trim()); await moveToFolder(m, f.id); } });
+    A.popover(box, anchor, { side: 'down' });
+  }
+  UI.folderMenu = folderMenu;
+  /* folder tiles row + breadcrumb for a section page */
+  function folderBar(section, items, rerender) {
+    const open = S.openFolder && FD.get(S.openFolder) && FD.get(S.openFolder).section === section ? FD.get(S.openFolder) : null;
+    if (open) {
+      return h('div', { class: 'fd-crumb' },
+        h('button', { class: 'fd-back', onclick: () => { S.openFolder = null; A.saveSettings(); rerender(); } }, A.iconEl('chev'), { notebooks: 'Notebooks', canvases: 'Canvases', books: 'Books' }[section]),
+        h('span', { class: 'fd-sep' }, '/'),
+        h('span', { class: 'fd-cur' }, A.iconEl('folder'), open.name),
+        (() => { const b = h('button', { class: 'ibtn fd-more', 'aria-label': 'Folder options', html: A.icon('more') }); b.addEventListener('click', () => {
+          const box = h('div', { class: 'menu' });
+          box.append(h('button', { onclick: async () => { A.closePopovers(); const n = await A.dialog({ title: 'Rename folder', input: open.name, okText: 'Rename' }); if (n && n.trim()) { FD.rename(open.id, n.trim()); rerender(); } } }, A.iconEl('rename'), 'Rename'));
+          box.append(h('button', { class: 'danger', onclick: async () => { A.closePopovers(); if (!(await A.dialog({ title: `Delete the folder “${open.name}”?`, body: 'Everything inside moves back to the section. Nothing is deleted.', okText: 'Delete folder', danger: true }))) return; for (const m of items.filter((x) => x.folder === open.id)) await moveToFolder(m, null); FD.remove(open.id); rerender(); } }, A.iconEl('trash'), 'Delete folder'));
+          A.popover(box, b, { side: 'down' });
+        }); return b; })());
+    }
+    const row = h('div', { class: 'fd-row' });
+    FD.list(section).forEach((f) => {
+      const n = items.filter((x) => x.folder === f.id).length;
+      row.append(h('button', { class: 'fd-tile', onclick: () => { S.openFolder = f.id; A.saveSettings(); rerender(); } }, h('span', { class: 'fd-ic', html: A.icon('folder') }), h('span', { class: 'fd-name' }, f.name), h('span', { class: 'fd-n num' }, String(n))));
+    });
+    row.append(h('button', { class: 'fd-tile add', onclick: async () => { const n = await A.dialog({ title: 'New folder', input: '', okText: 'Create' }); if (n && n.trim()) { FD.add(section, n.trim()); rerender(); } } }, h('span', { class: 'fd-ic', html: A.icon('plus') }), h('span', { class: 'fd-name' }, 'New folder')));
+    return row;
+  }
+  const inFolderView = (section, m) => {
+    const open = S.openFolder && FD.get(S.openFolder) && FD.get(S.openFolder).section === section ? S.openFolder : null;
+    return open ? m.folder === open : !m.folder || !FD.get(m.folder);
+  };
+
+  /* long-press that never fires while scrolling: cancelled by movement, pointercancel or scroll */
+  UI.longPress = (el, fn, clickEl = el) => {
+    let t = 0, fired = false, x0 = 0, y0 = 0;
+    const cancel = () => { clearTimeout(t); t = 0; el.classList.remove('pressing'); removeEventListener('scroll', cancel, true); };
+    el.addEventListener('pointerdown', (e) => {
+      fired = false; x0 = e.clientX; y0 = e.clientY;
+      el.classList.add('pressing');
+      addEventListener('scroll', cancel, { capture: true, passive: true });
+      t = setTimeout(() => { t = 0; fired = true; el.classList.remove('pressing'); fn(); }, 600);
+    });
+    el.addEventListener('pointermove', (e) => { if (t && Math.hypot(e.clientX - x0, e.clientY - y0) > 8) cancel(); });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach((n) => el.addEventListener(n, cancel));
+    el.addEventListener('contextmenu', (e) => e.preventDefault());
+    clickEl.addEventListener('click', (e) => { if (fired) { e.preventDefault(); e.stopImmediatePropagation(); fired = false; } }, true);
+  };
+
   /* ---------- gallery ---------- */
   let onboarded = false;
   async function render() {
@@ -157,7 +230,7 @@
     const notebooks = metas.filter(isNb), canvases = metas.filter((m) => !isNb(m));
     host.innerHTML = '';
     const count = (fn) => metas.filter(fn).length;
-    const go = (id) => { S.galleryFilter = id; A.saveSettings(); query = ''; render(); };
+    const go = (id) => { S.galleryFilter = id; S.openFolder = null; A.saveSettings(); query = ''; render(); };
 
     // sidebar
     const side = h('nav', { class: 'g-side', 'aria-label': 'Sections' });
@@ -167,7 +240,7 @@
         dotColor ? h('i', { class: 'dot', style: { background: dotColor } }) : A.iconEl(icon || 'gallery'), h('span', { class: 'grow' }, label), n != null ? h('span', { class: 'g-count num' }, String(n)) : null);
       return b;
     };
-    side.append(item('home', 'Home', null, null, 'spark'), item('library', 'Books', docs.length, null, 'book'), item('notebooks', 'Notebooks', notebooks.length, null, 'notebook'), item('canvases', 'Canvases', canvases.length, null, 'canvas'));
+    side.append(item('home', 'Home', null, null, 'home'), item('library', 'Books', docs.length, null, 'book'), item('notebooks', 'Notebooks', notebooks.length, null, 'notebook'), item('canvases', 'Canvases', canvases.length, null, 'infinite'));
     if (metas.some((m) => m.fav)) side.append(item('favorites', 'Favorites', metas.filter((m) => m.fav).length, null, 'fav'));
     side.append(h('div', { class: 'g-side-h' }, h('span', null, 'Courses'), h('button', { class: 'ibtn', title: 'Add a course', 'aria-label': 'Add a course', html: A.icon('plus'), onclick: async () => { const n = await A.dialog({ title: 'New course', input: '', okText: 'Add' }); if (n && A.SU.add(n)) render(); } })));
     A.SU.list().forEach((s) => {
@@ -178,7 +251,7 @@
     });
     if (!A.SU.list().length) side.append(h('button', { class: 'g-nav ghost', onclick: async () => { await A.SU.openSetup(); render(); } }, A.iconEl('plus'), 'Add your courses'));
     const none = count((m) => !m.subject);
-    if (A.SU.list().length && none) side.append(item('none', 'No course', none, 'var(--line-strong)'));
+    if (A.SU.list().length && none) side.append(item('none', 'Unfiled', none, null, 'tray'));
     side.append(h('div', { class: 'grow' }), h('button', { class: 'g-nav ghost', onclick: () => A.UI.openSettings() }, A.iconEl('settings'), 'Settings'), h('div', { class: 'g-ver num' }, `Axiom ${A.VERSION} · build ${window.AXIOM_BUILD || 'dev'}`));
 
     const main = h('main', { class: 'g-main' });
@@ -202,7 +275,7 @@
     };
     const sortBtn = () => {
       const labels = { updated: 'Last edited', created: 'Date created', name: 'Name' };
-      const b = h('button', { class: 'btn ghost-btn', title: 'Sort' }, A.iconEl('chevdown'), labels[S.sort] || labels.updated);
+      const b = h('button', { class: 'btn ghost-btn sort-btn', title: 'Sort' }, labels[S.sort] || labels.updated, A.iconEl('chevdown'));
       b.addEventListener('click', () => {
         const box = h('div', { class: 'menu' });
         Object.entries(labels).forEach(([v, l]) => box.append(h('button', { class: (S.sort || 'updated') === v ? 'on' : '', onclick: () => { A.closePopovers(); S.sort = v; A.saveSettings(); render(); } }, A.iconEl((S.sort || 'updated') === v ? 'check' : 'minus'), l)));
@@ -240,7 +313,7 @@
       const recentCv = canvases.slice().sort(sorters.updated).slice(0, 4);
       if (recentCv.length) { const g = h('div', { class: 'g-grid' }); recentCv.forEach((m) => g.append(card(m))); main.append(section('Canvases', h('button', { class: 'link-btn', onclick: () => go('canvases') }, 'See all'), g)); }
       const shelfDocs = docs.slice().sort((a, b) => (b.lastRead || b.added) - (a.lastRead || a.added)).slice(0, 8);
-      main.append(section('Books', h('button', { class: 'link-btn', onclick: () => go('library') }, shelfDocs.length ? 'Open Books' : ''), shelfDocs.length ? shelf(shelfDocs) : emptyLibrary()));
+      main.append(section('Books', h('button', { class: 'link-btn', onclick: () => go('library') }, shelfDocs.length ? 'See all' : ''), shelfDocs.length ? shelf(shelfDocs) : emptyLibrary()));
       if (A.SU.list().length) {
         const cg = h('div', { class: 'course-grid' });
         A.SU.list().forEach((s) => cg.append(h('button', { class: 'course-tile', style: { '--c': s.color }, onclick: () => go(s.id) },
@@ -252,34 +325,60 @@
     }
 
     if (filter === 'library') {
-      main.append(h('header', { class: 'page-hero' }, h('div', null, h('h1', { class: 'page-title' }, 'Books'), h('p', { class: 'home-sub' }, 'Textbooks, problem sets and notes (PDF or EPUB). Open one to read with the tutor beside you.')), h('div', { class: 'g-actions' }, goalRing(), h('button', { class: 'btn primary', onclick: importDocs }, A.iconEl('plus'), 'Add'))));
+      main.append(h('header', { class: 'page-hero' }, h('div', null, h('h1', { class: 'page-title' }, 'Books')), h('div', { class: 'g-actions' }, goalRing(), h('button', { class: 'btn primary', onclick: importDocs }, A.iconEl('plus'), 'Add'))));
       if (!docs.length) { main.append(emptyLibrary()); return; }
-      const reading = docs.filter((d) => !d.finished && d.lastRead && ((d.lastPage || 1) > 1 || d.progress > 0.01)).sort((a, b) => b.lastRead - a.lastRead);
-      if (reading.length) main.append(section('Continue reading', null, shelf(reading.slice(0, 8))));
-      const books = docs.filter((d) => !d.finished && (d.kind || 'book') === 'book').sort((a, b) => a.name.localeCompare(b.name));
-      const sheets = docs.filter((d) => !d.finished && d.kind === 'sheet').sort((a, b) => b.added - a.added);
-      const done = docs.filter((d) => d.finished).sort((a, b) => b.finished - a.finished);
-      if (books.length) main.append(section('Books', null, shelf(books, true)));
-      if (sheets.length) main.append(section('Problem sets & notes', null, shelf(sheets, true)));
-      if (done.length) main.append(section('Finished', null, shelf(done, true)));
+      const bf = S.booksFilter || 'all';
+      const search = h('input', { type: 'search', placeholder: 'Search', value: query, 'aria-label': 'Search books' });
+      const seg = h('div', { class: 'seg' }, ...[['all', 'All'], ['book', 'Books'], ['sheet', 'Problem sets'], ['done', 'Finished']].map(([v, l]) => h('button', { class: bf === v ? 'on' : '', onclick: () => { S.booksFilter = v; A.saveSettings(); render(); } }, l)));
+      main.append(h('div', { class: 'g-tools' }, h('div', { class: 'g-search' }, A.iconEl('search'), search), seg));
+      const body = h('div');
+      main.append(body);
+      const draw = () => {
+        body.innerHTML = '';
+        const q = query.trim().toLowerCase();
+        const atRoot = !(S.openFolder && FD.get(S.openFolder));
+        if (!q && bf === 'all' && atRoot) {
+          const reading = docs.filter((d) => !d.finished && d.lastRead && ((d.lastPage || 1) > 1 || d.progress > 0.01)).sort((x, y) => y.lastRead - x.lastRead);
+          if (reading.length) {
+            body.append(h('div', { class: 'bk-hero' }, continueBook(reading[0]), reading.length > 1 ? h('div', { class: 'bk-up' }, h('div', { class: 'bk-up-h' }, 'Also reading'), ...reading.slice(1, 4).map((d) => h('button', { class: 'bk-mini', onclick: () => A.emit('read', d.id) }, cover(d), h('span', { class: 'grow' }, h('b', null, d.title || d.name), h('small', { class: 'num' }, d.type === 'epub' ? `${Math.round((d.progress || 0) * 100)}%` : `p. ${d.lastPage || 1} of ${d.pages || '?'}`))))) : null));
+          }
+        }
+        body.append(folderBar('books', docs, draw));
+        let list = docs.filter((d) => (bf === 'done' ? d.finished : bf === 'all' ? true : !d.finished && (d.kind || 'book') === bf));
+        if (!q) list = list.filter((d) => inFolderView('books', d));
+        if (q) list = list.filter((d) => d.name.toLowerCase().includes(q) || (d.author || '').toLowerCase().includes(q));
+        list.sort((x, y) => (y.lastRead || y.added) - (x.lastRead || x.added));
+        const grid = h('div', { class: 'bk-grid' });
+        list.forEach((d) => grid.append(bookCard(d)));
+        if (!list.length) body.append(h('p', { class: 'empty-note' }, q ? `Nothing matches “${query}”.` : bf === 'done' ? 'Books you mark as finished appear here.' : 'Nothing here yet.'));
+        else body.append(grid);
+      };
+      search.addEventListener('input', () => { query = search.value; draw(); });
+      draw();
       return;
     }
 
     // notebooks / canvases / favorites / course / no course
     const subj = A.SU.get(filter);
-    const title = { notebooks: 'Notebooks', canvases: 'Canvases', favorites: 'Favorites', none: 'No course' }[filter] || subj.name;
+    const title = { notebooks: 'Notebooks', canvases: 'Canvases', favorites: 'Favorites', none: 'Unfiled' }[filter] || subj.name;
     const search = h('input', { type: 'search', id: 'g-search', placeholder: 'Search', value: query, 'aria-label': 'Search' });
-    const acts = filter === 'notebooks' ? [h('button', { class: 'btn primary', onclick: newNotebook }, A.iconEl('plus'), 'New')] : filter === 'canvases' ? [h('button', { class: 'btn primary', onclick: newDrawing }, A.iconEl('plus'), 'New')] : [newMenuBtn()];
+    const acts = filter === 'notebooks' ? [h('button', { class: 'btn primary', onclick: newNotebook }, A.iconEl('plus'), 'New')] : filter === 'canvases' ? [h('button', { class: 'btn primary', onclick: newDrawing }, A.iconEl('plus'), 'New')] : (subj && !metas.some((m) => m.subject === filter) && !docs.some((d) => d.subject === filter)) ? [] : [newMenuBtn()];
     main.append(h('header', { class: 'page-hero' },
       h('div', null, h('h1', { class: 'page-title' }, subj ? h('i', { class: 'dot big', style: { background: subj.color } }) : null, title)),
       h('div', { class: 'g-actions' }, ...acts)));
-    main.append(h('div', { class: 'g-tools' }, h('div', { class: 'g-search' }, A.iconEl('search'), search), sortBtn()));
+    const anyHere = metas.some((m) => filter === 'notebooks' ? isNb(m) : filter === 'canvases' ? !isNb(m) : filter === 'favorites' ? m.fav : filter === 'none' ? !m.subject : m.subject === filter);
+    if (anyHere) main.append(h('div', { class: 'g-tools' }, h('div', { class: 'g-search' }, A.iconEl('search'), search), sortBtn()));
     const body = h('div');
     main.append(body);
     const renderGrid = () => {
       const q = query.trim().toLowerCase();
       body.innerHTML = '';
       let list = metas.filter((m) => filter === 'notebooks' ? isNb(m) : filter === 'canvases' ? !isNb(m) : filter === 'favorites' ? m.fav : filter === 'none' ? !m.subject : m.subject === filter);
+      if (filter === 'notebooks' || filter === 'canvases') {
+        const sectionAll = list;
+        body.append(folderBar(filter, sectionAll, renderGrid));
+        if (!q) list = list.filter((m) => inFolderView(filter, m));
+      }
       list = list.filter((m) => !q || m.name.toLowerCase().includes(q)).sort(sorters[S.sort] || sorters.updated);
       const grid = (items, nb, withNew) => {
         const g = h('div', { class: 'g-grid' + (nb ? ' nb-grid' : ''), id: 'g-grid' });
@@ -287,12 +386,15 @@
         items.forEach((m) => g.append(card(m)));
         return g;
       };
-      if (filter === 'notebooks' || filter === 'canvases') body.append(grid(list, filter === 'notebooks', true));
+      if (filter === 'notebooks' || filter === 'canvases') body.append(grid(list, filter === 'notebooks', !S.openFolder));
       else if (!list.length && !q) {
         body.append(h('div', { class: 'course-empty' },
           h('h3', null, subj ? `Nothing in ${subj.name} yet` : filter === 'favorites' ? 'No favourites yet' : 'Everything has a course'),
           h('p', null, subj ? 'Start a notebook for lectures, a canvas for problem solving, or add the course textbook.' : filter === 'favorites' ? 'Mark notebooks and canvases as favourites from their ••• menu.' : 'Notebooks and canvases without a course appear here.'),
-          subj ? newMenuBtn() : null));
+          subj ? h('div', { class: 'ce-acts' },
+            h('button', { class: 'btn primary', onclick: newNotebook }, A.iconEl('notebook'), 'New notebook'),
+            h('button', { class: 'btn', onclick: newDrawing }, A.iconEl('infinite'), 'New canvas'),
+            h('button', { class: 'btn', onclick: importDocs }, A.iconEl('book'), 'Add textbook')) : null));
       } else {
         const nbs = list.filter(isNb), cvs = list.filter((m) => !isNb(m));
         if (nbs.length) body.append(section('Notebooks', null, grid(nbs, true, false)));
@@ -353,11 +455,7 @@
     const subj = m.subject && A.SU.get(m.subject);
     const el = h('div', { class: 'card' + (nb ? ' nbcard' : '') }, open, h('div', { class: 'meta' }, h('div', { class: 't' }, h('div', { class: 'name' }, m.name),
       h('div', { class: 'date' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, (subj ? subj.name + ' · ' : '') + A.fmtDate(m.updated))), more));
-    let lp;
-    thumb.addEventListener('pointerdown', () => { lp = setTimeout(() => { lp = 'fired'; cardMenu(m, thumb); }, 550); });
-    thumb.addEventListener('pointerup', () => { if (lp !== 'fired') clearTimeout(lp); });
-    thumb.addEventListener('pointerleave', () => { if (lp !== 'fired') clearTimeout(lp); });
-    open.addEventListener('click', (e) => { if (lp === 'fired') { e.stopImmediatePropagation(); lp = null; } }, true);
+    UI.longPress(thumb, () => cardMenu(m, thumb), open);
     return el;
   }
 
@@ -365,8 +463,9 @@
     const box = h('div', { class: 'menu' });
     const it = (icon, label, fn, cls) => { const b = h('button', { class: cls || '', onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); box.append(b); };
     it('chev', 'Open', () => A.emit('open', m.id));
+    it('folder', 'Move to folder…', () => folderMenu(m, anchor, render));
     it('fav', m.fav ? 'Remove from favourites' : 'Add to favourites', async () => { const doc = await A.store.loadDoc(m.id); if (!doc) return; doc.fav = !m.fav; await A.store.saveDoc(doc, m.thumb); render(); });
-    it('folder', 'Course: ' + (A.SU.name(m.subject) || 'none'), () => A.SU.pickMenu(anchor, m.subject, async (sid) => {
+    it('moveto', 'Course: ' + (A.SU.name(m.subject) || 'none'), () => A.SU.pickMenu(anchor, m.subject, async (sid) => {
       const doc = await A.store.loadDoc(m.id); if (!doc) return;
       doc.subject = sid; await A.store.saveDoc(doc, m.thumb); render();
     }));
@@ -406,18 +505,20 @@
     const subj = d.subject && A.SU.get(d.subject);
     const c = h('span', { class: 'cover' + (d.kind === 'sheet' ? ' sheet' : ''), style: { '--c': subj ? subj.color : '#5b6b86' } });
     if (d.cover) c.append(h('img', { src: d.cover, alt: '' }));
-    else c.append(h('span', { class: 'cover-ph' }, h('span', { class: 'cover-ph-t' }, d.name)));
+    else c.append(h('span', { class: 'cover-ph' }, h('span', { class: 'cover-ph-t' }, d.title || d.name)));
     return c;
   }
   function bookCard(d) {
     const subj = d.subject && A.SU.get(d.subject);
     const p = progressOf(d);
-    const more = h('button', { class: 'ibtn', 'aria-label': 'More for ' + d.name, html: A.icon('more') });
+    const more = h('button', { class: 'ibtn bk-more', 'aria-label': 'More for ' + d.name, html: A.icon('more') });
     more.addEventListener('click', (e) => { e.stopPropagation(); docMenu(d, more); });
+    const openBtn = h('button', { class: 'book-open', onclick: () => A.emit('read', d.id), 'aria-label': 'Read ' + d.name }, cover(d));
+    UI.longPress(openBtn, () => docMenu(d, openBtn));
     const el = h('div', { class: 'book', dataset: { id: d.id } },
-      h('button', { class: 'book-open', onclick: () => A.emit('read', d.id), 'aria-label': 'Read ' + d.name }, cover(d)),
+      openBtn,
       h('div', { class: 'book-meta' },
-        h('div', { class: 'grow' }, h('div', { class: 'book-title' }, d.name),
+        h('div', { class: 'grow' }, h('div', { class: 'book-title' }, d.title || d.name),
           h('div', { class: 'book-sub' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, d.finished ? '✓ Finished' : d.type === 'epub' ? (d.progress ? `${Math.round(d.progress * 100)}% read` : (d.author || 'EPUB')) : d.pages ? (d.lastRead && (d.lastPage || 1) > 1 ? `Page ${d.lastPage} of ${d.pages}` : `${d.pages} page${d.pages === 1 ? '' : 's'}`) : fmtSize(d.size || 0))),
         more),
       p > 0 && d.lastRead ? h('div', { class: 'book-progress' }, h('span', { style: { width: Math.round(p * 100) + '%' } })) : null);
@@ -427,7 +528,7 @@
   function continueBook(d) {
     const p = progressOf(d);
     return h('button', { class: 'cont-card cont-book', onclick: () => A.emit('read', d.id) }, cover(d),
-      h('div', { class: 'cont-info' }, h('span', { class: 'cont-kicker' }, 'Reading'), h('span', { class: 'cont-title' }, d.name),
+      h('div', { class: 'cont-info' }, h('span', { class: 'cont-kicker' }, 'Reading'), h('span', { class: 'cont-title' }, d.title || d.name),
         h('span', { class: 'cont-sub num' }, d.type === 'epub' ? `${Math.round(p * 100)}% read` : d.pages ? `Page ${d.lastPage || 1} of ${d.pages} · ${Math.round(p * 100)}%` : ''),
         h('span', { class: 'book-progress wide' }, h('span', { style: { width: Math.round(p * 100) + '%' } })),
         h('span', { class: 'cont-cta' }, 'Continue reading', A.iconEl('chev'))));
@@ -437,7 +538,7 @@
     if (m.thumb) thumb.append(h('img', { src: m.thumb, alt: '' }));
     return h('button', { class: 'cont-card cont-draw', onclick: () => A.emit('open', m.id) }, thumb,
       h('div', { class: 'cont-info' }, h('span', { class: 'cont-kicker' }, m.kind === 'notebook' ? 'Notebook' : 'Canvas'), h('span', { class: 'cont-title' }, m.name),
-        h('span', { class: 'cont-sub' }, (A.SU.name(m.subject) ? A.SU.name(m.subject) + ' · ' : '') + 'edited ' + A.fmtDate(m.updated)),
+        h('span', { class: 'cont-sub' }, (A.SU.name(m.subject) ? A.SU.name(m.subject) + ' · ' : '') + 'Edited ' + A.fmtDate(m.updated).replace(/^Today, /, 'today, ').replace(/^Yesterday, /, 'yesterday, ')),
         h('span', { class: 'cont-cta' }, 'Open', A.iconEl('chev'))));
   }
   function docMenu(d, anchor) {
@@ -445,7 +546,8 @@
     const it = (icon, label, fn, cls) => { const b = h('button', { class: cls || '', onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); box.append(b); };
     it('book', 'Read', () => A.emit('read', d.id));
     it('rename', 'Solve beside it…', () => UI.solveBeside(d, d.lastPage || 1));
-    it('folder', 'Course: ' + (A.SU.name(d.subject) || 'none'), () => A.SU.pickMenu(anchor, d.subject, (sid) => { A.ST.updateDoc(d.id, { subject: sid }); render(); }));
+    it('folder', 'Move to folder…', () => folderMenu(d, anchor, render));
+    it('moveto', 'Course: ' + (A.SU.name(d.subject) || 'none'), () => A.SU.pickMenu(anchor, d.subject, (sid) => { A.ST.updateDoc(d.id, { subject: sid }); render(); }));
     it('check', d.finished ? 'Mark as unfinished' : 'Mark as finished', () => { A.ST.updateDoc(d.id, { finished: d.finished ? null : Date.now() }); render(); });
     it('layers', d.kind === 'sheet' ? 'Show under Books' : 'Show under Problem sets', () => { A.ST.updateDoc(d.id, { kind: d.kind === 'sheet' ? 'book' : 'sheet' }); render(); });
     it('rename', 'Rename', async () => { const n = await A.dialog({ title: 'Rename', input: d.name, okText: 'Rename' }); if (n) { A.ST.updateDoc(d.id, { name: n.slice(0, 80) }); render(); } });
@@ -497,7 +599,7 @@
     };
     const opt = (icon, title, sub, fn) => h('button', { class: 'sb-opt', onclick: fn }, h('span', { class: 'sb-ic', html: A.icon(icon) }), h('span', { class: 'grow' }, h('b', null, title), h('small', null, sub)));
     const list = h('div', { class: 'sb-list' });
-    recent.forEach((m) => list.append(opt(m.kind === 'notebook' ? 'notebook' : 'canvas', m.name, (A.SU.name(m.subject) ? A.SU.name(m.subject) + ' · ' : '') + 'edited ' + A.fmtDate(m.updated), () => go(m.id))));
+    recent.forEach((m) => list.append(opt(m.kind === 'notebook' ? 'notebook' : 'canvas', m.name, (A.SU.name(m.subject) ? A.SU.name(m.subject) + ' · ' : '') + 'Edited ' + A.fmtDate(m.updated).replace(/^Today, /, 'today, ').replace(/^Yesterday, /, 'yesterday, '), () => go(m.id))));
     back.append(h('div', { class: 'modal solve-modal', role: 'dialog', 'aria-label': 'Solve beside this page' },
       h('h3', null, 'Solve beside page ' + page),
       h('p', { class: 'muted small' }, problem ? 'The problem goes on a fresh page, with the book open beside it at this page.' : 'The book stays open beside your work, at this page.'),

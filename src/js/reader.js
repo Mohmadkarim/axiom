@@ -57,9 +57,13 @@
 
   /* ---------- book index: Axiom reads the whole book once, finds its structure and every stated result ----------
      Works without a table of contents, running headers or printed page numbers. Cached per book in idx_<docId>. */
-  const IDX_V = 3;
+  const IDX_V = 5;
   const RESULT_RE = /^(Definition|Theorem|Lemma|Corollary|Proposition|Axiom|Postulate|Law|Principle|Claim|Example|Exercise|Remark)s?\s*((?:[0-9]+[.\-])*[0-9]+[a-z]?)?\s*[.:]?\s*(\([^)]{1,60}\))?\s*[.:]?/;
-  const KEEP_KINDS = new Set(['Definition', 'Theorem', 'Lemma', 'Corollary', 'Proposition', 'Axiom', 'Postulate', 'Law', 'Principle', 'Claim']);
+  const KEEP_KINDS = new Set(['Definition', 'Theorem', 'Lemma', 'Corollary', 'Proposition', 'Axiom', 'Postulate', 'Law', 'Principle', 'Claim', 'Term', 'Equation']);
+  /* material books state without announcing it */
+  const DEF_CUE = /\b(is called|are called|is said to be|are said to be|we say that|we call|we define|is defined (?:as|to be|by)|are defined (?:as|to be|by)|denoted by|let us call|is known as|is termed|we refer to)\b/i;
+  const LAW_CUE = /\b([A-Z][a-zà-ÿ]+(?:[-–][A-Z][a-zà-ÿ]+)?['’]s (?:[a-z]+ ){0,2}(?:law|principle|equation|theorem|rule|lemma|identity|inequality|formula)s?|(?:law|principle) of (?:the )?(?:conservation of )?[a-z]+(?: [a-z]+)?)/;
+  const EQ_NUM = /\((\d+[.\-]\d+[a-z]?|\d{1,3})\)\s*$/;
   const headingOf = (l, body) => {
     const t = l.text.trim();
     if (t.length < 3 || t.length > 90) return null;
@@ -103,7 +107,18 @@
         for (let i = 0; i < lines.length; i++) {
           const l = lines[i];
           const hd = i < lines.length * 0.6 ? headingOf(l, body) : null;
-          if (hd) idx.heads.push({ page: n, level: hd.level, title: hd.title, norm: normHead(hd.title) });
+          if (hd) {
+            const gist = lines.slice(i + 1, i + 4).filter((x) => !headingOf(x, body)).map((x) => x.text).join(' ').slice(0, 260);
+            idx.heads.push({ page: n, level: hd.level, title: hd.title, norm: normHead(hd.title), gist });
+          }
+          if (!RESULT_RE.test(l.text)) {
+            const two = (l.text + ' ' + ((lines[i + 1] && lines[i + 1].text) || '')).slice(0, 320);
+            if (DEF_CUE.test(l.text) && idx.results.filter((r) => r.page === n && r.kind === 'Term').length < 5) idx.results.push({ page: n, kind: 'Term', num: '', name: '', text: two });
+            const lm = l.text.match(LAW_CUE);
+            if (lm && !idx.results.some((r) => r.kind === 'Law' && r.name === lm[1])) idx.results.push({ page: n, kind: 'Law', num: '', name: lm[1], text: two });
+            const em = l.text.match(EQ_NUM);
+            if (em && /[=<>≤≥∫∑∂]/.test(l.text) && l.text.length < 160) idx.results.push({ page: n, kind: 'Equation', num: em[1], name: '', text: l.text.slice(0, 200) });
+          }
           const m = l.text.match(RESULT_RE);
           if (m && (i === 0 || !RESULT_RE.test(lines[i - 1].text) || true)) {
             const kind = m[1];
@@ -136,7 +151,7 @@
     return indexing.p;
   };
   const saveIndex = (idx) => A.store.saveFile('idx_' + idx.id, new Blob([JSON.stringify(idx)], { type: 'application/json' })).catch(() => {});
-  const resultLabel = (r) => `${r.kind}${r.num ? ' ' + r.num : ''}${r.name ? ' ' + r.name : ''}`;
+  const resultLabel = (r) => (r.kind === 'Term' ? 'Defined in the text' : r.kind === 'Equation' ? `Equation (${r.num})` : r.kind === 'Law' && !r.num ? r.name : `${r.kind}${r.num ? ' ' + r.num : ''}${r.name ? ' ' + r.name : ''}`);
   /* structure for a page: from the outline when the PDF has one, otherwise from detected headings */
   RD.trailOf = async (n) => {
     const map = await RD.sectionMap();
@@ -154,7 +169,7 @@
     const out = [];
     // outline so far
     const before = heads.filter((x) => x.page <= n && x.level <= 1);
-    if (before.length) out.push('Outline of the book up to here:\n' + before.map((x) => `${x.level ? '  ' : ''}${x.title} (p. ${x.page})`).join('\n').slice(-5000));
+    if (before.length) out.push('Outline of the book up to here (with how each section opens):\n' + before.map((x) => `${x.level ? '  ' : ''}${x.title} (p. ${x.page})${x.gist ? ' — ' + x.gist.slice(0, x.page >= n - 40 ? 220 : 90) : ''}`).join('\n').slice(-7000));
     // results: the current chapter in full, earlier chapters shortened
     const chapStart = (heads.filter((x) => x.page <= n && x.level === 0).pop() || { page: 1 }).page;
     const res = idx.results.filter((r) => r.page < n || (r.page === n && false)).filter((r) => KEEP_KINDS.has(r.kind));
@@ -163,17 +178,26 @@
     const curTxt = [];
     for (let i = cur.length - 1; i >= 0 && left > 0; i--) { const t = `- ${resultLabel(cur[i])} (p. ${cur[i].page}): ${cur[i].text}`; curTxt.unshift(t); left -= t.length; }
     const oldTxt = [];
-    for (let i = old.length - 1; i >= 0 && left > 0; i--) { if (old[i].kind !== 'Definition' && old[i].kind !== 'Theorem' && old[i].kind !== 'Lemma' && old[i].kind !== 'Corollary' && old[i].kind !== 'Proposition') continue; const t = `- ${resultLabel(old[i])} (p. ${old[i].page}): ${old[i].text.slice(0, 150)}`; oldTxt.unshift(t); left -= t.length; }
+    for (let i = old.length - 1; i >= 0 && left > 0; i--) { if (old[i].kind === 'Equation' || old[i].kind === 'Claim') continue; const t = `- ${resultLabel(old[i])} (p. ${old[i].page}): ${old[i].text.slice(0, 150)}`; oldTxt.unshift(t); left -= t.length; }
     if (oldTxt.length) out.push('Results stated in earlier chapters (shortened):\n' + oldTxt.join('\n'));
     if (curTxt.length) out.push('Results stated so far in the current chapter:\n' + curTxt.join('\n'));
     // results the passage refers to by number, in full, wherever they are in the book
     const refs = new Set();
-    String(focusText).replace(/(Theorem|Lemma|Corollary|Proposition|Definition|Exercise|Example)\s+((?:\d+[.\-])*\d+[a-z]?)/g, (_, k, num) => refs.add(k + ' ' + num));
+    String(focusText).replace(/(Theorem|Lemma|Corollary|Proposition|Definition|Exercise|Example|Law|Principle|Postulate|Axiom)\s+((?:\d+[.\-])*\d+[a-z]?)/g, (_, k, num) => refs.add(k + ' ' + num));
+    String(focusText).replace(/(?:Eqs?\.?|equations?|Equations?)\s*\(?((?:\d+[.\-])?\d+[a-z]?)\)?/g, (_, num) => refs.add('Equation ' + num));
+    String(focusText).replace(/\((\d+[.\-]\d+[a-z]?)\)/g, (_, num) => refs.add('Equation ' + num));
     const refTxt = [];
     for (const key of refs) {
       const hit = idx.results.find((r) => `${r.kind} ${r.num}` === key);
-      if (hit) refTxt.push(`- ${resultLabel(hit)} (p. ${hit.page}): ${hit.text}`);
+      if (hit && !refTxt.some((t) => t.includes(`(p. ${hit.page}): ${hit.text.slice(0, 30)}`))) refTxt.push(`- ${resultLabel(hit)} (p. ${hit.page}): ${hit.text}`);
     }
+    // terms the passage uses that were defined earlier in prose
+    const lower = String(focusText).toLowerCase();
+    idx.results.filter((r) => r.kind === 'Term' && r.page < n).forEach((r) => {
+      const m = r.text.match(/(?:is called|are called|is said to be|are said to be|we call|known as|is termed)\s+(?:an?\s+|the\s+)?([a-z][a-z\- ]{2,30}?)(?:[.,;:]|\s+if|\s+when|$)/i);
+      const term = m && m[1].trim().toLowerCase();
+      if (term && term.length > 3 && lower.includes(term) && refTxt.length < 24) refTxt.push(`- Definition of "${term}" (p. ${r.page}): ${r.text}`);
+    });
     if (refTxt.length) out.push('Results this passage refers to (full statements):\n' + refTxt.join('\n'));
     // the current section's text up to this page
     const secStart = (heads.filter((x) => x.page <= n).pop() || { page: Math.max(1, n - 3) }).page;
@@ -245,35 +269,48 @@
       w *= st.zoom;
       p.el.style.width = Math.round(w) + 'px';
       p.el.style.height = Math.round(w * p.aspect) + 'px';
-      if (p.canvas && Math.abs(p.w - w) > 2) { p.canvas.remove(); p.canvas = null; if (p.visible) renderPage(p); }
+      // keep the current bitmap (it stretches with the page) and re-render sharply behind it
+      if (p.canvas && Math.abs(p.w - w) > 2 && p.visible) renderPage(p);
       if (p.ink) drawInkPage(p);
     });
     if (frac != null) main.scrollTop = frac * main.scrollHeight;
   }
+  /* two passes: an instant low-resolution preview, then the sharp page; the old bitmap stays until the new one is ready */
   async function renderPage(p) {
-    if (!st || p.busy) return;
+    if (!st) return;
     const w = parseFloat(p.el.style.width);
-    if (p.canvas && Math.abs(p.w - w) < 2) return;
+    if (p.canvas && Math.abs(p.w - w) < 2 && !p.low) return;
+    if (p.busy) { p.again = true; return; }
     p.busy = true;
     const token = st.token;
     try {
       const page = await st.pdf.getPage(p.n);
       const vp1 = page.getViewport({ scale: 1 });
       if (Math.abs(vp1.height / vp1.width - p.aspect) > 0.01) { p.aspect = vp1.height / vp1.width; p.el.style.height = Math.round(w * p.aspect) + 'px'; }
+      const draw = async (scale) => {
+        const vp = page.getViewport({ scale });
+        const c = h('canvas', { class: 'rd-canvas' });
+        c.width = Math.max(1, Math.round(vp.width)); c.height = Math.max(1, Math.round(vp.height));
+        const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+        await page.render({ canvasContext: ctx, viewport: vp }).promise;
+        return c;
+      };
+      const swap = (c, low) => {
+        if (!st || token !== st.token) return;
+        const old = p.canvas;
+        p.el.insertBefore(c, p.ink || p.ov);
+        if (old) { c.classList.add('rd-fade'); setTimeout(() => old.remove(), 140); }
+        p.canvas = c; p.w = w; p.low = low;
+        p.el.classList.add('rendered');
+      };
+      if (!p.canvas) swap(await draw((w / vp1.width) * 0.45), true);
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const vp = page.getViewport({ scale: (w / vp1.width) * dpr });
-      const c = h('canvas', { class: 'rd-canvas' });
-      c.width = Math.round(vp.width); c.height = Math.round(vp.height);
-      const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
-      await page.render({ canvasContext: ctx, viewport: vp }).promise;
-      if (!st || token !== st.token) return;
-      if (p.canvas) p.canvas.remove();
-      p.canvas = c; p.w = w;
-      p.el.insertBefore(c, p.ink || p.ov);
+      swap(await draw((w / vp1.width) * dpr), false);
       drawInkPage(p);
-      st.pages.forEach((q) => { if (q.canvas && Math.abs(q.n - st.page) > 5) { q.canvas.remove(); q.canvas = null; } });
-    } catch (e) { /* keep placeholder */ }
+      st.pages.forEach((q) => { if (q.canvas && Math.abs(q.n - st.page) > 6) { q.canvas.remove(); q.canvas = null; q.el.classList.remove('rendered'); } });
+    } catch (e) { /* keep what is there */ }
     p.busy = false;
+    if (p.again) { p.again = false; if (p.visible) renderPage(p); }
   }
   const regionImage = async (n, r, maxPx = 1500) => {
     const page = await st.pdf.getPage(n);
@@ -300,9 +337,11 @@
     if (!p) return;
     p.ov.innerHTML = '';
     st.ann.highlights.filter((hl) => hl.page === n).forEach((hl) => {
-      const el = box(hl.rect, 'rd-hl ' + (hl.color || 'yellow'), { title: 'Highlight · tap for options' });
-      el.addEventListener('click', (e) => { e.stopPropagation(); highlightMenu(el, hl); });
-      p.ov.append(el);
+      (hl.rects || [hl.rect]).forEach((rc) => {
+        const el = box(rc, 'rd-hl ' + (hl.color || 'yellow'), { title: 'Highlight · tap for options' });
+        el.addEventListener('click', (e) => { e.stopPropagation(); highlightMenu(el, hl); });
+        p.ov.append(el);
+      });
     });
     (st.cites || []).filter((c) => c.page === n).forEach((c) => c.rects.forEach((r) => p.ov.append(box(r, 'rd-cite' + (c.flash ? ' flash' : '')))));
     if (st.focus && st.focus.page === n) {
@@ -461,16 +500,16 @@
     const send = h('button', { class: 'ab-send', 'aria-label': 'Send question', html: A.icon('send'), onclick: go });
     const chip = (label, fn) => h('button', { class: 'ab-chip', onclick: fn }, label);
     bar.append(
+      h('div', { class: 'ab-head' }, h('span', null, 'Ask about this selection'),
+        h('button', { class: 'ab-ic', title: 'Highlight', 'aria-label': 'Highlight', html: A.icon('b-highlighter'), onclick: () => { addHighlight(n, r); st.focus = null; drawOverlays(n); clearActions(); } }),
+        h('button', { class: 'ab-ic', title: 'Copy text', 'aria-label': 'Copy text', html: A.icon('copy'), onclick: async () => { const t = linesIn(await RD.lines(n), r).map((l) => l.text).join('\n'); copyText(t); } }),
+        h('button', { class: 'ab-ic', title: 'Close', 'aria-label': 'Close', html: A.icon('close'), onclick: () => { st.focus = null; drawOverlays(n); clearActions(); } })),
       h('div', { class: 'ab-row' }, inp, send),
       h('div', { class: 'ab-chips' },
         chip('Explain', () => ask('explain', n, r)),
         chip('Fill in steps', () => ask('prove', n, r)),
         chip('Hint', () => ask('hint', n, r)),
-        chip('Solve', () => solveFrom(n, r)),
-        h('i', { class: 'ab-sep' }),
-        h('button', { class: 'ab-ic', title: 'Highlight', 'aria-label': 'Highlight', html: A.icon('rename'), onclick: () => { addHighlight(n, r); st.focus = null; drawOverlays(n); clearActions(); } }),
-        h('button', { class: 'ab-ic', title: 'Copy text', 'aria-label': 'Copy text', html: A.icon('copy'), onclick: async () => { const t = linesIn(await RD.lines(n), r).map((l) => l.text).join('\n'); copyText(t); } }),
-        h('button', { class: 'ab-ic', title: 'Clear selection', 'aria-label': 'Clear selection', html: A.icon('close'), onclick: () => { st.focus = null; drawOverlays(n); clearActions(); } })));
+        chip('Solve beside', () => solveFrom(n, r))));
     host.append(bar);
     const bw = bar.offsetWidth, bh = bar.offsetHeight;
     let x = pr.left + ((r[0] + r[2]) / 2) * pr.width - bw / 2 - hr.left;
@@ -494,8 +533,10 @@
     if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => A.toast('Text copied'), () => A.toast('Copy is not allowed here'));
   };
   async function addHighlight(n, r) {
-    const text = linesIn(await RD.lines(n), r).map((l) => l.text).join(' ');
-    st.ann.highlights.push({ id: A.uid(), page: n, rect: r, color: 'yellow', text, created: Date.now() });
+    const sel = linesIn(await RD.lines(n), r);
+    const text = sel.map((l) => l.text).join(' ');
+    const rects = sel.map((l) => [Math.max(r[0], l.r[0]) - 0.003, l.r[1] - 0.002, Math.min(r[2], l.r[2]) + 0.003, l.r[3] + 0.002]);
+    st.ann.highlights.push({ id: A.uid(), page: n, rect: r, rects: rects.length ? rects : null, color: 'yellow', text, created: Date.now() });
     saveAnn(); drawOverlays(n); renderRail();
     A.toast('Highlighted');
   }
@@ -529,7 +570,7 @@
     onRemoveAtt: (a) => { if (st.focus && a.page === st.focus.page) { st.focus = null; drawOverlays(a.page); } },
     systemExtra: () => (st.kind === 'epub'
       ? `The student is reading the EPUB book "${st.meta.name}" in Axiom's reader. The text of the chapter on screen is provided. When you refer to a passage, quote it briefly in a > blockquote; line citations are not available in EPUBs.`
-      : `The student is reading "${st.meta.name}" (${st.pdf ? st.pdf.numPages + ' pages' : ''}) in Axiom's reader. Each message comes with the book, chapter and section, an outline of the book so far, the definitions and results stated earlier (in full for the current chapter, shortened before that), the full statements of any results the passage cites by number, the text of the current section before this page, the page text as numbered lines, and the region they selected (as an image plus its text). Lean on that material: when the book uses an earlier result, name it (e.g. Theorem 26.3) and state what it gives. Their own handwriting on the page may appear in those images. Use the book's own notation and the results stated earlier in the chapter; if the question depends on something defined earlier that you were not shown, say what you are assuming.`),
+      : `The student is reading "${st.meta.name}" (${st.pdf ? st.pdf.numPages + ' pages' : ''}) in Axiom's reader. Each message comes with the book, chapter and section, an outline of the book so far (with how each section opens), the definitions and results stated earlier (including definitions written in prose, named laws and numbered equations) (in full for the current chapter, shortened before that), the full statements of any results the passage cites by number, the text of the current section before this page, the page text as numbered lines, and the region they selected (as an image plus its text). Lean on that material: when the book uses an earlier result, name it (e.g. Theorem 26.3) and state what it gives. Their own handwriting on the page may appear in those images. Use the book's own notation and the results stated earlier in the chapter; if the question depends on something defined earlier that you were not shown, say what you are assuming.`),
     contextText: async (atts) => {
       if (st.kind === 'epub') {
         const chap = epubChapterText();
@@ -604,9 +645,13 @@
     const mid = st.main.scrollTop + st.main.clientHeight * 0.4;
     let n = 1;
     for (const p of st.pages) { if (p.el.offsetTop <= mid) n = p.n; else break; }
+    // reading chrome: hide while scrolling down, show on scroll up
+    const y = st.main.scrollTop, dy = y - (st._lastY || 0);
+    st._lastY = y;
+    if (Math.abs(dy) > 6 && !st.tool.startsWith('w')) host.classList.toggle('chrome-hidden', dy > 0 && y > 120 && !host.querySelector('.rd-actions'));
     if (n !== st.page) {
       st.page = n;
-      st.pageLbl.textContent = `${n}`;
+      setPageLabel(n);
       st.scrub.value = n;
       clearTimeout(st._sv);
       st._sv = setTimeout(() => { const d = A.ST.doc(st.meta.id); if (d) { d.lastPage = n; d.lastRead = Date.now(); A.saveSettings(); } }, 600);
@@ -615,6 +660,27 @@
       if (th) th.classList.add('on');
     }
   }
+
+  function setPageLabel(n) {
+    if (!st || !st.pdf) { if (st) st.pageLbl.textContent = String(n); return; }
+    const lab = RD.index && RD.index.labels && RD.index.labels[n - 1];
+    st.pageLbl.textContent = lab && lab !== String(n) ? 'p. ' + lab : 'Page ' + n;
+    st.totalEl.textContent = `${n} of ${st.pdf.numPages}`;
+    clearTimeout(st._loc);
+    st._loc = setTimeout(async () => {
+      if (!st) return;
+      const loc = await RD.locationOf(n);
+      if (!lab && loc.printed && loc.printed !== n) st.pageLbl.textContent = 'p. ' + loc.printed;
+      const ch = loc.trail[loc.trail.length - 1];
+      if (ch && st.subEl) { st.subEl.textContent = ch; st.subEl.title = loc.trail.join(' › '); }
+    }, 250);
+  }
+  RD.setPageLabel = setPageLabel;
+  /* title from the PDF's own metadata when the file name is just a file name */
+  function cleanTitle(t) {
+    return String(t || '').replace(/[_]+/g, ' ').replace(/\s*\(?z-?lib(?:rary)?(?:\.org)?\)?.*$/i, '').replace(/\s*-\s*(libgen|annas?-archive).*$/i, '').replace(/\s+/g, ' ').trim();
+  }
+  RD.cleanTitle = cleanTitle;
 
   /* ---------- side rail: pages, contents, highlights ---------- */
   function renderRail() {
@@ -727,6 +793,7 @@
     t.hidden = !open;
     host.classList.toggle('with-tutor', open);
     host.querySelector('#rd-btn-tutor').classList.toggle('on', open);
+    host.classList.remove('chrome-hidden');
     S.readerTutor = open; A.saveSettings();
     if (open && !t.querySelector('.tutor')) { t.querySelector('.rd-tutor-body').innerHTML = ''; A.AI.mount(t.querySelector('.rd-tutor-body'), readerCtx); }
     requestAnimationFrame(() => layout());
@@ -859,7 +926,7 @@
     const toolSeg = h('div', { class: 'seg rd-tools' });
     const inkBar = h('div', { class: 'rd-group panel rd-inkbar', hidden: true });
     const setTool = (t) => { st.tool = t; [...toolSeg.children].forEach((b) => b.classList.toggle('on', b.dataset.t === t)); host.dataset.tool = t; inkBar.hidden = t !== 'write'; clearActions(); };
-    [['read', 'Ask', 'b-select', 'Pencil draws a box or loop to ask about'], ['highlight', 'Highlight', 'rename', 'Pencil highlights passages'], ['write', 'Write', 'b-pen', 'Write on the page with the Pencil']].forEach(([t, l, ic, tip]) => { const b = h('button', { dataset: { t }, title: tip }); b.innerHTML = A.icon(ic); b.append(l); b.addEventListener('click', () => setTool(t)); toolSeg.append(b); });
+    [['read', 'Read', 'book', 'Read: circle any passage with the Pencil to ask about it'], ['highlight', 'Highlight', 'b-highlighter', 'Highlight passages with the Pencil'], ['write', 'Write', 'b-pen', 'Write on the page with the Pencil']].forEach(([t, l, ic, tip]) => { const b = h('button', { dataset: { t }, title: tip }); b.innerHTML = A.icon(ic); b.append(l); b.addEventListener('click', () => setTool(t)); toolSeg.append(b); });
     const drawInkBar = () => {
       inkBar.innerHTML = '';
       Object.entries(INK).forEach(([k, c]) => inkBar.append(h('button', { class: 'rd-ink-c' + (st.inkTool === 'pen' && st.inkColor === k ? ' on' : ''), style: { background: c }, 'aria-label': k + ' pen', onclick: () => { st.inkTool = 'pen'; st.inkColor = k; drawInkBar(); } })));
@@ -870,17 +937,22 @@
       inkBar.append(ib('undo', 'Undo', () => RD.inkUndo()));
     };
     drawInkBar();
-    const moreBtn = ib('more', 'View and options', (e) => {
+    const moreBtn = { _open: null };
+    moreBtn._open = ((e) => {
       const m = h('div', { class: 'menu' });
-      const row = h('div', { class: 'rd-zoomrow' },
-        h('button', { class: 'ibtn', 'aria-label': isEpub ? 'Smaller text' : 'Zoom out', html: A.icon('minus'), onclick: () => { if (isEpub) { S.epubFont = A.clamp((S.epubFont || 1) - 0.1, 0.7, 2); A.saveSettings(); applyEpubTheme(); } else { st.zoom = A.clamp(st.zoom / 1.2, 0.5, 3); layout(); } } }),
-        h('span', { class: 'small muted' }, isEpub ? 'Text size' : 'Zoom'),
-        h('button', { class: 'ibtn', 'aria-label': isEpub ? 'Larger text' : 'Zoom in', html: A.icon('plus'), onclick: () => { if (isEpub) { S.epubFont = A.clamp((S.epubFont || 1) + 0.1, 0.7, 2); A.saveSettings(); applyEpubTheme(); } else { st.zoom = A.clamp(st.zoom * 1.2, 0.5, 3); layout(); } } }));
-      m.append(row, h('hr'));
-      [['paper', 'Paper'], ['sepia', 'Sepia'], ['night', 'Night']].forEach(([id, l]) => m.append(h('button', { class: (S.readerTheme || 'paper') === id ? 'on' : '', onclick: () => { S.readerTheme = id; A.saveSettings(); host.dataset.theme = id; applyEpubTheme(); A.closePopovers(); } }, h('i', { class: 'rd-theme-dot ' + id }), l)));
+      const val = h('span', { class: 'rd-zoomval num' }, isEpub ? Math.round((S.epubFont || 1) * 100) + '%' : Math.round(st.zoom * 100) + '%');
+      const bump = (dir) => { if (isEpub) { S.epubFont = A.clamp((S.epubFont || 1) + dir * 0.1, 0.7, 2); A.saveSettings(); applyEpubTheme(); val.textContent = Math.round(S.epubFont * 100) + '%'; } else { st.zoom = A.clamp(st.zoom * (dir > 0 ? 1.2 : 1 / 1.2), 0.5, 3); layout(); val.textContent = Math.round(st.zoom * 100) + '%'; } };
+      m.classList.add('rd-aa');
+      m.append(h('div', { class: 'sub' }, isEpub ? 'Text size' : 'Zoom'),
+        h('div', { class: 'rd-zoomrow' }, h('button', { class: 'ibtn', 'aria-label': 'Smaller', html: A.icon('minus'), onclick: () => bump(-1) }), val, h('button', { class: 'ibtn', 'aria-label': 'Larger', html: A.icon('plus'), onclick: () => bump(1) })));
+      if (!isEpub) m.append(h('div', { class: 'seg rd-fitseg' }, ...[['width', 'Fit width'], ['page', 'Fit page']].map(([v, l]) => h('button', { class: st.fit === v ? 'on' : '', onclick: () => { st.fit = v; S.readerFit = v; A.saveSettings(); st.zoom = 1; layout(); val.textContent = '100%'; [...m.querySelectorAll('.rd-fitseg button')].forEach((b) => b.classList.toggle('on', b.textContent === l)); } }, l))));
+      m.append(h('div', { class: 'sub' }, 'Page'));
+      const sw = h('div', { class: 'rd-swatches' });
+      [['paper', 'Paper'], ['sepia', 'Sepia'], ['night', 'Night']].forEach(([id, l]) => sw.append(h('button', { class: 'rd-swatch ' + id + ((S.readerTheme || 'paper') === id ? ' on' : ''), onclick: () => { S.readerTheme = id; A.saveSettings(); host.dataset.theme = id; applyEpubTheme(); sw.querySelectorAll('.rd-swatch').forEach((b) => b.classList.toggle('on', b.classList.contains(id))); } }, h('i', { html: A.icon('check') }), h('span', null, l))));
+      m.append(sw);
+      if (false) m.append(h('hr'));
       if (!isEpub) {
-        m.append(h('hr'), h('button', { onclick: () => { st.fit = st.fit === 'width' ? 'page' : 'width'; S.readerFit = st.fit; A.saveSettings(); st.zoom = 1; layout(); A.closePopovers(); } }, A.iconEl('scale'), st.fit === 'width' ? 'Fit whole page' : 'Fit page width'));
-        m.append(h('button', { onclick: () => { A.closePopovers(); A.UI.solveBeside(A.ST.doc(meta.id), st.page); } }, A.iconEl('rename'), 'Solve beside this page…'));
+        m.append(h('hr'), h('button', { onclick: () => { A.closePopovers(); A.UI.solveBeside(A.ST.doc(meta.id), st.page); } }, A.iconEl('rename'), 'Solve beside this page…'));
       }
       A.popover(m, e.currentTarget, { side: 'down' });
     });
@@ -888,24 +960,31 @@
     const scrub = h('input', { type: 'range', class: 'rd-scrub', id: 'rd-scrub', min: 1, max: 1, value: st.page, 'aria-label': 'Page' });
     scrub.addEventListener('input', () => { pageLbl.textContent = scrub.value; });
     scrub.addEventListener('change', () => goto(+scrub.value, 0, false));
-    const total = h('span', { class: 'num muted' }, '');
-    const top = h('header', { class: 'rd-top' },
-      h('div', { class: 'rd-group panel' },
+    const total = h('span', { class: 'num' }, '');
+    const titleEl = h('div', { class: 'rd-title-main' }, cleanTitle(meta.title || meta.name));
+    const subEl = h('div', { class: 'rd-title-sub' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, meta.author || (subj ? subj.name : (meta.kind === 'sheet' ? 'Problem set' : '')));
+    const top = h('header', { class: 'rd-top rd-bar' },
+      h('div', { class: 'rd-slot rd-left' },
         ib('chev', 'Back to library', () => { RD.close(); A.emit('go:gallery'); }, 'rd-back'),
-        h('div', { class: 'rd-title' }, h('div', { class: 'rd-title-main' }, meta.name), h('div', { class: 'rd-title-sub' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, subj ? subj.name : (meta.kind === 'sheet' ? 'Problem set' : 'Book'))),
-        h('div', { class: 'sb-sep' }), ib('gallery', isEpub ? 'Contents and highlights' : 'Pages, contents and highlights', () => toggleRail(), 'rd-btn-rail'), isEpub ? null : ib('search', 'Search', (e) => openSearch(e.currentTarget))),
-      isEpub ? null : h('div', { class: 'rd-group-wrap' }, h('div', { class: 'rd-group panel' }, toolSeg), inkBar),
-      h('div', { class: 'rd-group panel' }, moreBtn, h('div', { class: 'sb-sep' }), ib('spark', 'Tutor', () => toggleTutor(), 'rd-btn-tutor')));
+        h('div', { class: 'rd-title' }, titleEl, subEl)),
+      h('div', { class: 'rd-slot rd-center' }, isEpub ? null : h('div', { class: 'rd-group-wrap' }, toolSeg, inkBar)),
+      h('div', { class: 'rd-slot rd-right' },
+        isEpub ? null : ib('search', 'Search', (e) => openSearch(e.currentTarget)),
+        ib('gallery', isEpub ? 'Contents and highlights' : 'Pages, contents and highlights', () => toggleRail(), 'rd-btn-rail'),
+        (() => { const b = h('button', { class: 'ibtn rd-aa-btn', title: 'Appearance', 'aria-label': 'Appearance' }, 'Aa'); b.addEventListener('click', (e) => moreBtn._open(e)); return b; })(),
+        ib('spark', 'Tutor', () => toggleTutor(), 'rd-btn-tutor')));
     const main = h('main', { class: 'rd-main', tabindex: 0 });
     const pagesWrap = h('div', { class: 'rd-pages' });
     main.append(pagesWrap);
     const rail = h('aside', { class: 'rd-rail', hidden: true });
-    const tutor = h('aside', { class: 'rd-tutor', hidden: true }, h('div', { class: 'rd-grip', title: 'Drag to resize' }), h('div', { class: 'rd-tutor-body' }));
-    const bottom = h('footer', { class: 'rd-bottom panel' }, h('span', { class: 'muted small' }, isEpub ? '' : 'Page'), pageLbl, total, scrub);
+    const tutor = h('aside', { class: 'rd-tutor', hidden: true }, h('div', { class: 'rd-grip', title: 'Drag to resize' }),
+      h('div', { class: 'rd-tutor-h' }, h('span', { class: 'rd-tutor-t' }, A.iconEl('spark'), 'Tutor'), h('button', { class: 'ibtn', 'aria-label': 'Close tutor', html: A.icon('close'), onclick: () => toggleTutor(false) })),
+      h('div', { class: 'rd-tutor-body' }));
+    const bottom = h('footer', { class: 'rd-bottom rd-bar' }, h('span', { class: 'rd-pg' }, pageLbl, h('span', { class: 'rd-pg-of' }, total)), scrub);
     host.append(top, rail, main, tutor, bottom);
     host.dataset.theme = S.readerTheme || 'paper';
     host.style.setProperty('--rd-filter', '');
-    Object.assign(st, { main, rail, pageLbl, scrub });
+    Object.assign(st, { main, rail, pageLbl, scrub, titleEl, subEl, totalEl: total });
     setTool('read');
     applyWidth();
     // resize tutor
@@ -941,19 +1020,35 @@
     if (!st || st.token !== token) return;
     const n = st.pdf.numPages;
     RD.index = null;
-    setTimeout(() => { if (st && st.token === token) RD.buildIndex().then(() => { if (st && st.railTab === 'toc') renderRail(); }); }, 1200);
-    total.textContent = '/ ' + n;
+    setTimeout(() => { if (st && st.token === token) RD.buildIndex().then(() => { if (st && st.railTab === 'toc') renderRail(); if (st) setPageLabel(st.page); }); }, 1200);
+    RD.bookInfo().then((info) => {
+      if (!st || st.token !== token) return;
+      const good = info.title && info.title.length > 2 && info.title.length < 90 && !/untitled|microsoft|\.(pdf|docx?|tex)$|^document$/i.test(info.title);
+      const patch = {};
+      if (good && !meta.title) patch.title = cleanTitle(info.title);
+      if (info.author && !meta.author && info.author.length < 80) patch.author = info.author;
+      if (Object.keys(patch).length) { A.ST.updateDoc(meta.id, patch); if (patch.title) titleEl.textContent = patch.title; if (patch.author) subEl.textContent = patch.author; }
+    }).catch(() => {});
+    total.textContent = '';
     scrub.max = n;
     const p1 = await st.pdf.getPage(1), vp = p1.getViewport({ scale: 1 });
     for (let i = 1; i <= n; i++) {
       const ov = h('div', { class: 'rd-ov' });
-      const el = h('div', { class: 'rd-page', dataset: { n: i } }, h('span', { class: 'rd-pg-ph num' }, String(i)), ov);
+      const el = h('div', { class: 'rd-page', dataset: { n: i } }, ov);
       pagesWrap.append(el);
       st.pages.push({ n: i, el, ov, aspect: vp.height / vp.width, canvas: null, w: 0 });
     }
     st.io = new IntersectionObserver((ents) => ents.forEach((en) => { const p = st.pages[+en.target.dataset.n - 1]; if (!p) return; p.visible = en.isIntersecting; if (en.isIntersecting) { renderPage(p); drawOverlays(p.n); } }), { root: main, rootMargin: '1200px 0px' });
     st.pages.forEach((p) => st.io.observe(p.el));
     main.addEventListener('scroll', onScroll, { passive: true });
+    let tap = null;
+    main.addEventListener('pointerdown', (e) => { tap = e.pointerType === 'touch' ? { x: e.clientX, y: e.clientY, t: performance.now() } : null; });
+    main.addEventListener('pointerup', (e) => {
+      if (!tap || e.pointerType !== 'touch') return;
+      const still = Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 8 && performance.now() - tap.t < 320;
+      tap = null;
+      if (still && !e.target.closest('.rd-hl, .rd-actions, .cite')) host.classList.toggle('chrome-hidden');
+    });
     bindSelect(main);
     bindPinch(main, pagesWrap);
     layout(false);

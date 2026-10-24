@@ -46,7 +46,7 @@
       if (!on()) return;
       const cur = R.currentPage();
       requestAnimationFrame(() => {
-        if (lastFit || D.doc.view.zoom > R.fitPageZoom()) D.doc.view.zoom = R.fitPageZoom();
+        D.doc.view.zoom = R.fitPageZoom(); // like Notability: the page refits whenever the space changes
         R.constrainNotebook(); R.showPage(cur); syncCounter();
       });
     });
@@ -115,7 +115,10 @@
   function syncCounter() {
     if (!els.count) return;
     const n = D.doc.pages.length, cur = R.currentPage() + 1;
-    els.count.innerHTML = `<b>${cur}</b><span>/</span>${n}`;
+    els.count.innerHTML = `<b>${cur}</b><span> / ${n}</span>`;
+    const [up, down] = els.counter.querySelectorAll('.ibtn');
+    if (up) up.disabled = cur <= 1;
+    if (down) down.disabled = cur >= n;
     if (els.side && !els.side.hidden) els.side.querySelectorAll('.nb-th').forEach((t) => t.classList.toggle('on', +t.dataset.i === cur - 1));
   }
   async function goToPageDialog() {
@@ -704,9 +707,14 @@
     const s = Math.min((pw - margin * 2) / iw, opts.full ? (rc[3] - rc[1] - margin * 2) / ih : (rc[3] - rc[1]) * 0.45 / ih);
     const it = { id: A.uid(), t: 'i', src: url, iw, ih, m: [s, 0, 0, s, rc[0] + (pw - iw * s) / 2, rc[1] + margin], o: 1, ref: opts.label || 'reference' };
     it.bb = B.imageBB(it);
-    let l = D.active();
-    if (l.locked || l.pdfLayer) l = doc.layers.slice().reverse().find((x) => !x.locked && !x.pdfLayer && x.visible) || D.addLayer();
-    D.begin(); D.addItems([it], l); D.commit();
+    // pages and problems are the paper you write on: they live on a locked background layer, so the pen never picks them up
+    D.begin();
+    let l = doc.layers.find((x) => x.pdfLayer);
+    if (!l) { l = D.newLayer('Imported pages'); l.pdfLayer = true; doc.layers.unshift(l); }
+    l.locked = true;
+    l.items = l.items.concat([it]);
+    D.commit('all');
+    A.emit('layers');
     R.showPage(at, true); R.render(); A.emit('layers:thumbs');
     return it;
   };
