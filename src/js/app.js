@@ -173,6 +173,7 @@
     A.TE.mount(A.$('#stage'));
     A.RD.mount(A.$('#reader-view'));
     UI.purgeTrash().catch(() => {});
+    if (!S.slimBar) { S.slimBar = true; S.showPalette = false; A.saveSettings(); }
     if (window.AXIOM_NATIVE && A.native) {
       S.orientationLock = !!window.AXIOM_NATIVE.orientationLock;
       if (S.keepAwake) A.native.post({ op: 'keepAwake', on: true }).catch(() => {});

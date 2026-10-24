@@ -195,31 +195,34 @@
   };
 
   /* ---------- Tool Bar ---------- */
+  /* slim tool bar: tools with a colour dot, one properties dot, the current colour, undo/redo */
   function renderBar() {
-    const bar = h('div', { class: 'toolbar panel', role: 'toolbar', 'aria-label': 'Tools' });
+    const bar = h('div', { class: 'toolbar slim panel', role: 'toolbar', 'aria-label': 'Tools' });
     const grip = h('div', { class: 'tb-grip', title: 'Drag to move · double-tap for the Tool Wheel', html: A.icon('grip') });
     bar.append(grip);
     bindMove(grip, true);
     S.slots.forEach((s, i) => {
       const c = B.catalog[s.b];
       const b = h('button', { class: 'slot' + (i === S.activeSlot ? ' on' : ''), title: `${c.name} (${i + 1})`, 'aria-label': c.name, html: A.icon(c.icon) });
-      if (B.isDrawing(s.b) || c.mask) b.prepend(h('span', { class: 'sw', style: { background: c.mask ? 'repeating-linear-gradient(45deg,#bbb 0 2px,#fff 2px 4px)' : s.color } }));
+      if (B.isDrawing(s.b)) b.append(h('i', { class: 'slot-dot', style: { background: s.color } }));
       bindSlot(b, i);
       bar.append(b);
     });
     bar.append(h('div', { class: 'tb-div' }));
-    for (const p of PROPS) {
-      const el = h('button', { class: 'prop', 'aria-label': p.l }, h('span', { class: 'pv' }, propVal(p.k)), h('span', { class: 'pl' }, p.l));
-      bindProp(el, p.k, () => { el.firstChild.textContent = propVal(p.k); });
-      bar.append(el);
-    }
-    const s = slot();
-    const cb = h('button', { class: 'colorbtn', 'aria-label': 'Color', title: 'Color', style: { background: A.C.rgba(s.color, Math.max(0.15, s.opacity)) } });
+    const s = slot(), c = B.catalog[s.b];
+    // properties: a dot whose size follows the brush size
+    const d = A.clamp(4 + Math.log2(1 + s.size) * 3.2, 4, 22);
+    const props = h('button', { class: 'tb-props', title: 'Size, opacity and smoothing', 'aria-label': 'Size, opacity and smoothing' },
+      h('i', { style: { width: d + 'px', height: d + 'px', background: B.isDrawing(s.b) ? A.C.rgba(s.color, Math.max(0.25, s.opacity)) : 'var(--fg)' } }),
+      h('span', { class: 'num' }, fmtSize(s.size)));
+    props.addEventListener('click', () => UI.openProps(props));
+    bar.append(props);
+    const cb = h('button', { class: 'colorbtn slim', 'aria-label': 'Colour', title: 'Colour', style: { background: s.color } });
     cb.addEventListener('click', () => UI.openColor(cb));
-    bar.append(cb);
+    if (B.isDrawing(s.b) || c.kind === 'tool' && s.b === 'text') bar.append(cb);
     if (S.showPalette && UI.activePaletteColors) {
-      const strip = h('div', { class: 'palette-strip' });
-      UI.activePaletteColors().slice(0, 8).forEach((col) => strip.append(h('button', {
+      const strip = h('div', { class: 'palette-strip slim' });
+      UI.activePaletteColors().slice(0, 4).forEach((col) => strip.append(h('button', {
         class: col.toLowerCase() === s.color.toLowerCase() ? 'on' : '', style: { background: col }, 'aria-label': col,
         onclick: () => { UI.updateSlot({ color: col }); UI.pushRecent(col); },
       })));
@@ -231,6 +234,30 @@
     bar.append(ub, rb);
     return bar;
   }
+  /* one popover for size, opacity and smoothing */
+  UI.openProps = (anchor) => {
+    const box = h('div', { class: 'props-pop' });
+    const draw = () => {
+      box.innerHTML = '';
+      const s = slot(), c = B.catalog[s.b];
+      box.append(h('div', { class: 'pp-h' }, c.name));
+      const row = (k, label) => {
+        const isSize = k === 'size';
+        const lo = isSize ? Math.log(Math.max(0.1, c.min)) : 0, hi = isSize ? Math.log(c.max) : 1;
+        const toR = (v) => (isSize ? ((Math.log(v) - lo) / (hi - lo)) * 1000 : v * 1000);
+        const fromR = (r) => (isSize ? Math.exp(lo + (r / 1000) * (hi - lo)) : r / 1000);
+        const val = h('span', { class: 'pp-v num' }, propVal(k));
+        const range = h('input', { type: 'range', min: 0, max: 1000, value: toR(s[k]), 'aria-label': label });
+        range.addEventListener('input', () => { slot()[k] = clampProp(k, fromR(+range.value)); val.textContent = propVal(k); A.emit('slot:live'); });
+        range.addEventListener('change', () => { A.saveSettings(); A.emit('slot'); });
+        return h('div', { class: 'pp-row' }, h('div', { class: 'pp-top' }, h('span', null, label), val), range);
+      };
+      box.append(row('size', 'Size'));
+      if (c.kind !== 'tool') box.append(row('opacity', 'Opacity'), row('smoothing', 'Smoothing'));
+    };
+    draw();
+    A.popover(box, anchor, { side: S.toolSide === 'right' ? 'left' : 'right' });
+  };
 
   function bindSlot(el, i) {
     let lp;
