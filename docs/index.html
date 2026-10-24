@@ -542,11 +542,186 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
   .g-side-h { display: none; }
   .g-nav .g-count { display: none; }
 }
+
+/* ================= premium pass: gallery home, library, covers ================= */
+.g-layout { grid-template-columns: 236px 1fr; gap: 40px; }
+.g-side { min-height: calc(100vh - 60px); }
+.g-brand { padding: 2px 10px 18px; }
+.g-brand .wordmark { font-size: 30px; }
+.g-main > .g-top { display: none; }
+.home-hero, .page-hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; flex-wrap: wrap; padding: 8px 0 6px; }
+.home-date { margin: 0 0 6px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.home-greet { margin: 0; font-family: var(--ff-mark); font-weight: 400; font-size: clamp(40px, 5vw, 58px); line-height: 1; letter-spacing: -0.015em; }
+.home-sub { margin: 10px 0 0; color: var(--muted); font-size: 15px; max-width: 520px; }
+.page-title { margin: 0; font-family: var(--ff-mark); font-weight: 400; font-size: 42px; line-height: 1.05; letter-spacing: -0.01em; display: flex; align-items: center; gap: 14px; }
+.dot.big { width: 14px; height: 14px; }
+.g-sec { margin-top: 38px; }
+.g-sec-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+.g-sec-h h2 { margin: 0; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.link-btn { color: var(--accent); font-weight: 600; font-size: 13.5px; }
+.page-hero + .g-grid { margin-top: 28px; }
+
+.cont-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
+.cont-card { display: flex; gap: 18px; align-items: stretch; text-align: left; padding: 16px; border-radius: 20px; background: var(--panel-solid); border: 1px solid var(--line); box-shadow: var(--shadow); min-height: 168px; transition: transform .18s ease, box-shadow .18s ease; }
+.cont-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.cont-card .cover { width: 104px; flex: none; }
+.cont-thumb { width: 170px; flex: none; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+.cont-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cont-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; padding: 4px 0; }
+.cont-kicker { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+.cont-title { font-family: var(--ff-mark); font-size: 24px; line-height: 1.12; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.cont-sub { color: var(--muted); font-size: 13px; }
+.cont-cta { margin-top: auto; display: inline-flex; align-items: center; gap: 4px; color: var(--accent); font-weight: 650; font-size: 14px; }
+.cont-cta .ic { width: 16px; height: 16px; }
+
+.shelf { display: flex; gap: 26px; overflow-x: auto; padding: 6px 4px 18px; scrollbar-width: none; scroll-snap-type: x proximity; }
+.shelf::-webkit-scrollbar { display: none; }
+.shelf.wrap { flex-wrap: wrap; overflow: visible; }
+.book { width: 150px; flex: none; display: flex; flex-direction: column; gap: 10px; scroll-snap-align: start; position: relative; }
+.book-open { display: block; text-align: left; }
+.book-open:active .cover { transform: scale(.98); }
+.book-meta { display: flex; align-items: flex-start; gap: 2px; }
+.book-meta .ibtn { width: 32px; height: 32px; margin: -4px -8px 0 0; color: var(--muted); }
+.book-title { font-weight: 650; font-size: 14px; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.book-sub { margin-top: 3px; color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.book-sub .dot { width: 7px; height: 7px; }
+.book-progress { height: 3px; border-radius: 2px; background: var(--line-strong); overflow: hidden; display: block; }
+.book-progress span { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+.book-progress.wide { margin-top: 4px; max-width: 260px; }
+
+.cover { position: relative; display: block; aspect-ratio: 0.72; border-radius: 3px 7px 7px 3px; overflow: hidden; background: #fff;
+  box-shadow: 0 1px 1px rgba(10, 14, 24, .10), 0 2px 4px rgba(10, 14, 24, .08), 0 14px 28px -10px rgba(10, 14, 24, .45); transition: transform .18s ease; }
+.cover img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.cover::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg, rgba(0,0,0,.22) 0, rgba(0,0,0,.06) 2.5%, rgba(255,255,255,.18) 4%, rgba(255,255,255,0) 8%), linear-gradient(180deg, rgba(255,255,255,.08), rgba(0,0,0,.04)); }
+.cover.sheet { border-radius: 4px; }
+.cover.sheet::after { background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.05)); }
+.cover-ph { position: absolute; inset: 0; display: flex; align-items: flex-end; padding: 14px 12px 16px 16px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--c) 82%, #fff) 0%, var(--c) 45%, color-mix(in srgb, var(--c) 70%, #000) 100%); }
+.cover-ph-t { color: #fff; font-family: var(--ff-mark); font-size: 19px; line-height: 1.1; text-shadow: 0 1px 2px rgba(0,0,0,.25); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; }
+
+.course-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+.course-tile { position: relative; text-align: left; padding: 18px 16px 16px 20px; border-radius: 16px; background: var(--panel-solid); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; overflow: hidden; transition: transform .18s ease, box-shadow .18s ease; }
+.course-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.ct-band { position: absolute; left: 0; top: 0; bottom: 0; width: 5px; }
+.ct-name { font-family: var(--ff-mark); font-size: 22px; line-height: 1.1; }
+.ct-meta { color: var(--muted); font-size: 12px; }
+.lib-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 40px 20px; border: 1.5px dashed var(--line-strong); border-radius: 20px; }
+.lib-empty-art { width: 64px; height: 64px; border-radius: 18px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+.lib-empty-art .ic { width: 32px; height: 32px; }
+.lib-empty h3 { margin: 4px 0 0; font-family: var(--ff-mark); font-weight: 400; font-size: 28px; }
+.lib-empty p { margin: 0 0 8px; color: var(--muted); max-width: 460px; }
+.card .thumb { transition: transform .18s ease, box-shadow .18s ease; }
+.card:hover .thumb { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+
+/* ================= reader ================= */
+#reader-view { position: absolute; inset: 0; background: var(--rd-bg); --rd-bg: #e9e6e0; --rdw: 380px; color: var(--fg); }
+#reader-view[data-theme="night"] { --rd-bg: #0e0f12; }
+#reader-view[data-theme="sepia"] { --rd-bg: #e5dccb; }
+:root[data-theme="dark"] #reader-view:not([data-theme="sepia"]), :root:not([data-theme="light"]) #reader-view.sys-dark { --rd-bg: #141518; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #reader-view[data-theme="paper"] { --rd-bg: #17181b; } }
+.rd-top { position: absolute; z-index: 20; top: calc(10px + env(safe-area-inset-top, 0px)); left: 10px; right: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; pointer-events: none; }
+#reader-view.with-tutor .rd-top { right: calc(var(--rdw) + 10px); }
+.rd-top > * { pointer-events: auto; }
+.rd-group { display: flex; align-items: center; gap: 2px; padding: 3px; }
+.rd-title { padding: 0 10px 0 4px; min-width: 0; max-width: 280px; }
+.rd-title-main { font-family: var(--ff-mark); font-size: 19px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rd-title-sub { font-size: 11.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.rd-title-sub .dot { width: 7px; height: 7px; }
+#rd-back .ic { transform: rotate(180deg); }
+.rd-tools button { display: inline-flex; align-items: center; gap: 6px; }
+.rd-tools .ic { width: 17px; height: 17px; }
+.rd-main { position: absolute; inset: 0; overflow: auto; -webkit-overflow-scrolling: touch; padding: calc(78px + env(safe-area-inset-top, 0px)) 0 96px; touch-action: pan-x pan-y; outline: none; }
+#reader-view.with-rail .rd-main { left: 246px; }
+#reader-view.with-tutor .rd-main { right: var(--rdw); }
+.rd-pages { display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.rd-page { position: relative; background: #fff; border-radius: 2px; flex: none; box-shadow: 0 1px 2px rgba(10, 14, 24, .10), 0 18px 40px -18px rgba(10, 14, 24, .38); }
+.rd-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; filter: var(--rd-filter, none); }
+#reader-view[data-theme="sepia"] .rd-canvas { filter: sepia(.38) saturate(1.1) brightness(.97); }
+#reader-view[data-theme="night"] .rd-canvas { filter: invert(.92) hue-rotate(180deg) contrast(.92); }
+#reader-view[data-theme="night"] .rd-page { background: #1a1b1e; }
+.rd-pg-ph { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #b9bec7; font-size: 15px; }
+.rd-ov { position: absolute; inset: 0; pointer-events: none; }
+.rd-hl { position: absolute; border-radius: 3px; pointer-events: auto; mix-blend-mode: multiply; cursor: pointer; }
+.rd-hl.yellow { background: rgba(255, 210, 0, .36); } .rd-hl.green { background: rgba(70, 205, 110, .30); }
+.rd-hl.blue { background: rgba(70, 150, 255, .28); } .rd-hl.pink { background: rgba(255, 90, 160, .26); }
+#reader-view[data-theme="night"] .rd-hl { mix-blend-mode: screen; }
+.rd-focus { position: absolute; border: 2px solid var(--accent); border-radius: 6px; background: color-mix(in srgb, var(--accent) 9%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent); }
+.rd-lasso { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.rd-lasso path { fill: color-mix(in srgb, var(--accent) 10%, transparent); stroke: var(--accent); stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.rd-cite { position: absolute; border-radius: 3px; background: color-mix(in srgb, var(--accent) 20%, transparent); box-shadow: inset 0 -2px 0 var(--accent); }
+.rd-cite.flash { animation: citeflash 1.6s ease; }
+@keyframes citeflash { 0% { background: color-mix(in srgb, var(--accent) 55%, transparent); } 100% { background: color-mix(in srgb, var(--accent) 20%, transparent); } }
+.rd-actions { position: absolute; z-index: 30; display: flex; gap: 2px; padding: 5px; border-radius: 16px; background: rgba(22, 24, 30, .94); color: #fff; box-shadow: 0 12px 34px rgba(0,0,0,.35); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); animation: pop .16s ease; }
+@keyframes pop { from { opacity: 0; transform: translateY(4px) scale(.98); } }
+.rd-actions button { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 12px; border-radius: 11px; font-weight: 600; font-size: 13.5px; color: #fff; }
+.rd-actions button .ic { width: 17px; height: 17px; }
+.rd-actions button:hover { background: rgba(255,255,255,.1); }
+.rd-actions button.primary { background: var(--accent); color: #fff; }
+.rd-actions button.x { padding: 0 9px; opacity: .7; }
+.rd-bottom { position: absolute; z-index: 20; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; gap: 10px; padding: 6px 16px; border-radius: 22px; width: min(520px, calc(100% - 40px)); }
+#reader-view.with-tutor .rd-bottom { left: calc((100% - var(--rdw)) / 2); width: min(520px, calc(100% - var(--rdw) - 40px)); }
+#reader-view.with-rail .rd-bottom { left: calc(246px + (100% - 246px) / 2); }
+#reader-view.with-rail.with-tutor .rd-bottom { left: calc(246px + (100% - 246px - var(--rdw)) / 2); }
+.rd-page-n { font-weight: 700; font-size: 13px; }
+.rd-scrub { flex: 1; height: 24px; }
+.rd-rail { position: absolute; z-index: 15; left: 0; top: 0; bottom: 0; width: 246px; padding: calc(70px + env(safe-area-inset-top, 0px)) 10px 12px; display: flex; flex-direction: column; gap: 10px; background: color-mix(in srgb, var(--panel-solid) 92%, transparent); border-right: 1px solid var(--line); }
+.rd-rail-tabs { display: flex; } .rd-rail-tabs button { flex: 1; padding: 0 6px; }
+.rd-rail-body { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 10px; padding: 4px 2px 20px; }
+.rd-th { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; border-radius: 10px; }
+.rd-th.on { background: var(--accent-soft); }
+.rd-th-img { width: 120px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.18); display: block; }
+.rd-th-img canvas { width: 100%; height: 100%; display: block; }
+.rd-th-n { font-size: 11px; color: var(--muted); }
+.rd-toc { text-align: left; padding: 8px 10px; border-radius: 8px; font-size: 13.5px; line-height: 1.3; }
+.rd-toc:hover { background: var(--accent-soft); }
+.rd-hl-item { display: flex; align-items: flex-start; gap: 8px; text-align: left; padding: 8px; border-radius: 10px; font-size: 13px; line-height: 1.35; }
+.rd-hl-item:hover { background: var(--accent-soft); }
+.rd-hl-item span.grow { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.rd-sw { width: 14px; height: 14px; border-radius: 4px; flex: none; display: inline-block; margin-top: 2px; }
+.rd-sw.yellow { background: #ffd60a; } .rd-sw.green { background: #4bd27a; } .rd-sw.blue { background: #4d9bff; } .rd-sw.pink { background: #ff5fa8; }
+.rd-colors { display: flex; gap: 8px; padding: 6px 10px 8px; }
+.rd-colors .rd-sw { width: 26px; height: 26px; border-radius: 50%; margin: 0; }
+.rd-colors .rd-sw.on { box-shadow: 0 0 0 2px var(--panel-solid), 0 0 0 4px var(--accent); }
+.rd-theme-dot { width: 16px; height: 16px; border-radius: 50%; display: inline-block; box-shadow: inset 0 0 0 1px rgba(0,0,0,.2); }
+.rd-theme-dot.paper { background: #fff; } .rd-theme-dot.sepia { background: #f1e6cf; } .rd-theme-dot.night { background: #1a1b1e; }
+.rd-pad { padding: 12px; }
+.rd-tutor { position: absolute; z-index: 25; right: 0; top: 0; bottom: 0; width: var(--rdw); background: var(--panel-solid); border-left: 1px solid var(--line-strong); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.rd-tutor-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.rd-grip { position: absolute; left: -7px; top: 0; bottom: 0; width: 14px; cursor: col-resize; touch-action: none; z-index: 2; }
+.rd-grip::after { content: ""; position: absolute; left: 5px; top: 50%; height: 44px; margin-top: -22px; width: 4px; border-radius: 2px; background: var(--line-strong); }
+.rd-search { width: 360px; max-width: calc(100vw - 32px); }
+.rd-search-res { max-height: 50vh; overflow: auto; display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
+.rd-hit { display: flex; gap: 10px; text-align: left; padding: 8px; border-radius: 8px; font-size: 13px; line-height: 1.35; }
+.rd-hit:hover { background: var(--accent-soft); }
+.rd-hit span:first-child { flex: none; width: 44px; }
+
+/* tutor polish */
+.tutor-mark { width: 32px; height: 32px; border-radius: 10px; flex: none; display: grid; place-items: center; color: #fff; background: linear-gradient(140deg, color-mix(in srgb, var(--accent) 70%, #9b7bff), var(--accent)); }
+.tutor-mark .ic { width: 18px; height: 18px; }
+.te-mark { background: linear-gradient(140deg, color-mix(in srgb, var(--accent) 70%, #9b7bff), var(--accent)); color: #fff; box-shadow: 0 10px 24px -10px var(--accent); }
+.msg-img.linked { cursor: pointer; outline: 2px solid transparent; transition: outline-color .15s; }
+.msg-img.linked:hover { outline-color: var(--accent); }
+.cite { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; margin: 0 2px; border-radius: 11px; vertical-align: 1px; background: var(--accent-soft); color: var(--accent); font-size: 11.5px; font-weight: 700; font-family: var(--ff-num); }
+.cite:hover { background: var(--accent); color: var(--accent-fg); }
+.md blockquote { margin: 8px 0; padding: 4px 12px; border-left: 3px solid var(--accent); color: var(--muted); }
+@media (max-width: 760px) {
+  .rd-title { max-width: 140px; }
+  #reader-view.with-rail .rd-main { left: 0; }
+  .rd-rail { width: 220px; box-shadow: var(--shadow-lg); }
+  .cont-row { grid-template-columns: 1fr; }
+}
+
+#reader-view.rd-narrow .rd-tools button { font-size: 0; gap: 0; padding: 0 9px; }
+#reader-view.rd-narrow .rd-zoom { display: none; }
+#reader-view.rd-narrow .rd-title { max-width: 150px; }
+.rd-bottom > span { white-space: nowrap; }
 </style>
 </head>
 <body>
 <div id="app">
   <section id="gallery-view" hidden></section>
+  <section id="reader-view" hidden></section>
   <section id="canvas-view" hidden>
     <div id="stage"><canvas id="main"></canvas><canvas id="overlay"></canvas></div>
     <header id="statusbar"></header>
@@ -561,7 +736,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
 </div>
 <div id="toasts" aria-live="polite"></div>
 
-<script>window.AXIOM_BUILD = 'mvmfzk02';
+<script>window.AXIOM_BUILD = 'mvmgnltr';
 /* ---- core.js ---- */
 /* Axiom core: namespace, math, color, events, DOM helpers */
 'use strict';
@@ -1052,7 +1227,7 @@ A.fmtDate = (t) => {
     aiKey: '',
     aiModel: 'claude-opus-5-5',
     panelW: 0,
-    galleryFilter: 'all',
+    galleryFilter: 'home',
     darkCanvas: true,
     penSeen: false,
   });
@@ -5768,13 +5943,13 @@ A.fmtDate = (t) => {
         h('h5', null, 'Tutor'),
         row('Anthropic API key', S.aiKey ? 'Connected (stored only on this device)' : 'Not connected. Open the study panel to connect.', S.aiKey ? h('button', { class: 'btn', onclick: () => { S.aiKey = ''; A.saveSettings(); rebuild(); A.toast('API key removed'); } }, 'Remove key') : h('span')),
         row('Default model', null, sel('aiModel', A.AI.models.map((m) => [m.id, m.name]))),
-        h('h5', null, 'This drawing'),
+        ...(D.doc ? [h('h5', null, 'This drawing'),
         row('Course', null, (() => { const b = h('button', { class: 'btn' }, A.SU.name(D.doc.subject) || 'None'); b.addEventListener('click', () => A.SU.pickMenu(b, D.doc.subject, (sid) => { D.doc.subject = sid; D.changed('meta'); rebuild(); })); return b; })()),
         row('Paper', null, (() => {
           const r = h('div', { class: 'bg-row' });
           Object.entries(D.papers).forEach(([k, c]) => r.append(h('button', { class: D.doc.paper.bg === c ? 'on' : '', style: { background: c }, 'aria-label': k, onclick: () => { D.doc.paper.bg = c; D.changed('paper'); R.render(); rebuild(); } })));
           return r;
-        })()),
+        })())] : []),
         h('p', { class: 'small muted', style: { marginTop: '16px' } }, `Axiom ${A.VERSION}${A.store.usingMemory ? ' · storage unavailable, drawings last until you close the app' : ' · saved on this device'}`));
     };
     rebuild();
@@ -5875,7 +6050,30 @@ A.fmtDate = (t) => {
     S.documents = ST.docs().concat([meta]);
     A.saveSettings();
     A.emit('documents');
+    ST.makeCover(meta).catch(() => {});
     return meta;
+  };
+  /* cover image (page 1) + book/problem-set guess from the page count */
+  const coverBusy = new Set();
+  ST.makeCover = async (meta) => {
+    if (meta.cover || coverBusy.has(meta.id)) return;
+    coverBusy.add(meta.id);
+    try {
+      if (meta.type === 'pdf') {
+        const pdf = await ST.loadPdf(meta);
+        const page = await pdf.getPage(1);
+        const vp1 = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: 360 / vp1.width });
+        const c = h('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+        const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+        await page.render({ canvasContext: ctx, viewport: vp }).promise;
+        ST.updateDoc(meta.id, { cover: c.toDataURL('image/jpeg', 0.8), pages: pdf.numPages, kind: meta.kind || (pdf.numPages >= 30 ? 'book' : 'sheet') });
+      } else {
+        const blob = await A.store.loadFile('doc_' + meta.id, meta.mime);
+        ST.updateDoc(meta.id, { cover: await blobToJpeg(blob, 360), pages: 1, kind: meta.kind || 'sheet' });
+      }
+      A.emit('cover', meta.id);
+    } catch (e) { /* leave the placeholder cover */ }
+    coverBusy.delete(meta.id);
   };
   ST.deleteDoc = async (id) => {
     S.documents = ST.docs().filter((d) => d.id !== id); A.saveSettings();
@@ -5960,7 +6158,7 @@ A.fmtDate = (t) => {
     // body
     if (view && view.detach) view.detach();
     bodyEl.innerHTML = '';
-    if (doc.studyActive === 'ai') { view = null; A.AI.mount(bodyEl); }
+    if (doc.studyActive === 'ai') { view = null; A.AI.mount(bodyEl, A.AI.canvasCtx); }
     else {
       const meta = ST.doc(doc.studyActive);
       let v = views.get(meta.id);
@@ -6189,7 +6387,9 @@ A.fmtDate = (t) => {
 })();
 
 /* ---- ai.js ---- */
-/* Axiom tutor: Claude inside the study panel. Sees your canvas, selections and document pages on request. */
+/* Axiom tutor: Claude beside your canvas or your book.
+   A "context" supplies where conversations live, which attach buttons appear, hidden page text,
+   and what happens when the tutor cites a line ([[p12:L3-L5]]). */
 'use strict';
 (() => {
   const D = A.D, R = A.R, h = A.h;
@@ -6222,23 +6422,23 @@ A.fmtDate = (t) => {
   const katex = () => {
     if (katexP) return katexP;
     katexP = new Promise((res) => {
-      const css = h('link', { rel: 'stylesheet', href: KATEX + 'katex.min.css' });
-      document.head.append(css);
+      document.head.append(h('link', { rel: 'stylesheet', href: KATEX + 'katex.min.css' }));
       const s = h('script', { src: KATEX + 'katex.min.js' });
       s.onload = () => res(window.katex); s.onerror = () => res(null);
       document.head.append(s);
     });
     return katexP;
   };
+  AI.katex = katex;
 
-  /* ---------- markdown + math ---------- */
+  /* ---------- markdown + math + citations ---------- */
   const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   AI.md = (src, kx) => {
-    const math = [];
+    const math = [], code = [], cites = [];
     const keep = (tex, display) => { math.push({ tex, display }); return `\u0000${math.length - 1}\u0000`; };
     let s = String(src || '');
-    const code = [];
     s = s.replace(/```([\w-]*)\n?([\s\S]*?)(```|$)/g, (_, lang, body) => { code.push(body); return `\u0001${code.length - 1}\u0001`; });
+    s = s.replace(/\[\[p(\d+):L(\d+)(?:\s*[-–]\s*L?(\d+))?\]\]/g, (_, p, a, b) => { cites.push([+p, +a, +(b || a)]); return `\u0002${cites.length - 1}\u0002`; });
     s = s.replace(/\$\$([\s\S]+?)\$\$/g, (_, t) => keep(t, true))
       .replace(/\\\[([\s\S]+?)\\\]/g, (_, t) => keep(t, true))
       .replace(/\\\(([\s\S]+?)\\\)/g, (_, t) => keep(t, false))
@@ -6249,18 +6449,18 @@ A.fmtDate = (t) => {
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
       .replace(/(^|[^*])\*([^*\s][^*]*?)\*/g, '$1<em>$2</em>')
       .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-    const lines = s.split('\n');
     const out = [];
     let list = null, para = [];
     const flushP = () => { if (para.length) { out.push('<p>' + inline(para.join(' ')) + '</p>'); para = []; } };
     const flushL = () => { if (list) { out.push(`<${list.t}>` + list.items.map((i) => '<li>' + inline(i) + '</li>').join('') + `</${list.t}>`); list = null; } };
-    for (const raw of lines) {
+    for (const raw of s.split('\n')) {
       const line = raw.trimEnd();
       let m;
       if (!line.trim()) { flushP(); flushL(); continue; }
-      if ((m = line.match(/^(#{1,4})\s+(.*)$/))) { flushP(); flushL(); const n = Math.min(4, m[1].length + 2); out.push(`<h${n}>${inline(m[2])}</h${n}>`); continue; }
+      if ((m = line.match(/^(#{1,4})\s+(.*)$/))) { flushP(); flushL(); const n = Math.min(5, m[1].length + 2); out.push(`<h${n}>${inline(m[2])}</h${n}>`); continue; }
       if ((m = line.match(/^\s*[-*•]\s+(.*)$/))) { flushP(); if (!list || list.t !== 'ul') { flushL(); list = { t: 'ul', items: [] }; } list.items.push(m[1]); continue; }
       if ((m = line.match(/^\s*\d+[.)]\s+(.*)$/))) { flushP(); if (!list || list.t !== 'ol') { flushL(); list = { t: 'ol', items: [] }; } list.items.push(m[1]); continue; }
+      if ((m = line.match(/^&gt;\s?(.*)$/))) { flushP(); flushL(); out.push('<blockquote>' + inline(m[1]) + '</blockquote>'); continue; }
       if (/^\s*---+\s*$/.test(line)) { flushP(); flushL(); out.push('<hr>'); continue; }
       if (list && /^\s{2,}\S/.test(raw)) { list.items[list.items.length - 1] += ' ' + line.trim(); continue; }
       flushL(); para.push(line);
@@ -6268,6 +6468,7 @@ A.fmtDate = (t) => {
     flushP(); flushL();
     let html = out.join('');
     html = html.replace(/\u0001(\d+)\u0001/g, (_, i) => '<pre><code>' + esc(code[+i]) + '</code></pre>');
+    html = html.replace(/\u0002(\d+)\u0002/g, (_, i) => { const [p, a, b] = cites[+i]; return `<button class="cite" data-p="${p}" data-a="${a}" data-b="${b}" title="Show in the book">p. ${p}${a ? ` · ${a === b ? 'line ' + a : 'lines ' + a + '–' + b}` : ''}</button>`; });
     html = html.replace(/\u0000(\d+)\u0000/g, (_, i) => {
       const { tex, display } = math[+i];
       if (kx) { try { return kx.renderToString(tex, { displayMode: display, throwOnError: false, strict: 'ignore' }); } catch (e) { /* fall through */ } }
@@ -6276,12 +6477,11 @@ A.fmtDate = (t) => {
     return html;
   };
 
-  /* ---------- snapshots ---------- */
+  /* ---------- canvas snapshots ---------- */
   const regionShot = (bb, onlyIds, maxPx = 1500) => {
     const w = bb[2] - bb[0], hh = bb[3] - bb[1];
     const scale = Math.min(3, maxPx / Math.max(w, hh));
-    const c = R.renderRegion(D.doc, bb, scale, { bg: true, grid: false, onlyIds });
-    return c.toDataURL('image/jpeg', 0.86);
+    return R.renderRegion(D.doc, bb, scale, { bg: true, grid: false, onlyIds }).toDataURL('image/jpeg', 0.86);
   };
   AI.shotCanvas = () => ({ kind: 'image', label: 'Canvas view', url: regionShot(R.visibleBB(), null) });
   AI.shotSelection = () => {
@@ -6294,23 +6494,55 @@ A.fmtDate = (t) => {
     im.onload = () => { const k = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight)); const c = h('canvas'); c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', 0.82)); };
     im.onerror = () => res(url); im.src = url;
   });
+  AI.shrink = shrink;
 
-  /* ---------- conversation state (saved with the drawing) ---------- */
+  /* ---------- the canvas context (conversations saved with the drawing) ---------- */
+  AI.canvasCtx = {
+    kind: 'canvas',
+    store: () => D.doc,
+    chats: () => (D.doc.chats = D.doc.chats || []),
+    save: () => D.changed('meta'),
+    subject: () => D.doc.subject,
+    emptyTitle: () => (A.SU.name(D.doc.subject) ? `Tutor for ${A.SU.name(D.doc.subject)}` : 'Your tutor'),
+    emptyText: 'Ask about a concept, a page of your PDF, or your own handwritten solution. Add your canvas, a selection or the current page with the buttons below, so you never need screenshots.',
+    attachButtons: () => {
+      const b = [{ icon: 'image', label: 'Canvas', fn: () => AI.attach(AI.shotCanvas()) }];
+      if (R.sel.size) b.push({ icon: 'selectall', label: 'Selection', fn: () => AI.attach(AI.shotSelection()) });
+      if (A.ST.activeDoc()) b.push({ icon: 'pdf', label: 'Current page', fn: async () => AI.attach(await A.ST.currentPage()) });
+      return b;
+    },
+    autoAttach: (mode, atts) => { if (mode === 'check' && !atts.some((a) => a.kind === 'image')) atts.unshift(AI.shotCanvas()); },
+  };
+
+  /* ---------- conversation state ---------- */
   AI.pending = [];
-  const sessionPdf = new Map(); // attachment id -> base64, kept in memory only
-  let mode = 'explain', busy = false, root = null, abortCtl = null;
-  const chats = () => { if (!D.doc.chats) D.doc.chats = []; return D.doc.chats; };
+  const sessionPdf = new Map();
+  let ctx = AI.canvasCtx, mode = 'explain', busy = false, root = null, abortCtl = null;
+  const chats = () => ctx.chats();
   const chat = () => {
-    let c = chats().find((x) => x.id === D.doc.chatActive);
-    if (!c) { c = { id: A.uid(), title: 'New conversation', created: Date.now(), msgs: [] }; chats().push(c); D.doc.chatActive = c.id; }
+    const st = ctx.store();
+    let c = chats().find((x) => x.id === st.chatActive);
+    if (!c) { c = { id: A.uid(), title: 'New conversation', created: Date.now(), msgs: [] }; chats().push(c); st.chatActive = c.id; }
     return c;
   };
-  AI.attach = (att) => { if (!att) return; att.id = att.id || A.uid(); AI.pending.push(att); if (root) drawChips(); };
+  AI.attach = (att) => { if (!att) return; att.id = att.id || A.uid(); AI.pending.push(att); if (root && root.isConnected) drawChips(); };
+  AI.setMode = (m) => { mode = m; if (root && root.isConnected) draw(); };
+  AI.ask = (text, opts = {}) => {
+    if (opts.mode) mode = opts.mode;
+    (opts.attachments || []).forEach(AI.attach);
+    if (!root || !root.isConnected) return;
+    draw();
+    if (!S.aiKey) return;
+    els.ta.value = text || '';
+    if (opts.send !== false && text) send(); else els.ta.focus();
+  };
 
   /* ---------- UI ---------- */
   let els = {};
-  AI.mount = (container) => {
-    root = h('div', { class: 'tutor' });
+  AI.mount = (container, context) => {
+    if (context && context !== ctx) { ctx = context; AI.pending = AI.pending.filter((a) => a.keep); }
+    ctx = context || ctx;
+    root = h('div', { class: 'tutor' + (ctx.kind === 'reader' ? ' reader-tutor' : '') });
     container.append(root);
     katex();
     draw();
@@ -6323,16 +6555,22 @@ A.fmtDate = (t) => {
     const convBtn = h('button', { class: 'conv-btn', title: 'Conversations' }, h('span', { class: 'grow' }, c.title), A.iconEl('chevdown'));
     convBtn.addEventListener('click', () => convMenu(convBtn));
     const modeSeg = h('div', { class: 'seg mode-seg' });
-    AI.modes.forEach((m) => modeSeg.append(h('button', { class: m.id === mode ? 'on' : '', onclick: () => { mode = m.id; draw(); } }, m.name)));
+    AI.modes.filter((m) => ctx.kind !== 'reader' || m.id !== 'check').forEach((m) => modeSeg.append(h('button', { class: m.id === mode ? 'on' : '', onclick: () => { mode = m.id; draw(); } }, m.name)));
     const model = h('select', { class: 'model-sel', id: 'ai-model', 'aria-label': 'Model' }, ...AI.models.map((m) => h('option', { value: m.id, selected: S.aiModel === m.id }, m.name)));
     model.addEventListener('change', () => { S.aiModel = model.value; A.saveSettings(); });
     const list = h('div', { class: 'msgs', 'aria-live': 'polite' });
+    list.addEventListener('click', (e) => {
+      const b = e.target.closest('.cite');
+      if (b && ctx.onCite) ctx.onCite(+b.dataset.p, +b.dataset.a, +b.dataset.b);
+      const im = e.target.closest('[data-att]');
+      if (im && ctx.onAttClick) { const m = c.msgs.find((x) => (x.att || []).some((a) => a.id === im.dataset.att)); const a = m && m.att.find((x) => x.id === im.dataset.att); if (a) ctx.onAttClick(a); }
+    });
     els.list = list;
     if (!c.msgs.length) list.append(emptyState());
     c.msgs.forEach((m) => list.append(msgEl(m)));
     const chipsRow = h('div', { class: 'att-row' });
     els.chips = chipsRow;
-    const ta = h('textarea', { class: 'composer-in', id: 'ai-input', rows: 1, placeholder: mode === 'check' ? 'What should I check? (your canvas is attached)' : 'Ask about your work, a page, or a concept…' });
+    const ta = h('textarea', { class: 'composer-in', id: 'ai-input', rows: 1, placeholder: ctx.placeholder ? ctx.placeholder(mode) : (mode === 'check' ? 'What should I check? (your canvas is attached)' : 'Ask about your work, a page, or a concept…') });
     els.ta = ta;
     const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(180, ta.scrollHeight) + 'px'; };
     ta.addEventListener('input', grow);
@@ -6340,42 +6578,37 @@ A.fmtDate = (t) => {
     const sendBtn = h('button', { class: 'send-btn', 'aria-label': busy ? 'Stop' : 'Send', html: A.icon(busy ? 'close' : 'send') });
     sendBtn.addEventListener('click', () => (busy ? stop() : send()));
     els.send = sendBtn;
-    root.append(h('div', { class: 'tutor-head' }, convBtn, model), modeSeg, list, h('div', { class: 'composer' }, chipsRow, h('div', { class: 'composer-row' }, ta, sendBtn)));
+    root.append(h('div', { class: 'tutor-head' }, h('div', { class: 'tutor-mark', html: A.icon('spark') }), convBtn, model), modeSeg, list, h('div', { class: 'composer' }, chipsRow, h('div', { class: 'composer-row' }, ta, sendBtn)));
     drawChips();
     requestAnimationFrame(() => { list.scrollTop = list.scrollHeight; });
   };
-  const emptyState = () => {
-    const subj = A.SU.name(D.doc.subject);
-    return h('div', { class: 'tutor-empty' },
-      h('div', { class: 'te-mark', html: A.icon('spark') }),
-      h('h4', null, subj ? `Tutor for ${subj}` : 'Your tutor'),
-      h('p', null, 'Ask about a concept, a page of your PDF, or your own handwritten solution. Add your canvas, a selection or the current page with the buttons below, so you never need screenshots.'),
-      h('div', { class: 'te-tips' },
-        ...['Check my solution on the canvas', 'Give me a hint for this problem, not the answer', 'Explain this page more rigorously', 'Quiz me on what I just read'].map((t) => h('button', { class: 'chip ghost', onclick: () => { if (/check/i.test(t)) mode = 'check'; else if (/hint/i.test(t)) mode = 'hint'; else if (/quiz/i.test(t)) mode = 'quiz'; else mode = 'explain'; draw(); els.ta.value = t; els.ta.focus(); } }, t))));
-  };
+  const emptyState = () => h('div', { class: 'tutor-empty' },
+    h('div', { class: 'te-mark', html: A.icon('spark') }),
+    h('h4', null, ctx.emptyTitle()),
+    h('p', null, ctx.emptyText),
+    h('div', { class: 'te-tips' }, ...(ctx.tips || ['Check my solution on the canvas', 'Give me a hint for this problem, not the answer', 'Explain this page more rigorously', 'Quiz me on what I just read']).map((t) => h('button', { class: 'chip ghost', onclick: () => {
+      if (/check/i.test(t)) mode = 'check'; else if (/hint/i.test(t)) mode = 'hint'; else if (/quiz/i.test(t)) mode = 'quiz'; else mode = 'explain';
+      draw(); els.ta.value = t; els.ta.focus();
+    } }, t))));
   const drawChips = () => {
     const row = els.chips;
     if (!row) return;
     row.innerHTML = '';
     AI.pending.forEach((a) => {
-      const chip = h('span', { class: 'att-chip' }, a.url ? h('img', { src: a.url, alt: '' }) : A.iconEl('pdf'), h('span', { class: 'att-l' }, a.label),
-        h('button', { class: 'chip-x', 'aria-label': 'Remove ' + a.label, html: A.icon('close'), onclick: () => { AI.pending = AI.pending.filter((x) => x !== a); drawChips(); } }));
-      row.append(chip);
+      row.append(h('span', { class: 'att-chip' }, a.url ? h('img', { src: a.url, alt: '' }) : A.iconEl('pdf'), h('span', { class: 'att-l' }, a.label),
+        h('button', { class: 'chip-x', 'aria-label': 'Remove ' + a.label, html: A.icon('close'), onclick: () => { AI.pending = AI.pending.filter((x) => x !== a); if (ctx.onRemoveAtt) ctx.onRemoveAtt(a); drawChips(); } })));
     });
-    const add = (icon, label, fn) => row.append(h('button', { class: 'att-add', onclick: fn }, A.iconEl(icon), label));
-    add('image', 'Canvas', () => AI.attach(AI.shotCanvas()));
-    if (R.sel.size) add('selectall', 'Selection', () => AI.attach(AI.shotSelection()));
-    if (A.ST.activeDoc()) add('pdf', 'Current page', async () => AI.attach(await A.ST.currentPage()));
-    add('import', 'Photo', async () => {
+    const btns = (ctx.attachButtons ? ctx.attachButtons() : []).concat([{ icon: 'import', label: 'Photo', fn: async () => {
       const f = await A.ST.pickFile('image/*');
       if (!f) return;
       const url = await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(f); });
       AI.attach({ kind: 'image', label: f.name.slice(0, 24), url: await shrink(url, 1600) });
-    });
+    } }]);
+    btns.forEach((b) => row.append(h('button', { class: 'att-add', onclick: b.fn }, A.iconEl(b.icon), b.label)));
   };
   const msgEl = (m) => {
     if (m.role === 'user') {
-      const atts = (m.att || []).map((a) => (a.url ? h('img', { class: 'msg-img', src: a.url, alt: a.label, title: a.label }) : h('span', { class: 'att-chip small' }, A.iconEl('pdf'), a.label)));
+      const atts = (m.att || []).map((a) => (a.url ? h('img', { class: 'msg-img' + (a.page ? ' linked' : ''), src: a.url, alt: a.label, title: a.label, dataset: { att: a.id } }) : h('span', { class: 'att-chip small' }, A.iconEl('pdf'), a.label)));
       return h('div', { class: 'msg user' }, atts.length ? h('div', { class: 'msg-atts' }, ...atts) : null, m.text ? h('div', { class: 'bubble' }, m.text) : null);
     }
     const body = h('div', { class: 'md' });
@@ -6391,13 +6624,14 @@ A.fmtDate = (t) => {
   };
   const convMenu = (anchor) => {
     const box = h('div', { class: 'menu' });
-    box.append(h('button', { onclick: () => { A.closePopovers(); const c = { id: A.uid(), title: 'New conversation', created: Date.now(), msgs: [] }; chats().push(c); D.doc.chatActive = c.id; D.changed('meta'); draw(); } }, A.iconEl('plus'), 'New conversation'));
+    const st = ctx.store();
+    box.append(h('button', { onclick: () => { A.closePopovers(); const c = { id: A.uid(), title: 'New conversation', created: Date.now(), msgs: [] }; chats().push(c); st.chatActive = c.id; ctx.save(); draw(); } }, A.iconEl('plus'), 'New conversation'));
     if (chats().length) box.append(h('hr'));
-    chats().slice().reverse().forEach((c) => box.append(h('button', { class: c.id === D.doc.chatActive ? 'on' : '', onclick: () => { A.closePopovers(); D.doc.chatActive = c.id; draw(); } }, h('span', { class: 'grow' }, c.title), h('span', { class: 'muted small num' }, A.fmtDate(c.created)))));
+    chats().slice().reverse().forEach((c) => box.append(h('button', { class: c.id === st.chatActive ? 'on' : '', onclick: () => { A.closePopovers(); st.chatActive = c.id; draw(); } }, h('span', { class: 'grow' }, c.title), h('span', { class: 'muted small num' }, A.fmtDate(c.created)))));
     if (chat().msgs.length) box.append(h('hr'), h('button', { class: 'danger', onclick: async () => {
       A.closePopovers();
       if (!(await A.dialog({ title: 'Delete this conversation?', okText: 'Delete', danger: true }))) return;
-      D.doc.chats = chats().filter((c) => c.id !== D.doc.chatActive); D.doc.chatActive = null; D.changed('meta'); draw();
+      const arr = chats(); arr.splice(arr.findIndex((c) => c.id === st.chatActive), 1); st.chatActive = null; ctx.save(); draw();
     } }, A.iconEl('trash'), 'Delete conversation'));
     A.popover(box, anchor, { side: 'down' });
   };
@@ -6417,13 +6651,15 @@ A.fmtDate = (t) => {
   const systemPrompt = () => {
     const majors = A.SU.majorNames();
     const courses = A.SU.list().map((s) => s.name);
-    const cur = A.SU.name(D.doc.subject);
+    const cur = A.SU.name(ctx.subject());
     return [
-      'You are the tutor built into Axiom, an infinite-canvas notebook for university STEM students. The student writes and draws by hand with Apple Pencil.',
+      'You are the tutor built into Axiom, a notebook and reading room for university STEM students. The student writes by hand with Apple Pencil and reads textbooks and problem sets inside the app.',
       majors.length ? `The student studies: ${majors.join(', ')}.` : '',
       courses.length ? `Their courses: ${courses.join(', ')}.` : '',
       cur ? `They are working in the course "${cur}" right now.` : '',
-      'Attached images are snapshots of their handwritten canvas, a selection of it, photos, or pages from their problem sheets, solution sets and textbooks. If handwriting is ambiguous, say what you read before relying on it.',
+      ctx.systemExtra ? ctx.systemExtra() : '',
+      'Attached images are snapshots of their handwritten work, regions they selected in a book or problem set, photos, or whole pages. If handwriting or a scan is ambiguous, say what you read before relying on it.',
+      'When page text with line ids is provided (lines like "L12: …" under a page header "p. 34"), cite the exact places you refer to with markers like [[p34:L12-L14]] or [[p34:L7]] placed right after the claim. The app turns them into links that highlight those lines. Only cite line ids you were given.',
       'Use precise mathematical language. Do not replace arguments with analogies or metaphors unless the student asks for intuition. Be direct about mistakes and concise; no filler or praise.',
       'Format with Markdown. Write all mathematics in LaTeX: $...$ inline and $$...$$ for display equations.',
       MODE_TEXT[mode],
@@ -6441,19 +6677,19 @@ A.fmtDate = (t) => {
         else blocks.push({ type: 'text', text: `[The PDF "${a.label}" was attached earlier; re-attach it if you need its contents.]` });
       }
     }
+    if (m.ctx) blocks.push({ type: 'text', text: m.ctx });
     blocks.push({ type: 'text', text: (m.att && m.att.length ? `(Attached: ${m.att.map((a) => a.label).join('; ')})\n\n` : '') + (m.text || '(no message)') });
     return blocks;
   };
-  const buildMessages = (c) => {
-    // keep only the 6 most recent images; older ones become notes
+  const buildMessages = (msgs) => {
     const ids = [];
-    c.msgs.forEach((m) => (m.att || []).forEach((a) => { if (a.kind === 'image' && a.url) ids.push(a.id); }));
+    msgs.forEach((m) => (m.att || []).forEach((a) => { if (a.kind === 'image' && a.url) ids.push(a.id); }));
     const keep = new Set(ids.slice(-6));
     const out = [];
-    for (const m of c.msgs.filter((x) => !x.error)) {
+    for (const m of msgs.filter((x) => !x.error)) {
       const msg = m.role === 'user' ? { role: 'user', content: toBlocks(m, keep) } : { role: 'assistant', content: [{ type: 'text', text: m.text || '…' }] };
       const prev = out[out.length - 1];
-      if (prev && prev.role === msg.role) prev.content = prev.content.concat(msg.content); // e.g. after a failed reply
+      if (prev && prev.role === msg.role) prev.content = prev.content.concat(msg.content);
       else out.push(msg);
     }
     return out;
@@ -6465,18 +6701,18 @@ A.fmtDate = (t) => {
     if (!text && !AI.pending.length) return;
     const c = chat();
     const att = AI.pending.slice();
-    if (mode === 'check' && !att.some((a) => a.kind === 'image')) att.unshift(AI.shotCanvas()); // checking needs to see the work
+    if (ctx.autoAttach) ctx.autoAttach(mode, att);
     att.forEach((a) => { a.id = a.id || A.uid(); if (a.kind === 'pdf' && a.b64) sessionPdf.set(a.id, a.b64); });
     AI.pending = [];
-    const um = { role: 'user', text, att: att.map((a) => ({ id: a.id, kind: a.kind, label: a.label, url: a.url })), t: Date.now() };
+    const extra = ctx.contextText ? await ctx.contextText(att) : '';
+    const um = { role: 'user', text, att: att.map((a) => ({ id: a.id, kind: a.kind, label: a.label, url: a.url, page: a.page, rect: a.rect })), ctx: extra || undefined, t: Date.now() };
     c.msgs.push(um);
     if (c.title === 'New conversation') c.title = (text || att[0].label).slice(0, 48);
     const bm = { role: 'assistant', text: '', t: Date.now() };
     c.msgs.push(bm);
     busy = true;
     draw();
-    const botEl = els.list.lastElementChild;
-    const body = botEl.querySelector('.md');
+    const body = els.list.lastElementChild.querySelector('.md');
     body.innerHTML = '<span class="thinking">Thinking<i>.</i><i>.</i><i>.</i></span>';
     let raf = 0;
     const paint = () => { raf = 0; body.innerHTML = AI.md(bm.text, window.katex); if (els.list.scrollHeight - els.list.scrollTop - els.list.clientHeight < 160) els.list.scrollTop = els.list.scrollHeight; };
@@ -6489,7 +6725,7 @@ A.fmtDate = (t) => {
         model: modelId,
         max_tokens: 64000,
         system: systemPrompt(),
-        messages: buildMessages({ msgs: c.msgs.slice(0, -1) }), // without the empty reply placeholder
+        messages: buildMessages(c.msgs.slice(0, -1)), // without the empty reply placeholder
         output_config: { effort },
         cache_control: { type: 'ephemeral' },
       };
@@ -6509,25 +6745,582 @@ A.fmtDate = (t) => {
     } catch (err) {
       const Anthropic = await sdk().catch(() => null);
       let msg = 'Something went wrong: ' + (err && err.message ? err.message : err);
-      if (err && err.name === 'AbortError' || (Anthropic && err instanceof Anthropic.APIUserAbortError)) msg = bm.text ? '' : '_Stopped._';
+      if ((err && err.name === 'AbortError') || (Anthropic && err instanceof Anthropic.APIUserAbortError)) msg = bm.text ? '' : '_Stopped._';
       else if (Anthropic && err instanceof Anthropic.AuthenticationError) msg = 'Your API key was rejected. Check it in Settings › Tutor.';
       else if (Anthropic && err instanceof Anthropic.PermissionDeniedError) msg = 'This API key does not have access to that model. Pick another model or check your Anthropic account.';
       else if (Anthropic && err instanceof Anthropic.RateLimitError) msg = 'You have hit your API rate limit. Wait a moment and try again.';
       else if (Anthropic && err instanceof Anthropic.BadRequestError) msg = 'The request was rejected: ' + (err.message || '') + (/too large|size/i.test(err.message || '') ? ' Try attaching fewer or smaller pages.' : '');
       else if (Anthropic && err instanceof Anthropic.InternalServerError) msg = 'Anthropic\'s servers had a problem (or are overloaded). Try again in a moment.';
-      else if (Anthropic && err instanceof Anthropic.APIConnectionError || !navigator.onLine) msg = 'The tutor needs an internet connection.';
+      else if ((Anthropic && err instanceof Anthropic.APIConnectionError) || !navigator.onLine) msg = 'The tutor needs an internet connection.';
       if (msg) { if (bm.text) bm.text += '\n\n' + msg; else { bm.text = msg; bm.error = true; } }
     }
     busy = false; abortCtl = null;
-    // keep history light: store smaller copies of images
     for (const a of um.att) if (a.url) a.url = await shrink(a.url, 900);
-    D.changed('meta');
+    ctx.save();
     draw();
+    if (ctx.onAnswer) ctx.onAnswer(bm.text);
   }
   function stop() { if (abortCtl) abortCtl.abort(); }
 
-  A.on('doc:open', () => { AI.pending = []; sessionPdf.clear(); mode = 'explain'; });
-  A.on('selection', () => { if (root && root.isConnected && els.chips) drawChips(); });
+  A.on('doc:open', () => { if (ctx === AI.canvasCtx) { AI.pending = []; sessionPdf.clear(); mode = 'explain'; } });
+  A.on('selection', () => { if (root && root.isConnected && els.chips && ctx === AI.canvasCtx) drawChips(); });
+})();
+
+/* ---- reader.js ---- */
+/* Axiom reader: a quiet reading room for books and problem sets, with the tutor beside the page.
+   Pencil drag = focus box / lasso around any passage → Ask, Explain, Hint, Highlight, Copy text.
+   The tutor receives the page text with line ids and cites lines back ([[p34:L3-L5]]), which highlight here. */
+'use strict';
+(() => {
+  const h = A.h;
+  const S = A.settings;
+  const RD = (A.RD = {});
+  let host, st = null;
+
+  const ann0 = () => ({ highlights: [], chats: [], chatActive: null });
+  const saveAnn = A.debounce(() => {
+    if (!st) return;
+    A.store.saveFile('ann_' + st.meta.id, new Blob([JSON.stringify(st.ann)], { type: 'application/json' })).catch(() => {});
+  }, 600);
+  const loadAnn = async (id) => {
+    try { const b = await A.store.loadFile('ann_' + id, 'application/json'); if (b) return Object.assign(ann0(), JSON.parse(await b.text())); } catch (e) { /* none yet */ }
+    return ann0();
+  };
+
+  /* ---------- text lines (for selection text, search and citations) ---------- */
+  const lineCache = new Map();
+  RD.lines = async (n) => {
+    const key = st.meta.id + ':' + n;
+    if (lineCache.has(key)) return lineCache.get(key);
+    let lines = [];
+    try {
+      const lib = window.pdfjsLib;
+      const page = await st.pdf.getPage(n);
+      const vp = page.getViewport({ scale: 1 });
+      const tc = await page.getTextContent();
+      const items = tc.items.filter((it) => it.str && it.str.trim()).map((it) => {
+        const t = lib.Util.transform(vp.transform, it.transform);
+        const fh = Math.hypot(t[2], t[3]) || 10;
+        return { x: t[4], y: t[5] - fh, w: Math.abs(it.width * (vp.scale || 1)), h: fh, s: it.str };
+      }).sort((a, b) => a.y - b.y || a.x - b.x);
+      const rows = [];
+      for (const it of items) {
+        const r = rows.find((row) => Math.abs(row.cy - (it.y + it.h / 2)) < Math.max(row.h, it.h) * 0.55);
+        if (r) { r.items.push(it); r.h = Math.max(r.h, it.h); } else rows.push({ cy: it.y + it.h / 2, h: it.h, items: [it] });
+      }
+      rows.sort((a, b) => a.cy - b.cy);
+      lines = rows.map((r, i) => {
+        r.items.sort((a, b) => a.x - b.x);
+        let text = '', last = null;
+        for (const it of r.items) { if (last && it.x - (last.x + last.w) > it.h * 0.25 && !/\s$/.test(text)) text += ' '; text += it.s; last = it; }
+        const x0 = Math.min(...r.items.map((t) => t.x)), x1 = Math.max(...r.items.map((t) => t.x + t.w));
+        const y0 = Math.min(...r.items.map((t) => t.y)), y1 = Math.max(...r.items.map((t) => t.y + t.h));
+        return { id: i + 1, text: text.replace(/\s+/g, ' ').trim(), r: [x0 / vp.width, y0 / vp.height, x1 / vp.width, y1 / vp.height] };
+      }).filter((l) => l.text);
+      lines.forEach((l, i) => (l.id = i + 1));
+    } catch (e) { lines = []; }
+    lineCache.set(key, lines);
+    return lines;
+  };
+  const linesIn = (lines, r) => lines.filter((l) => { const cx = (l.r[0] + l.r[2]) / 2, cy = (l.r[1] + l.r[3]) / 2; return cx >= r[0] && cx <= r[2] && cy >= r[1] && cy <= r[3]; });
+
+  /* ---------- rendering ---------- */
+  const themeFilter = { paper: '', sepia: 'sepia(.38) saturate(1.1) brightness(.97)', night: 'invert(.92) hue-rotate(180deg) contrast(.92)' };
+  function layout(keep = true) {
+    if (!st || !st.pages.length) return;
+    const main = st.main;
+    host.classList.toggle('rd-narrow', main.clientWidth < 760);
+    const frac = keep ? main.scrollTop / Math.max(1, main.scrollHeight) : null;
+    const availW = Math.max(240, main.clientWidth - 64), availH = Math.max(240, main.clientHeight - 48);
+    st.pages.forEach((p) => {
+      let w = st.fit === 'page' ? Math.min(availW, availH / p.aspect) : Math.min(availW, 980);
+      w *= st.zoom;
+      p.el.style.width = Math.round(w) + 'px';
+      p.el.style.height = Math.round(w * p.aspect) + 'px';
+      if (p.canvas && Math.abs(p.w - w) > 2) { p.canvas.remove(); p.canvas = null; if (p.visible) renderPage(p); }
+    });
+    if (frac != null) main.scrollTop = frac * main.scrollHeight;
+  }
+  async function renderPage(p) {
+    if (!st || p.busy) return;
+    const w = parseFloat(p.el.style.width);
+    if (p.canvas && Math.abs(p.w - w) < 2) return;
+    p.busy = true;
+    const token = st.token;
+    try {
+      const page = await st.pdf.getPage(p.n);
+      const vp1 = page.getViewport({ scale: 1 });
+      if (Math.abs(vp1.height / vp1.width - p.aspect) > 0.01) { p.aspect = vp1.height / vp1.width; p.el.style.height = Math.round(w * p.aspect) + 'px'; }
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const vp = page.getViewport({ scale: (w / vp1.width) * dpr });
+      const c = h('canvas', { class: 'rd-canvas' });
+      c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+      const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      if (!st || token !== st.token) return;
+      if (p.canvas) p.canvas.remove();
+      p.canvas = c; p.w = w;
+      p.el.insertBefore(c, p.ov);
+      st.pages.forEach((q) => { if (q.canvas && Math.abs(q.n - st.page) > 5) { q.canvas.remove(); q.canvas = null; } });
+    } catch (e) { /* keep placeholder */ }
+    p.busy = false;
+  }
+  const regionImage = async (n, r, maxPx = 1500) => {
+    const page = await st.pdf.getPage(n);
+    const vp1 = page.getViewport({ scale: 1 });
+    const rw = (r[2] - r[0]) * vp1.width, rh = (r[3] - r[1]) * vp1.height;
+    const scale = Math.min(4, maxPx / Math.max(rw, rh, 1));
+    const vp = page.getViewport({ scale });
+    const full = h('canvas'); full.width = Math.round(vp.width); full.height = Math.round(vp.height);
+    const fctx = full.getContext('2d'); fctx.fillStyle = '#fff'; fctx.fillRect(0, 0, full.width, full.height);
+    await page.render({ canvasContext: fctx, viewport: vp }).promise;
+    const c = h('canvas'); c.width = Math.max(1, Math.round(rw * scale)); c.height = Math.max(1, Math.round(rh * scale));
+    c.getContext('2d').drawImage(full, -r[0] * full.width, -r[1] * full.height);
+    return c.toDataURL('image/jpeg', 0.9);
+  };
+  RD.pageImage = async (n) => regionImage(n, [0, 0, 1, 1], 1600);
+
+  /* ---------- overlays: highlights, focus box, citations ---------- */
+  const box = (r, cls, extra = {}) => h('div', Object.assign({ class: cls, style: { left: r[0] * 100 + '%', top: r[1] * 100 + '%', width: (r[2] - r[0]) * 100 + '%', height: (r[3] - r[1]) * 100 + '%' } }, extra));
+  function drawOverlays(n) {
+    const p = st.pages[n - 1];
+    if (!p) return;
+    p.ov.innerHTML = '';
+    st.ann.highlights.filter((hl) => hl.page === n).forEach((hl) => {
+      const el = box(hl.rect, 'rd-hl ' + (hl.color || 'yellow'), { title: 'Highlight · tap for options' });
+      el.addEventListener('click', (e) => { e.stopPropagation(); highlightMenu(el, hl); });
+      p.ov.append(el);
+    });
+    (st.cites || []).filter((c) => c.page === n).forEach((c) => c.rects.forEach((r) => p.ov.append(box(r, 'rd-cite' + (c.flash ? ' flash' : '')))));
+    if (st.focus && st.focus.page === n) {
+      if (st.focus.path) {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'rd-lasso'); svg.setAttribute('viewBox', '0 0 100 100'); svg.setAttribute('preserveAspectRatio', 'none');
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', 'M' + st.focus.path.map(([x, y]) => `${x * 100} ${y * 100}`).join('L') + 'Z');
+        svg.append(path); p.ov.append(svg);
+      } else p.ov.append(box(st.focus.rect, 'rd-focus'));
+    }
+  }
+  const redrawAll = () => st && st.pages.forEach((p) => drawOverlays(p.n));
+  function highlightMenu(anchor, hl) {
+    const m = h('div', { class: 'menu' });
+    const it = (icon, label, fn, cls) => { const b = h('button', { class: cls || '', onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); m.append(b); };
+    const colors = h('div', { class: 'rd-colors' });
+    ['yellow', 'green', 'blue', 'pink'].forEach((c) => colors.append(h('button', { class: 'rd-sw ' + c + (hl.color === c ? ' on' : ''), 'aria-label': c, onclick: () => { hl.color = c; saveAnn(); drawOverlays(hl.page); A.closePopovers(); } })));
+    m.append(colors);
+    it('spark', 'Ask the tutor about this', () => ask('ask', hl.page, hl.rect));
+    if (hl.text) it('copy', 'Copy text', () => copyText(hl.text));
+    it('trash', 'Remove highlight', () => { st.ann.highlights = st.ann.highlights.filter((x) => x !== hl); saveAnn(); drawOverlays(hl.page); renderRail(); }, 'danger');
+    A.popover(m, anchor, { side: 'down' });
+  }
+
+  /* ---------- selecting with the Pencil (box or lasso) ---------- */
+  const pageAt = (x, y) => { for (const p of st.pages) { const r = p.el.getBoundingClientRect(); if (y >= r.top && y <= r.bottom && x >= r.left - 20 && x <= r.right + 20) return { p, r }; } return null; };
+  function bindSelect(main) {
+    let cur = null;
+    const fingerSelects = () => st.tool !== 'read' && !S.penSeen;
+    main.addEventListener('touchstart', (e) => {
+      const stylus = [...e.changedTouches].some((t) => t.touchType === 'stylus');
+      if (stylus || fingerSelects()) e.preventDefault(); // keep the Pencil from scrolling
+    }, { passive: false });
+    main.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.rd-hl')) return;
+      const selecting = e.pointerType === 'pen' || e.pointerType === 'mouse' || fingerSelects();
+      if (!selecting || e.button > 0) return;
+      if (e.pointerType === 'pen' && !S.penSeen) { S.penSeen = true; A.saveSettings(); }
+      const hit = pageAt(e.clientX, e.clientY);
+      if (!hit) return;
+      e.preventDefault();
+      clearActions();
+      const fx = (e.clientX - hit.r.left) / hit.r.width, fy = (e.clientY - hit.r.top) / hit.r.height;
+      cur = { p: hit.p, r: hit.r, pts: [[fx, fy]], id: e.pointerId };
+      try { main.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    });
+    main.addEventListener('pointermove', (e) => {
+      if (!cur || e.pointerId !== cur.id) return;
+      e.preventDefault();
+      const list = (e.getCoalescedEvents && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
+      for (const ev of list) cur.pts.push([A.clamp((ev.clientX - cur.r.left) / cur.r.width, 0, 1), A.clamp((ev.clientY - cur.r.top) / cur.r.height, 0, 1)]);
+      const sh = shapeOf(cur.pts);
+      st.focus = Object.assign({ page: cur.p.n }, sh);
+      drawOverlays(cur.p.n);
+    });
+    const up = (e) => {
+      if (!cur || e.pointerId !== cur.id) return;
+      const sh = shapeOf(cur.pts);
+      const n = cur.p.n;
+      cur = null;
+      const wpx = (sh.rect[2] - sh.rect[0]) * st.pages[n - 1].el.clientWidth, hpx = (sh.rect[3] - sh.rect[1]) * st.pages[n - 1].el.clientHeight;
+      if (wpx < 14 || hpx < 10) { st.focus = null; drawOverlays(n); return; }
+      st.focus = Object.assign({ page: n }, sh);
+      drawOverlays(n);
+      if (st.tool === 'highlight') { addHighlight(n, sh.rect); st.focus = null; drawOverlays(n); return; }
+      showActions(n, sh.rect);
+    };
+    main.addEventListener('pointerup', up);
+    main.addEventListener('pointercancel', up);
+  }
+  /* a closed loop is a lasso; otherwise the drag's corners define a box */
+  function shapeOf(pts) {
+    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+    const bb = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+    let L = 0; for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    const w = bb[2] - bb[0], hh = bb[3] - bb[1], big = Math.max(w, hh) || 1;
+    const [sx, sy] = pts[0], [ex, ey] = pts[pts.length - 1];
+    // a loop ends near where it started and travels around its box (works for wide, flat loops around text lines)
+    const closed = pts.length > 10 && Math.hypot(ex - sx, ey - sy) < big * 0.35 && L > (w + hh) * 1.2;
+    if (closed) return { rect: bb, path: pts.filter((_, i) => i % 2 === 0) };
+    return { rect: [Math.min(sx, ex), Math.min(sy, ey), Math.max(sx, ex), Math.max(sy, ey)] };
+  }
+
+  /* ---------- selection actions ---------- */
+  function clearActions() { const a = host && host.querySelector('.rd-actions'); if (a) a.remove(); }
+  function showActions(n, r) {
+    clearActions();
+    const p = st.pages[n - 1], pr = p.el.getBoundingClientRect(), hr = host.getBoundingClientRect();
+    const bar = h('div', { class: 'rd-actions', role: 'toolbar', 'aria-label': 'Selection' });
+    const b = (icon, label, fn, primary) => { const x = h('button', { class: primary ? 'primary' : '', onclick: fn }); x.innerHTML = A.icon(icon); x.append(label); bar.append(x); };
+    b('spark', 'Ask', () => ask('ask', n, r), true);
+    b('book', 'Explain', () => ask('explain', n, r));
+    b('help', 'Hint', () => ask('hint', n, r));
+    b('rename', 'Highlight', () => { addHighlight(n, r); st.focus = null; drawOverlays(n); clearActions(); });
+    b('copy', 'Copy text', async () => { const t = linesIn(await RD.lines(n), r).map((l) => l.text).join('\n'); copyText(t); });
+    bar.append(h('button', { class: 'x', 'aria-label': 'Clear selection', html: A.icon('close'), onclick: () => { st.focus = null; drawOverlays(n); clearActions(); } }));
+    host.append(bar);
+    const bw = bar.offsetWidth, bh = bar.offsetHeight;
+    let x = pr.left + ((r[0] + r[2]) / 2) * pr.width - bw / 2 - hr.left;
+    let y = pr.top + r[1] * pr.height - bh - 12 - hr.top;
+    if (y < 70) y = pr.top + r[3] * pr.height + 12 - hr.top;
+    bar.style.left = A.clamp(x, 8, hr.width - bw - 8) + 'px';
+    bar.style.top = A.clamp(y, 64, hr.height - bh - 60) + 'px';
+  }
+  const copyText = (t) => {
+    if (!t) return A.toast('No text found here. This page may be a scan.');
+    if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => A.toast('Text copied'), () => A.toast('Copy is not allowed here'));
+  };
+  async function addHighlight(n, r) {
+    const text = linesIn(await RD.lines(n), r).map((l) => l.text).join(' ');
+    st.ann.highlights.push({ id: A.uid(), page: n, rect: r, color: 'yellow', text, created: Date.now() });
+    saveAnn(); drawOverlays(n); renderRail();
+    A.toast('Highlighted');
+  }
+  async function ask(kind, n, r) {
+    clearActions();
+    toggleTutor(true);
+    const url = await regionImage(n, r);
+    const text = linesIn(await RD.lines(n), r).map((l) => l.text).join('\n');
+    const att = { kind: 'image', label: `p. ${n} · selection`, url, page: n, rect: r, text };
+    if (kind === 'explain') A.AI.ask('Explain this passage rigorously.', { mode: 'explain', attachments: [att] });
+    else if (kind === 'hint') A.AI.ask('Give me a hint for this. Not the solution.', { mode: 'hint', attachments: [att] });
+    else A.AI.ask('', { send: false, attachments: [att] });
+  }
+
+  /* ---------- tutor context for the reader ---------- */
+  const readerCtx = {
+    kind: 'reader',
+    store: () => st.ann,
+    chats: () => st.ann.chats,
+    save: () => saveAnn(),
+    subject: () => st.meta.subject,
+    emptyTitle: () => 'Ask about this ' + (st.meta.kind === 'sheet' ? 'problem set' : 'book'),
+    emptyText: 'Draw a box or a loop around any passage with the Apple Pencil, then tap Ask. The tutor reads the page with you and highlights the lines it refers to.',
+    tips: ['Explain the main idea of this page', 'What do I need to know before reading this section?', 'Give me a hint for the problem on this page', 'Quiz me on this chapter so far'],
+    placeholder: () => 'Ask about this page or your selection…',
+    attachButtons: () => [{ icon: 'pdf', label: 'This page', fn: async () => A.AI.attach({ kind: 'image', label: `p. ${st.page}`, url: await RD.pageImage(st.page), page: st.page }) }],
+    onRemoveAtt: (a) => { if (st.focus && a.page === st.focus.page) { st.focus = null; drawOverlays(a.page); } },
+    systemExtra: () => `The student is reading "${st.meta.name}" (${st.pdf ? st.pdf.numPages + ' pages' : ''}) in Axiom's reader. Regions they select are attached as images together with the text of the selected lines.`,
+    contextText: async (atts) => {
+      const pages = new Set([st.page]);
+      atts.forEach((a) => a.page && pages.add(a.page));
+      const parts = [`[Reader context: "${st.meta.name}", the student is on page ${st.page} of ${st.pdf.numPages}.]`];
+      for (const n of pages) {
+        const lines = await RD.lines(n);
+        if (!lines.length) { parts.push(`p. ${n}: (no extractable text; this page is probably a scan)`); continue; }
+        let body = '', count = 0;
+        for (const l of lines) { const row = `L${l.id}: ${l.text}\n`; if (body.length + row.length > 7000 || count > 140) { body += '…\n'; break; } body += row; count++; }
+        parts.push(`p. ${n} (text lines):\n${body}`);
+      }
+      for (const a of atts) if (a.page && a.rect) {
+        const sel = linesIn(await RD.lines(a.page), a.rect);
+        if (sel.length) parts.push(`The selected region on p. ${a.page} covers lines L${sel[0].id}–L${sel[sel.length - 1].id}.`);
+      }
+      return parts.join('\n\n');
+    },
+    onCite: async (p, a, b) => {
+      const lines = await RD.lines(p);
+      const sel = lines.filter((l) => l.id >= a && l.id <= b);
+      st.cites = [{ page: p, rects: sel.length ? sel.map((l) => [l.r[0] - 0.004, l.r[1] - 0.003, l.r[2] + 0.004, l.r[3] + 0.003]) : [], flash: true }];
+      goto(p, sel.length ? sel[0].r[1] : 0);
+      drawOverlays(p);
+      setTimeout(() => { if (st && st.cites[0]) { st.cites[0].flash = false; drawOverlays(p); } }, 1600);
+      if (!sel.length) A.toast('Couldn\'t find those lines on this page');
+    },
+    onAttClick: (a) => { if (!a.page) return; st.focus = a.rect ? { page: a.page, rect: a.rect } : null; goto(a.page, a.rect ? a.rect[1] : 0); drawOverlays(a.page); },
+    onAnswer: async (text) => {
+      const re = /\[\[p(\d+):L(\d+)(?:\s*[-–]\s*L?(\d+))?\]\]/g; let m; const by = new Map();
+      while ((m = re.exec(text))) { const p = +m[1]; if (!by.has(p)) by.set(p, []); by.get(p).push([+m[2], +(m[3] || m[2])]); }
+      const cites = [];
+      for (const [p, ranges] of by) { const lines = await RD.lines(p); const rects = []; ranges.forEach(([a, b]) => lines.filter((l) => l.id >= a && l.id <= b).forEach((l) => rects.push([l.r[0] - 0.004, l.r[1] - 0.003, l.r[2] + 0.004, l.r[3] + 0.003]))); cites.push({ page: p, rects }); }
+      if (cites.length) { st.cites = cites; redrawAll(); }
+    },
+  };
+  RD.ctx = readerCtx;
+
+  /* ---------- navigation ---------- */
+  function goto(n, frac = 0, smooth = true) {
+    if (!st) return;
+    n = A.clamp(n, 1, st.pages.length);
+    const p = st.pages[n - 1];
+    st.main.scrollTo({ top: p.el.offsetTop + frac * p.el.offsetHeight - 80, behavior: smooth ? 'smooth' : 'auto' });
+  }
+  RD.goto = goto;
+  function onScroll() {
+    const mid = st.main.scrollTop + st.main.clientHeight * 0.4;
+    let n = 1;
+    for (const p of st.pages) { if (p.el.offsetTop <= mid) n = p.n; else break; }
+    if (n !== st.page) {
+      st.page = n;
+      st.pageLbl.textContent = `${n}`;
+      st.scrub.value = n;
+      clearTimeout(st._sv);
+      st._sv = setTimeout(() => { const d = A.ST.doc(st.meta.id); if (d) { d.lastPage = n; d.lastRead = Date.now(); A.saveSettings(); } }, 600);
+      const th = st.rail && st.rail.querySelector(`.rd-th[data-n="${n}"]`);
+      st.rail && st.rail.querySelectorAll('.rd-th.on').forEach((x) => x.classList.remove('on'));
+      if (th) th.classList.add('on');
+    }
+  }
+
+  /* ---------- side rail: pages, contents, highlights ---------- */
+  function renderRail() {
+    if (!st || !st.rail || st.rail.hidden) return;
+    const rail = st.rail;
+    rail.innerHTML = '';
+    const tabs = h('div', { class: 'seg rd-rail-tabs' });
+    [['pages', 'Pages'], ['toc', 'Contents'], ['hl', 'Highlights']].forEach(([id, l]) => tabs.append(h('button', { class: st.railTab === id ? 'on' : '', onclick: () => { st.railTab = id; renderRail(); } }, l)));
+    const body = h('div', { class: 'rd-rail-body' });
+    rail.append(tabs, body);
+    if (st.railTab === 'pages') {
+      const io = new IntersectionObserver((ents) => ents.forEach(async (en) => {
+        if (!en.isIntersecting || en.target.dataset.done) return;
+        en.target.dataset.done = '1';
+        try {
+          const page = await st.pdf.getPage(+en.target.dataset.n);
+          const vp1 = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: 220 / vp1.width });
+          const c = h('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+          await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+          en.target.querySelector('.rd-th-img').append(c);
+        } catch (e) { /* ignore */ }
+      }), { root: body, rootMargin: '400px 0px' });
+      st.pages.forEach((p) => {
+        const t = h('button', { class: 'rd-th' + (p.n === st.page ? ' on' : ''), dataset: { n: p.n }, onclick: () => goto(p.n, 0, false) }, h('span', { class: 'rd-th-img', style: { aspectRatio: String(1 / p.aspect) } }), h('span', { class: 'rd-th-n num' }, String(p.n)));
+        body.append(t); io.observe(t);
+      });
+      requestAnimationFrame(() => { const on = body.querySelector('.rd-th.on'); if (on) on.scrollIntoView({ block: 'center' }); });
+    } else if (st.railTab === 'toc') {
+      if (!st.outline) {
+        body.append(h('p', { class: 'muted small rd-pad' }, 'Loading contents…'));
+        st.pdf.getOutline().then(async (ol) => { st.outline = ol || []; renderRail(); }).catch(() => { st.outline = []; renderRail(); });
+        return;
+      }
+      if (!st.outline.length) { body.append(h('p', { class: 'muted small rd-pad' }, 'This PDF has no table of contents. Use Pages or search instead.')); return; }
+      const walk = (items, depth) => items.forEach((it) => {
+        const b = h('button', { class: 'rd-toc', style: { paddingLeft: 10 + depth * 14 + 'px' } }, it.title);
+        b.addEventListener('click', async () => {
+          try {
+            let dest = it.dest;
+            if (typeof dest === 'string') dest = await st.pdf.getDestination(dest);
+            if (dest) goto((await st.pdf.getPageIndex(dest[0])) + 1, 0, false);
+          } catch (e) { A.toast('That entry has no page'); }
+        });
+        body.append(b);
+        if (it.items && it.items.length && depth < 3) walk(it.items, depth + 1);
+      });
+      walk(st.outline, 0);
+    } else {
+      const hls = st.ann.highlights.slice().sort((a, b) => a.page - b.page);
+      if (!hls.length) body.append(h('p', { class: 'muted small rd-pad' }, 'Switch to the highlighter in the top bar, or draw a box and tap Highlight. Your highlights collect here.'));
+      hls.forEach((hl) => body.append(h('button', { class: 'rd-hl-item', onclick: () => { goto(hl.page, hl.rect[1]); } }, h('i', { class: 'rd-sw ' + (hl.color || 'yellow') }), h('span', { class: 'grow' }, hl.text || 'Highlighted region'), h('span', { class: 'num muted small' }, 'p. ' + hl.page))));
+    }
+  }
+
+  /* ---------- search ---------- */
+  function openSearch(anchor) {
+    const boxEl = h('div', { class: 'rd-search' });
+    const inp = h('input', { class: 'field', type: 'search', id: 'rd-search-in', placeholder: 'Search in this book', style: { margin: 0 } });
+    const res = h('div', { class: 'rd-search-res' });
+    let token = 0;
+    const run = async () => {
+      const q = inp.value.trim().toLowerCase();
+      const my = ++token;
+      res.innerHTML = '';
+      if (q.length < 2) return;
+      const status = h('p', { class: 'muted small' }, 'Searching…'); res.append(status);
+      let found = 0;
+      for (let n = 1; n <= st.pages.length && my === token; n++) {
+        const lines = await RD.lines(n);
+        for (const l of lines) {
+          const i = l.text.toLowerCase().indexOf(q);
+          if (i < 0) continue;
+          found++;
+          const snip = l.text.slice(Math.max(0, i - 40), i + q.length + 60);
+          res.append(h('button', { class: 'rd-hit', onclick: () => { A.closePopovers(); st.cites = [{ page: n, rects: [[l.r[0] - 0.004, l.r[1] - 0.003, l.r[2] + 0.004, l.r[3] + 0.003]], flash: true }]; goto(n, l.r[1]); drawOverlays(n); } }, h('span', { class: 'num muted small' }, 'p. ' + n), h('span', null, snip)));
+          if (found > 60) break;
+        }
+        if (found > 60) break;
+        if (n % 20 === 0) status.textContent = `Searching… page ${n} of ${st.pages.length}`;
+      }
+      if (my === token) status.textContent = found ? `${found}${found > 60 ? '+' : ''} matches` : 'No matches. Scanned pages have no searchable text.';
+    };
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') run(); });
+    boxEl.append(inp, res);
+    A.popover(boxEl, anchor, { side: 'down' });
+    setTimeout(() => inp.focus(), 50);
+  }
+
+  /* ---------- tutor panel ---------- */
+  function toggleTutor(open = host.querySelector('.rd-tutor').hidden) {
+    const t = host.querySelector('.rd-tutor');
+    t.hidden = !open;
+    host.classList.toggle('with-tutor', open);
+    host.querySelector('#rd-btn-tutor').classList.toggle('on', open);
+    S.readerTutor = open; A.saveSettings();
+    if (open && !t.querySelector('.tutor')) { t.querySelector('.rd-tutor-body').innerHTML = ''; A.AI.mount(t.querySelector('.rd-tutor-body'), readerCtx); }
+    requestAnimationFrame(() => layout());
+  }
+  function toggleRail(open = st.rail.hidden) {
+    st.rail.hidden = !open;
+    host.classList.toggle('with-rail', open);
+    host.querySelector('#rd-btn-rail').classList.toggle('on', open);
+    S.readerRail = open; A.saveSettings();
+    renderRail();
+    requestAnimationFrame(() => layout());
+  }
+  const applyWidth = () => host.style.setProperty('--rdw', Math.round(A.clamp(S.readerTutorW || innerWidth * 0.36, Math.min(320, innerWidth * 0.45), innerWidth * (innerWidth < 1000 ? 0.5 : 0.6))) + 'px');
+
+  /* ---------- open / close ---------- */
+  RD.open = async (meta) => {
+    if (st) RD.close(true);
+    host.innerHTML = '';
+    const token = Math.random();
+    st = { meta, pages: [], zoom: 1, fit: S.readerFit || 'width', tool: 'read', page: meta.lastPage || 1, ann: ann0(), cites: [], focus: null, railTab: 'pages', token };
+    const ib = (icon, title, fn, id) => { const b = h('button', { class: 'ibtn', title, 'aria-label': title, id, html: A.icon(icon) }); b.addEventListener('click', fn); return b; };
+    const subj = meta.subject && A.SU.get(meta.subject);
+    const toolSeg = h('div', { class: 'seg rd-tools' });
+    const setTool = (t) => { st.tool = t; [...toolSeg.children].forEach((b) => b.classList.toggle('on', b.dataset.t === t)); host.dataset.tool = t; };
+    [['read', 'Read', 'b-select'], ['highlight', 'Highlight', 'rename']].forEach(([t, l, ic]) => { const b = h('button', { dataset: { t }, title: t === 'read' ? 'Pencil draws a focus box to ask about' : 'Pencil highlights passages' }); b.innerHTML = A.icon(ic); b.append(l); b.addEventListener('click', () => setTool(t)); toolSeg.append(b); });
+    const themeBtn = ib('eye', 'Reading theme', (e) => {
+      const m = h('div', { class: 'menu' });
+      [['paper', 'Paper'], ['sepia', 'Sepia'], ['night', 'Night']].forEach(([id, l]) => m.append(h('button', { class: (S.readerTheme || 'paper') === id ? 'on' : '', onclick: () => { S.readerTheme = id; A.saveSettings(); host.dataset.theme = id; A.closePopovers(); } }, h('i', { class: 'rd-theme-dot ' + id }), l)));
+      m.append(h('hr'), h('button', { onclick: () => { st.fit = st.fit === 'width' ? 'page' : 'width'; S.readerFit = st.fit; A.saveSettings(); st.zoom = 1; layout(); A.closePopovers(); } }, A.iconEl('scale'), st.fit === 'width' ? 'Fit whole page' : 'Fit page width'));
+      A.popover(m, e.currentTarget, { side: 'down' });
+    });
+    const pageLbl = h('span', { class: 'num rd-page-n' }, String(st.page));
+    const scrub = h('input', { type: 'range', class: 'rd-scrub', id: 'rd-scrub', min: 1, max: 1, value: st.page, 'aria-label': 'Page' });
+    scrub.addEventListener('input', () => { pageLbl.textContent = scrub.value; });
+    scrub.addEventListener('change', () => goto(+scrub.value, 0, false));
+    const total = h('span', { class: 'num muted' }, '');
+    const top = h('header', { class: 'rd-top' },
+      h('div', { class: 'rd-group panel' },
+        ib('chev', 'Back to library', () => { RD.close(); A.emit('go:gallery'); }, 'rd-back'),
+        h('div', { class: 'rd-title' }, h('div', { class: 'rd-title-main' }, meta.name), h('div', { class: 'rd-title-sub' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, subj ? subj.name : (meta.kind === 'sheet' ? 'Problem set' : 'Book'))),
+        h('div', { class: 'sb-sep' }), ib('gallery', 'Pages, contents and highlights', () => toggleRail(), 'rd-btn-rail'), ib('search', 'Search', (e) => openSearch(e.currentTarget))),
+      h('div', { class: 'rd-group panel' }, toolSeg),
+      h('div', { class: 'rd-group panel' },
+        (() => { const b = ib('minus', 'Zoom out', () => { st.zoom = A.clamp(st.zoom / 1.2, 0.5, 3); layout(); }); b.classList.add('rd-zoom'); return b; })(),
+        (() => { const b = ib('plus', 'Zoom in', () => { st.zoom = A.clamp(st.zoom * 1.2, 0.5, 3); layout(); }); b.classList.add('rd-zoom'); return b; })(),
+        themeBtn,
+        ib('rename', 'Work on this page on the canvas', () => { const m = A.ST.doc(meta.id); RD.close(); A.UI.studyDoc(m); }),
+        h('div', { class: 'sb-sep' }),
+        ib('spark', 'Tutor', () => toggleTutor(), 'rd-btn-tutor')));
+    const main = h('main', { class: 'rd-main', tabindex: 0 });
+    const pagesWrap = h('div', { class: 'rd-pages' });
+    main.append(pagesWrap);
+    const rail = h('aside', { class: 'rd-rail', hidden: true });
+    const tutor = h('aside', { class: 'rd-tutor', hidden: true }, h('div', { class: 'rd-grip', title: 'Drag to resize' }), h('div', { class: 'rd-tutor-body' }));
+    const bottom = h('footer', { class: 'rd-bottom panel' }, h('span', { class: 'muted small' }, 'Page'), pageLbl, total, scrub);
+    host.append(top, rail, main, tutor, bottom);
+    host.dataset.theme = S.readerTheme || 'paper';
+    host.style.setProperty('--rd-filter', '');
+    Object.assign(st, { main, rail, pageLbl, scrub });
+    setTool('read');
+    applyWidth();
+    // resize tutor
+    const grip = tutor.querySelector('.rd-grip');
+    grip.addEventListener('pointerdown', (e) => {
+      e.preventDefault(); grip.setPointerCapture(e.pointerId);
+      const mv = (ev) => { S.readerTutorW = Math.round(innerWidth - ev.clientX); applyWidth(); };
+      const upg = () => { grip.removeEventListener('pointermove', mv); grip.removeEventListener('pointerup', upg); A.saveSettings(); layout(); };
+      grip.addEventListener('pointermove', mv); grip.addEventListener('pointerup', upg);
+    });
+    host.hidden = false;
+    // content
+    st.ann = await loadAnn(meta.id);
+    if (meta.type === 'image') {
+      pagesWrap.append(h('p', { class: 'muted rd-pad' }, 'Photos open on the canvas. Use “Work on this page on the canvas”.'));
+      return;
+    }
+    try {
+      await A.ST.pdfLib();
+      st.pdf = await A.ST.loadPdf(meta);
+    } catch (e) {
+      pagesWrap.append(h('p', { class: 'muted rd-pad' }, 'This PDF could not be opened.'));
+      return;
+    }
+    if (!st || st.token !== token) return;
+    const n = st.pdf.numPages;
+    total.textContent = '/ ' + n;
+    scrub.max = n;
+    const p1 = await st.pdf.getPage(1), vp = p1.getViewport({ scale: 1 });
+    for (let i = 1; i <= n; i++) {
+      const ov = h('div', { class: 'rd-ov' });
+      const el = h('div', { class: 'rd-page', dataset: { n: i } }, h('span', { class: 'rd-pg-ph num' }, String(i)), ov);
+      pagesWrap.append(el);
+      st.pages.push({ n: i, el, ov, aspect: vp.height / vp.width, canvas: null, w: 0 });
+    }
+    st.io = new IntersectionObserver((ents) => ents.forEach((en) => { const p = st.pages[+en.target.dataset.n - 1]; if (!p) return; p.visible = en.isIntersecting; if (en.isIntersecting) { renderPage(p); drawOverlays(p.n); } }), { root: main, rootMargin: '1200px 0px' });
+    st.pages.forEach((p) => st.io.observe(p.el));
+    main.addEventListener('scroll', onScroll, { passive: true });
+    bindSelect(main);
+    bindPinch(main, pagesWrap);
+    layout(false);
+    if (S.readerRail) toggleRail(true);
+    if (S.readerTutor) toggleTutor(true);
+    requestAnimationFrame(() => goto(st.page, 0, false));
+    // record reading
+    const d = A.ST.doc(meta.id); if (d) { d.lastRead = Date.now(); d.pages = n; A.saveSettings(); }
+  };
+  function bindPinch(main, inner) {
+    const pts = new Map(); let d0 = 0, z0 = 1, pz = 0;
+    main.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'touch') return; pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 2) { const [a, b] = [...pts.values()]; d0 = Math.hypot(a[0] - b[0], a[1] - b[1]); z0 = st.zoom; } });
+    main.addEventListener('pointermove', (e) => {
+      if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pts.size === 2 && d0) { const [a, b] = [...pts.values()]; pz = A.clamp(z0 * Math.hypot(a[0] - b[0], a[1] - b[1]) / d0, 0.5, 3); inner.style.transformOrigin = 'top center'; inner.style.transform = `scale(${pz / st.zoom})`; }
+    });
+    const end = (e) => { pts.delete(e.pointerId); if (pts.size < 2 && pz) { inner.style.transform = ''; st.zoom = pz; pz = 0; d0 = 0; layout(); } };
+    main.addEventListener('pointerup', end); main.addEventListener('pointercancel', end);
+  }
+  RD.close = (silent) => {
+    if (!st) return;
+    try { st.io && st.io.disconnect(); } catch (e) { /* ignore */ }
+    saveAnn.flush && saveAnn.flush();
+    const d = A.ST.doc(st.meta.id); if (d) { d.lastPage = st.page; d.lastRead = Date.now(); A.saveSettings(); }
+    st = null;
+    host.hidden = true;
+    host.innerHTML = '';
+    void silent;
+  };
+  RD.isOpen = () => !!st;
+  RD.mount = (el) => {
+    host = el;
+    addEventListener('resize', () => { if (st) { applyWidth(); layout(); } });
+    addEventListener('keydown', (e) => {
+      if (!st || /INPUT|TEXTAREA/.test((document.activeElement || {}).tagName || '')) return;
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') { goto(st.page + 1); e.preventDefault(); }
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') { goto(st.page - 1); e.preventDefault(); }
+      if (e.key === 'Escape') { st.focus = null; clearActions(); redrawAll(); }
+    });
+  };
 })();
 
 /* ---- ui-gallery.js ---- */
@@ -6609,23 +7402,25 @@ A.fmtDate = (t) => {
     if (S.majors == null && !onboarded) { onboarded = true; setTimeout(async () => { await A.SU.openSetup(true); render(); }, 300); }
     const metas = (await A.store.listMeta()).filter(Boolean);
     const docs = A.ST.docs();
-    const filter = S.galleryFilter || 'all';
+    let filter = S.galleryFilter || 'home';
+    if (filter === 'docs') filter = 'library';
+    if (!['home', 'all', 'library', 'none'].includes(filter) && !A.SU.get(filter)) filter = 'home';
     host.innerHTML = '';
     const count = (fn) => metas.filter(fn).length;
+    const go = (id) => { S.galleryFilter = id; A.saveSettings(); query = ''; render(); };
 
     // sidebar
-    const side = h('nav', { class: 'g-side', 'aria-label': 'Courses' });
+    const side = h('nav', { class: 'g-side', 'aria-label': 'Sections' });
+    side.append(h('div', { class: 'g-brand' }, h('span', { class: 'wordmark' }, 'Axiom', h('i', null, '.'))));
     const item = (id, label, n, dotColor, icon) => {
-      const b = h('button', { class: 'g-nav' + (filter === id ? ' on' : ''), onclick: () => { S.galleryFilter = id; A.saveSettings(); render(); } },
-        dotColor ? h('i', { class: 'dot', style: { background: dotColor } }) : A.iconEl(icon || 'gallery'), h('span', { class: 'grow' }, label), h('span', { class: 'g-count num' }, String(n)));
-      if (dotColor) b.addEventListener('contextmenu', (e) => { e.preventDefault(); subjectMenu(b, id); });
+      const b = h('button', { class: 'g-nav' + (filter === id ? ' on' : ''), onclick: () => go(id) },
+        dotColor ? h('i', { class: 'dot', style: { background: dotColor } }) : A.iconEl(icon || 'gallery'), h('span', { class: 'grow' }, label), n != null ? h('span', { class: 'g-count num' }, String(n)) : null);
       return b;
     };
-    side.append(item('all', 'All drawings', metas.length, null, 'gallery'), item('docs', 'Documents', docs.length, null, 'book'));
-    const coursesHead = h('div', { class: 'g-side-h' }, h('span', null, 'Courses'), h('button', { class: 'ibtn', title: 'Add a course', 'aria-label': 'Add a course', html: A.icon('plus'), onclick: async () => { const n = await A.dialog({ title: 'New course', input: '', okText: 'Add' }); if (n && A.SU.add(n)) render(); } }));
-    side.append(coursesHead);
+    side.append(item('home', 'Home', null, null, 'spark'), item('all', 'Drawings', metas.length, null, 'gallery'), item('library', 'Library', docs.length, null, 'book'));
+    side.append(h('div', { class: 'g-side-h' }, h('span', null, 'Courses'), h('button', { class: 'ibtn', title: 'Add a course', 'aria-label': 'Add a course', html: A.icon('plus'), onclick: async () => { const n = await A.dialog({ title: 'New course', input: '', okText: 'Add' }); if (n && A.SU.add(n)) render(); } })));
     A.SU.list().forEach((s) => {
-      const b = item(s.id, s.name, count((m) => m.subject === s.id), s.color);
+      const b = item(s.id, s.name, count((m) => m.subject === s.id) + docs.filter((d) => d.subject === s.id).length, s.color);
       const more = h('button', { class: 'g-more', 'aria-label': 'Options for ' + s.name, html: A.icon('more'), onclick: (e) => { e.stopPropagation(); subjectMenu(more, s.id); } });
       b.append(more);
       side.append(b);
@@ -6633,36 +7428,73 @@ A.fmtDate = (t) => {
     if (!A.SU.list().length) side.append(h('button', { class: 'g-nav ghost', onclick: async () => { await A.SU.openSetup(); render(); } }, A.iconEl('plus'), 'Add your courses'));
     const none = count((m) => !m.subject);
     if (A.SU.list().length && none) side.append(item('none', 'No course', none, 'var(--line-strong)'));
+    side.append(h('div', { class: 'grow' }), h('button', { class: 'g-nav ghost', onclick: () => A.UI.openSettings() }, A.iconEl('settings'), 'Settings'));
 
-    // main
     const main = h('main', { class: 'g-main' });
-    const search = h('input', { type: 'search', id: 'g-search', placeholder: filter === 'docs' ? 'Search documents' : 'Search drawings', value: query, 'aria-label': 'Search' });
+    host.append(h('div', { class: 'g-wrap g-layout' }, side, main));
+    const newBtn = () => h('button', { class: 'btn primary', onclick: newDrawing }, A.iconEl('plus'), 'New drawing');
+    const addDocBtn = () => h('button', { class: 'btn', onclick: importDocs }, A.iconEl('import'), 'Add PDF or photo');
+    const sorters = { updated: (a, b) => b.updated - a.updated, created: (a, b) => b.created - a.created, name: (a, b) => a.name.localeCompare(b.name) };
+    const section = (title, actions, content) => h('section', { class: 'g-sec' }, h('div', { class: 'g-sec-h' }, h('h2', null, title), actions || null), content);
+    docs.filter((d) => !d.cover).slice(0, 6).forEach((d) => A.ST.makeCover(d));
+
+    if (filter === 'home') {
+      const hr = new Date().getHours();
+      const greet = hr < 5 ? 'Working late' : hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
+      main.append(h('header', { class: 'home-hero' },
+        h('div', null, h('p', { class: 'home-date' }, new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })),
+          h('h1', { class: 'home-greet' }, greet + '.'),
+          h('p', { class: 'home-sub' }, metas.length || docs.length ? 'Pick up where you left off.' : 'Start a drawing, or add a book or problem set to your library.')),
+        h('div', { class: 'g-actions' }, addDocBtn(), newBtn())));
+      const lastDraw = metas.slice().sort(sorters.updated)[0];
+      const lastBook = docs.filter((d) => d.lastRead).sort((a, b) => b.lastRead - a.lastRead)[0];
+      if (lastDraw || lastBook) {
+        const row = h('div', { class: 'cont-row' });
+        if (lastBook) row.append(continueBook(lastBook));
+        if (lastDraw) row.append(continueDrawing(lastDraw));
+        main.append(section('Continue', null, row));
+      }
+      const recent = metas.slice().sort(sorters.updated).slice(0, 4);
+      if (recent.length) { const g = h('div', { class: 'g-grid' }); recent.forEach((m) => g.append(card(m))); main.append(section('Recent drawings', h('button', { class: 'link-btn', onclick: () => go('all') }, 'See all'), g)); }
+      const shelfDocs = docs.slice().sort((a, b) => (b.lastRead || b.added) - (a.lastRead || a.added)).slice(0, 8);
+      main.append(section('Library', h('button', { class: 'link-btn', onclick: () => go('library') }, shelfDocs.length ? 'See all' : ''), shelfDocs.length ? shelf(shelfDocs) : emptyLibrary()));
+      if (A.SU.list().length) {
+        const cg = h('div', { class: 'course-grid' });
+        A.SU.list().forEach((s) => cg.append(h('button', { class: 'course-tile', style: { '--c': s.color }, onclick: () => go(s.id) },
+          h('span', { class: 'ct-band', style: { background: s.color } }), h('span', { class: 'ct-name' }, s.name),
+          h('span', { class: 'ct-meta num' }, `${count((m) => m.subject === s.id)} drawings · ${docs.filter((d) => d.subject === s.id).length} documents`))));
+        main.append(section('Courses', null, cg));
+      }
+      return;
+    }
+
+    if (filter === 'library') {
+      main.append(h('header', { class: 'page-hero' }, h('div', null, h('h1', { class: 'page-title' }, 'Library'), h('p', { class: 'home-sub' }, 'Books, problem sets and notes. Open one to read with the tutor beside you.')), h('div', { class: 'g-actions' }, addDocBtn())));
+      if (!docs.length) { main.append(emptyLibrary()); return; }
+      const reading = docs.filter((d) => d.lastRead && (d.lastPage || 1) > 1).sort((a, b) => b.lastRead - a.lastRead);
+      if (reading.length) main.append(section('Continue reading', null, shelf(reading.slice(0, 8))));
+      const books = docs.filter((d) => (d.kind || 'book') === 'book').sort((a, b) => a.name.localeCompare(b.name));
+      const sheets = docs.filter((d) => d.kind === 'sheet').sort((a, b) => b.added - a.added);
+      if (books.length) main.append(section('Books', null, shelf(books, true)));
+      if (sheets.length) main.append(section('Problem sets & notes', null, shelf(sheets, true)));
+      return;
+    }
+
+    // drawings (all / course / none)
+    const subj = A.SU.get(filter);
+    const title = filter === 'all' ? 'Drawings' : filter === 'none' ? 'No course' : subj.name;
+    const search = h('input', { type: 'search', id: 'g-search', placeholder: 'Search drawings', value: query, 'aria-label': 'Search' });
     const sort = h('select', { class: 'field', id: 'g-sort', style: { margin: 0, width: 'auto', height: '40px' }, 'aria-label': 'Sort' },
       ...[['updated', 'Last edited'], ['created', 'Date created'], ['name', 'Name']].map(([v, l]) => h('option', { value: v, selected: S.sort === v }, l)));
     sort.addEventListener('change', () => { S.sort = sort.value; A.saveSettings(); render(); });
-    const isDocs = filter === 'docs';
-    const importBtn = h('button', { class: 'btn', onclick: isDocs ? importDocs : importProject }, A.iconEl('import'), isDocs ? 'Add PDF or photo' : 'Import');
-    const newBtn = h('button', { class: 'btn primary', id: 'g-new', onclick: newDrawing }, A.iconEl('plus'), 'New drawing');
-    const title = filter === 'all' ? 'All drawings' : filter === 'docs' ? 'Documents' : filter === 'none' ? 'No course' : A.SU.name(filter);
-    main.append(
-      h('div', { class: 'g-top' },
-        h('div', null, h('h1', { class: 'wordmark' }, 'Axiom', h('i', null, '.')), h('p', { class: 'g-sub' }, 'An infinite canvas for scientists and mathematicians')),
-        h('div', { class: 'g-actions' }, h('div', { class: 'g-search' }, A.iconEl('search'), search), isDocs ? null : sort, importBtn, newBtn)),
-      h('div', { class: 'g-bar' }, h('h2', null, title)),
-      h('div', { class: 'g-grid', id: 'g-grid' }));
-    host.append(h('div', { class: 'g-wrap g-layout' }, side, main));
-
-    const sorters = { updated: (a, b) => b.updated - a.updated, created: (a, b) => b.created - a.created, name: (a, b) => a.name.localeCompare(b.name) };
+    main.append(h('header', { class: 'page-hero' },
+      h('div', null, h('h1', { class: 'page-title' }, subj ? h('i', { class: 'dot big', style: { background: subj.color } }) : null, title)),
+      h('div', { class: 'g-actions' }, h('div', { class: 'g-search' }, A.iconEl('search'), search), sort, h('button', { class: 'btn', onclick: importProject }, A.iconEl('import'), 'Import'), newBtn())));
+    const grid = h('div', { class: 'g-grid', id: 'g-grid' });
+    main.append(grid);
     const renderGrid = () => {
       const q = query.trim().toLowerCase();
-      const grid = A.$('#g-grid', host);
       grid.innerHTML = '';
-      if (isDocs) {
-        const list = docs.filter((d) => !q || d.name.toLowerCase().includes(q)).sort((a, b) => b.added - a.added);
-        list.forEach((d) => grid.append(docCard(d)));
-        if (!list.length) grid.append(h('div', { class: 'empty-note g-empty' }, h('p', null, q ? `No documents match “${query}”.` : 'Add problem sheets, solution sets, lecture notes and textbook chapters as PDFs or photos. Open them in the study panel beside your canvas, and the tutor can read them.'), q ? null : h('button', { class: 'btn primary', onclick: importDocs }, 'Add PDF or photo')));
-        return;
-      }
       let list = metas.filter((m) => filter === 'all' || (filter === 'none' ? !m.subject : m.subject === filter));
       list = list.filter((m) => !q || m.name.toLowerCase().includes(q)).sort(sorters[S.sort] || sorters.updated);
       if (!q) grid.append(h('button', { class: 'card new', onclick: newDrawing, 'aria-label': 'New drawing' }, h('span', { class: 'thumb', html: A.icon('plus') }), h('div', { class: 'meta' }, h('div', { class: 't' }, h('div', { class: 'name' }, 'New drawing'), h('div', { class: 'date' }, 'Choose a paper')))));
@@ -6671,7 +7503,16 @@ A.fmtDate = (t) => {
     };
     search.addEventListener('input', () => { query = search.value; renderGrid(); });
     renderGrid();
+    if (subj) {
+      const cd = docs.filter((d) => d.subject === subj.id);
+      main.append(section('Library for ' + subj.name, addDocBtn(), cd.length ? shelf(cd) : h('p', { class: 'muted small' }, 'No books or problem sets in this course yet.')));
+    }
   }
+  const emptyLibrary = () => h('div', { class: 'lib-empty' },
+    h('div', { class: 'lib-empty-art', html: A.icon('book') }),
+    h('h3', null, 'Your reading room'),
+    h('p', null, 'Add textbooks, problem sets, solutions and lecture notes as PDFs. Read them full screen, draw a box around any passage with the Pencil, and ask the tutor about exactly that part.'),
+    h('button', { class: 'btn primary', onclick: importDocs }, A.iconEl('import'), 'Add PDF or photo'));
 
   function subjectMenu(anchor, id) {
     const s = A.SU.get(id);
@@ -6743,34 +7584,67 @@ A.fmtDate = (t) => {
     A.popover(box, anchor, { side: 'down' });
   }
 
-  /* ---------- documents ---------- */
+  /* ---------- library: covers, shelves ---------- */
   const fmtSize = (n) => (n > 1e6 ? (n / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1e3)) + ' KB');
-  function docCard(d) {
+  const progressOf = (d) => (d.pages > 1 ? Math.min(1, (d.lastPage || 1) / d.pages) : 0);
+  function cover(d) {
     const subj = d.subject && A.SU.get(d.subject);
-    const thumb = h('span', { class: 'thumb doc-thumb' }, A.iconEl(d.type === 'pdf' ? 'pdf' : 'image'), h('span', { class: 'doc-kind' }, d.type === 'pdf' ? 'PDF' : 'Photo'));
-    const open = h('button', { class: 'card-open', style: { display: 'contents' }, onclick: () => studyDoc(d), 'aria-label': 'Study ' + d.name }, thumb);
+    const c = h('span', { class: 'cover' + (d.kind === 'sheet' ? ' sheet' : ''), style: { '--c': subj ? subj.color : '#5b6b86' } });
+    if (d.cover) c.append(h('img', { src: d.cover, alt: '' }));
+    else c.append(h('span', { class: 'cover-ph' }, h('span', { class: 'cover-ph-t' }, d.name)));
+    return c;
+  }
+  function bookCard(d) {
+    const subj = d.subject && A.SU.get(d.subject);
+    const p = progressOf(d);
     const more = h('button', { class: 'ibtn', 'aria-label': 'More for ' + d.name, html: A.icon('more') });
     more.addEventListener('click', (e) => { e.stopPropagation(); docMenu(d, more); });
-    return h('div', { class: 'card' }, open, h('div', { class: 'meta' }, h('div', { class: 't' }, h('div', { class: 'name' }, d.name),
-      h('div', { class: 'date' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, (subj ? subj.name + ' · ' : '') + fmtSize(d.size || 0) + (d.lastPage > 1 ? ' · p. ' + d.lastPage : ''))), more));
+    const el = h('div', { class: 'book', dataset: { id: d.id } },
+      h('button', { class: 'book-open', onclick: () => A.emit('read', d.id), 'aria-label': 'Read ' + d.name }, cover(d)),
+      h('div', { class: 'book-meta' },
+        h('div', { class: 'grow' }, h('div', { class: 'book-title' }, d.name),
+          h('div', { class: 'book-sub' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, d.pages ? (d.lastRead && (d.lastPage || 1) > 1 ? `Page ${d.lastPage} of ${d.pages}` : `${d.pages} page${d.pages === 1 ? '' : 's'}`) : fmtSize(d.size || 0))),
+        more),
+      p > 0 && d.lastRead ? h('div', { class: 'book-progress' }, h('span', { style: { width: Math.round(p * 100) + '%' } })) : null);
+    return el;
+  }
+  const shelf = (list, wrap) => { const s = h('div', { class: 'shelf' + (wrap ? ' wrap' : '') }); list.forEach((d) => s.append(bookCard(d))); return s; };
+  function continueBook(d) {
+    const p = progressOf(d);
+    return h('button', { class: 'cont-card cont-book', onclick: () => A.emit('read', d.id) }, cover(d),
+      h('div', { class: 'cont-info' }, h('span', { class: 'cont-kicker' }, 'Reading'), h('span', { class: 'cont-title' }, d.name),
+        h('span', { class: 'cont-sub num' }, d.pages ? `Page ${d.lastPage || 1} of ${d.pages} · ${Math.round(p * 100)}%` : ''),
+        h('span', { class: 'book-progress wide' }, h('span', { style: { width: Math.round(p * 100) + '%' } })),
+        h('span', { class: 'cont-cta' }, 'Continue reading', A.iconEl('chev'))));
+  }
+  function continueDrawing(m) {
+    const thumb = h('span', { class: 'cont-thumb', style: { background: m.paper || '#fff' } });
+    if (m.thumb) thumb.append(h('img', { src: m.thumb, alt: '' }));
+    return h('button', { class: 'cont-card cont-draw', onclick: () => A.emit('open', m.id) }, thumb,
+      h('div', { class: 'cont-info' }, h('span', { class: 'cont-kicker' }, 'Drawing'), h('span', { class: 'cont-title' }, m.name),
+        h('span', { class: 'cont-sub' }, (A.SU.name(m.subject) ? A.SU.name(m.subject) + ' · ' : '') + 'edited ' + A.fmtDate(m.updated)),
+        h('span', { class: 'cont-cta' }, 'Open', A.iconEl('chev'))));
   }
   function docMenu(d, anchor) {
     const box = h('div', { class: 'menu' });
     const it = (icon, label, fn, cls) => { const b = h('button', { class: cls || '', onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); box.append(b); };
-    it('book', 'Study beside a drawing', () => studyDoc(d));
+    it('book', 'Read', () => A.emit('read', d.id));
+    it('rename', 'Work on it beside a drawing', () => studyDoc(d));
     it('folder', 'Course: ' + (A.SU.name(d.subject) || 'none'), () => A.SU.pickMenu(anchor, d.subject, (sid) => { A.ST.updateDoc(d.id, { subject: sid }); render(); }));
-    it('rename', 'Rename', async () => { const n = await A.dialog({ title: 'Rename document', input: d.name, okText: 'Rename' }); if (n) { A.ST.updateDoc(d.id, { name: n.slice(0, 80) }); render(); } });
+    it('layers', d.kind === 'sheet' ? 'Show under Books' : 'Show under Problem sets', () => { A.ST.updateDoc(d.id, { kind: d.kind === 'sheet' ? 'book' : 'sheet' }); render(); });
+    it('rename', 'Rename', async () => { const n = await A.dialog({ title: 'Rename', input: d.name, okText: 'Rename' }); if (n) { A.ST.updateDoc(d.id, { name: n.slice(0, 80) }); render(); } });
     box.append(h('hr'));
-    it('trash', 'Delete', async () => { if (await A.dialog({ title: `Delete “${d.name}”?`, body: 'The file is removed from Axiom on this device.', okText: 'Delete', danger: true })) { await A.ST.deleteDoc(d.id); render(); } }, 'danger');
+    it('trash', 'Delete', async () => { if (await A.dialog({ title: `Delete “${d.name}”?`, body: 'The file, its highlights and tutor conversations are removed from Axiom on this device.', okText: 'Delete', danger: true })) { await A.ST.deleteDoc(d.id); try { await A.store.deleteFile('ann_' + d.id); } catch (e) { /* none */ } render(); } }, 'danger');
     A.popover(box, anchor, { side: 'down' });
   }
   /* open the document next to the most recent drawing of its course (or a new one) */
   async function studyDoc(d) {
+    if (!d) return;
     const metas = (await A.store.listMeta()).filter(Boolean);
-    let target = metas.filter((m) => (d.subject ? m.subject === d.subject : true)).sort((a, b) => b.updated - a.updated)[0];
-    if (!target || !d.subject) {
+    let target = d.subject ? metas.filter((m) => m.subject === d.subject).sort((a, b) => b.updated - a.updated)[0] : null;
+    if (!target) {
       const r = await UI.newDrawingSheet({ name: 'Notes · ' + d.name.slice(0, 40), subject: d.subject });
-      if (!r) return;
+      if (!r) { if (!A.D.doc && !A.RD.isOpen()) render(); return; }
       const doc = UI.createFromSheet(r);
       await A.store.saveDoc(doc, null);
       target = { id: doc.id };
@@ -6778,10 +7652,11 @@ A.fmtDate = (t) => {
     A.ST.pendingDoc = d.id;
     A.emit('open', target.id);
   }
+  UI.studyDoc = studyDoc;
   async function importDocs() {
     const f = await A.ST.pickFile();
     if (!f) return;
-    const sid = S.galleryFilter && !['all', 'docs', 'none'].includes(S.galleryFilter) ? S.galleryFilter : null;
+    const sid = A.SU.get(S.galleryFilter) ? S.galleryFilter : null;
     await A.ST.importFile(f, sid);
     render();
   }
@@ -6818,7 +7693,12 @@ A.fmtDate = (t) => {
     render();
   };
 
-  UI.mountGallery = (el) => { host = el; A.on('subjects', () => { if (!host.hidden && !D.doc) render(); }); };
+  UI.mountGallery = (el) => {
+    host = el;
+    const rr = () => { if (!host.hidden && !D.doc) render(); };
+    A.on('subjects', rr); A.on('documents', A.debounce(rr, 200));
+    A.on('cover', (id) => { if (host.hidden) return; const d = A.ST.doc(id); host.querySelectorAll(`.book[data-id="${id}"] .cover, .cont-book .cover`).forEach((c) => { if (d && d.cover && !c.querySelector('img')) { c.innerHTML = ''; c.append(h('img', { src: d.cover, alt: '' })); } }); });
+  };
   UI.renderGallery = render;
 })();
 
@@ -6852,6 +7732,8 @@ A.fmtDate = (t) => {
     if (D.doc) { autosave.cancel(); await save(); }
     A.IN.cancelAll();
     D.doc = null;
+    if (A.RD.isOpen()) A.RD.close();
+    A.$('#reader-view').hidden = true;
     canvasView().hidden = true;
     gallery().hidden = false;
     updateChrome();
@@ -6860,6 +7742,8 @@ A.fmtDate = (t) => {
   async function openDoc(id) {
     const raw = await A.store.loadDoc(id);
     if (!raw) { A.toast('That drawing could not be found'); return showGallery(); }
+    if (A.RD.isOpen()) A.RD.close();
+    A.$('#reader-view').hidden = true;
     const doc = D.normalize(raw);
     D.doc = doc;
     D.resetHistory();
@@ -6880,6 +7764,16 @@ A.fmtDate = (t) => {
     R.renderNow(true);
   }
   A.on('go:gallery', showGallery);
+  A.on('read', async (id) => {
+    const meta = A.ST.doc(id);
+    if (!meta) return A.toast('That document could not be found');
+    A.closePopovers();
+    if (D.doc) { autosave.cancel(); await save(); A.IN.cancelAll(); D.doc = null; }
+    canvasView().hidden = true;
+    gallery().hidden = true;
+    updateChrome();
+    A.RD.open(meta);
+  });
   A.on('app:background', () => { if (D.doc) autosave.flush(); });
   A.on('open', openDoc);
 
@@ -6960,6 +7854,8 @@ A.fmtDate = (t) => {
     UI.mountSelection(A.$('#selmenu'), A.$('#selpopup'));
     UI.mountGallery(A.$('#gallery-view'));
     A.ST.mount(A.$('#studypanel'));
+    A.RD.mount(A.$('#reader-view'));
+    if (!S.homeSeen) { S.homeSeen = true; S.galleryFilter = 'home'; A.saveSettings(); }
     A.$('#restore-ui').innerHTML = A.icon('eye');
     A.$('#restore-ui').addEventListener('click', () => A.emit('cmd', 'toggleUI'));
     A.on('selmenu:show', () => {});
