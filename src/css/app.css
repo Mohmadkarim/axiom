@@ -1371,3 +1371,9 @@ h5, .g-sec-h h2, .sub, .nb-fly-h, .pp-h, .bk-up-h { font-size: 11px !important; 
 .sc-books .ck.on { background: var(--accent); box-shadow: none; color: #fff; }
 .sc-books .ck.on svg { opacity: 1; }
 .sc-done { display: flex; justify-content: flex-end; padding: 8px 8px 4px; border-top: 1px solid var(--line); margin-top: 4px; }
+
+/* reader: the Write tools float as their own pill under the bar instead of stretching it */
+#reader-view .rd-group-wrap { position: relative; display: block; }
+#reader-view .rd-inkbar { position: absolute; top: calc(100% + 14px); left: 50%; translate: -50% 0; z-index: 3; display: flex; align-items: center; white-space: nowrap; max-width: calc(100vw - 32px); overflow-x: auto; scrollbar-width: none; box-shadow: var(--float-shadow); }
+#reader-view .rd-inkbar[hidden] { display: none; }
+#reader-view .rd-inkbar::-webkit-scrollbar { display: none; }

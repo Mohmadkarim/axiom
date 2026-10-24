@@ -88,14 +88,11 @@
   /* WebKit can hand the same Pencil samples over twice (overlapping coalesced lists) or slightly out of order;
      replaying them makes the line jump back each frame: doubled tracks on fast strokes and loops at the ends */
   IN.freshFilter = () => {
-    let lastT = -Infinity;
     const seen = [];
     return (t, x, y) => {
-      if (t < lastT - 0.5) return false;
       const k = t + ':' + x + ':' + y;
       if (seen.includes(k)) return false;
       seen.push(k); if (seen.length > 128) seen.shift();
-      if (t > lastT) lastT = t;
       return true;
     };
   };
@@ -1107,8 +1104,6 @@
   });
   window.__axiomPen = (phase, samples, predicted) => {
     if (!samples || !samples.length) return;
-    const rv = A.$('#reader-view');
-    if (rv && !rv.hidden && A.RD && A.RD.nativePen) return A.RD.nativePen(phase, samples, nativeEv);
     if (!D.doc || A.$('#canvas-view').hidden) return;
     const last = samples[samples.length - 1];
     const withLists = (ev, list, pred) => { ev.getCoalescedEvents = () => list.map((s) => nativeEv(s, 'pointermove')); ev.getPredictedEvents = () => (pred || []).map((s) => nativeEv(s, 'pointermove')); return ev; };

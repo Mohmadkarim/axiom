@@ -439,10 +439,7 @@
       const stylus = [...e.changedTouches].some((t) => t.touchType === 'stylus');
       if (stylus || fingerSelects()) e.preventDefault(); // keep the Pencil from scrolling
     }, { passive: false });
-    // in the iPad app the Pencil arrives natively at 240 Hz (see input.js); WebKit's own pen events are then ignored
-    const webPen = (e) => A.IN.nativePen && e.pointerType === 'pen' && !e.__native;
     const down = (e) => {
-      if (webPen(e)) return;
       if (e.target.closest('.rd-hl') && st.tool !== 'write') return;
       const selecting = e.pointerType === 'pen' || e.pointerType === 'mouse' || fingerSelects();
       if (!selecting || e.button > 0) return;
@@ -460,7 +457,7 @@
       try { main.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
     };
     const move = (e) => {
-      if (webPen(e) || !cur || e.pointerId !== cur.id) return;
+      if (!cur || e.pointerId !== cur.id) return;
       e.preventDefault();
       const list = (e.getCoalescedEvents && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
       if (cur.erase) { for (const ev of list) eraseAt(cur.p, (ev.clientX - cur.r.left) / cur.r.width, (ev.clientY - cur.r.top) / cur.r.height); return; }
@@ -484,7 +481,7 @@
       drawOverlays(cur.p.n);
     };
     const up = (e) => {
-      if (webPen(e) || !cur || e.pointerId !== cur.id) return;
+      if (!cur || e.pointerId !== cur.id) return;
       if (cur.erase) { cur = null; return; }
       if (cur.stroke) {
         const s = cur.stroke, p = cur.p;
@@ -509,15 +506,6 @@
     main.addEventListener('pointermove', move);
     main.addEventListener('pointerup', up);
     main.addEventListener('pointercancel', up);
-    RD.nativePen = (phase, samples, mk) => {
-      if (!st || !main.isConnected) return;
-      const ev = (sm, type) => { const e = mk(sm, type); e.target = document.elementFromPoint(e.clientX, e.clientY) || main; return e; };
-      const withList = (e, list) => { e.getCoalescedEvents = () => list.map((sm) => ev(sm, 'pointermove')); return e; };
-      const last = samples[samples.length - 1];
-      if (phase === 'b') { down(ev(samples[0], 'pointerdown')); if (samples.length > 1) move(withList(ev(last, 'pointermove'), samples.slice(1))); return; }
-      move(withList(ev(last, 'pointermove'), samples));
-      if (phase !== 'm') up(ev(last, phase === 'c' ? 'pointercancel' : 'pointerup'));
-    };
   }
   /* a closed loop is a lasso; otherwise the drag's corners define a box */
   function shapeOf(pts) {

@@ -1387,6 +1387,12 @@ h5, .g-sec-h h2, .sub, .nb-fly-h, .pp-h, .bk-up-h { font-size: 11px !important; 
 .sc-books .ck.on { background: var(--accent); box-shadow: none; color: #fff; }
 .sc-books .ck.on svg { opacity: 1; }
 .sc-done { display: flex; justify-content: flex-end; padding: 8px 8px 4px; border-top: 1px solid var(--line); margin-top: 4px; }
+
+/* reader: the Write tools float as their own pill under the bar instead of stretching it */
+#reader-view .rd-group-wrap { position: relative; display: block; }
+#reader-view .rd-inkbar { position: absolute; top: calc(100% + 14px); left: 50%; translate: -50% 0; z-index: 3; display: flex; align-items: center; white-space: nowrap; max-width: calc(100vw - 32px); overflow-x: auto; scrollbar-width: none; box-shadow: var(--float-shadow); }
+#reader-view .rd-inkbar[hidden] { display: none; }
+#reader-view .rd-inkbar::-webkit-scrollbar { display: none; }
 </style>
 </head>
 <body>
@@ -1408,7 +1414,7 @@ h5, .g-sec-h h2, .sub, .nb-fly-h, .pp-h, .bk-up-h { font-size: 11px !important; 
 </div>
 <div id="toasts" aria-live="polite"></div>
 
-<script>window.AXIOM_BUILD = 'mvmxcu4y';
+<script>window.AXIOM_BUILD = 'mvmy0vn0';
 /* ---- core.js ---- */
 /* Axiom core: namespace, math, color, events, DOM helpers */
 'use strict';
@@ -4236,14 +4242,11 @@ A.fmtDate = (t) => {
   /* WebKit can hand the same Pencil samples over twice (overlapping coalesced lists) or slightly out of order;
      replaying them makes the line jump back each frame: doubled tracks on fast strokes and loops at the ends */
   IN.freshFilter = () => {
-    let lastT = -Infinity;
     const seen = [];
     return (t, x, y) => {
-      if (t < lastT - 0.5) return false;
       const k = t + ':' + x + ':' + y;
       if (seen.includes(k)) return false;
       seen.push(k); if (seen.length > 128) seen.shift();
-      if (t > lastT) lastT = t;
       return true;
     };
   };
@@ -5255,8 +5258,6 @@ A.fmtDate = (t) => {
   });
   window.__axiomPen = (phase, samples, predicted) => {
     if (!samples || !samples.length) return;
-    const rv = A.$('#reader-view');
-    if (rv && !rv.hidden && A.RD && A.RD.nativePen) return A.RD.nativePen(phase, samples, nativeEv);
     if (!D.doc || A.$('#canvas-view').hidden) return;
     const last = samples[samples.length - 1];
     const withLists = (ev, list, pred) => { ev.getCoalescedEvents = () => list.map((s) => nativeEv(s, 'pointermove')); ev.getPredictedEvents = () => (pred || []).map((s) => nativeEv(s, 'pointermove')); return ev; };
@@ -9249,10 +9250,7 @@ A.fmtDate = (t) => {
       const stylus = [...e.changedTouches].some((t) => t.touchType === 'stylus');
       if (stylus || fingerSelects()) e.preventDefault(); // keep the Pencil from scrolling
     }, { passive: false });
-    // in the iPad app the Pencil arrives natively at 240 Hz (see input.js); WebKit's own pen events are then ignored
-    const webPen = (e) => A.IN.nativePen && e.pointerType === 'pen' && !e.__native;
     const down = (e) => {
-      if (webPen(e)) return;
       if (e.target.closest('.rd-hl') && st.tool !== 'write') return;
       const selecting = e.pointerType === 'pen' || e.pointerType === 'mouse' || fingerSelects();
       if (!selecting || e.button > 0) return;
@@ -9270,7 +9268,7 @@ A.fmtDate = (t) => {
       try { main.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
     };
     const move = (e) => {
-      if (webPen(e) || !cur || e.pointerId !== cur.id) return;
+      if (!cur || e.pointerId !== cur.id) return;
       e.preventDefault();
       const list = (e.getCoalescedEvents && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
       if (cur.erase) { for (const ev of list) eraseAt(cur.p, (ev.clientX - cur.r.left) / cur.r.width, (ev.clientY - cur.r.top) / cur.r.height); return; }
@@ -9294,7 +9292,7 @@ A.fmtDate = (t) => {
       drawOverlays(cur.p.n);
     };
     const up = (e) => {
-      if (webPen(e) || !cur || e.pointerId !== cur.id) return;
+      if (!cur || e.pointerId !== cur.id) return;
       if (cur.erase) { cur = null; return; }
       if (cur.stroke) {
         const s = cur.stroke, p = cur.p;
@@ -9319,15 +9317,6 @@ A.fmtDate = (t) => {
     main.addEventListener('pointermove', move);
     main.addEventListener('pointerup', up);
     main.addEventListener('pointercancel', up);
-    RD.nativePen = (phase, samples, mk) => {
-      if (!st || !main.isConnected) return;
-      const ev = (sm, type) => { const e = mk(sm, type); e.target = document.elementFromPoint(e.clientX, e.clientY) || main; return e; };
-      const withList = (e, list) => { e.getCoalescedEvents = () => list.map((sm) => ev(sm, 'pointermove')); return e; };
-      const last = samples[samples.length - 1];
-      if (phase === 'b') { down(ev(samples[0], 'pointerdown')); if (samples.length > 1) move(withList(ev(last, 'pointermove'), samples.slice(1))); return; }
-      move(withList(ev(last, 'pointermove'), samples));
-      if (phase !== 'm') up(ev(last, phase === 'c' ? 'pointercancel' : 'pointerup'));
-    };
   }
   /* a closed loop is a lasso; otherwise the drag's corners define a box */
   function shapeOf(pts) {
