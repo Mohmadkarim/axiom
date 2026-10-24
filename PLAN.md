@@ -114,7 +114,9 @@ axiom/
 - **Ask with the Pencil:** drawing a box or a loop selects a passage, then Ask, Explain, Hint, Highlight or Copy text. The tutor gets a high-resolution crop, the selected lines' text and the page's text as numbered lines.
 - **Citations:** the tutor cites lines as [[pN:La-Lb]], rendered as tappable chips that scroll the reader and highlight those lines. Cited lines are also marked when an answer arrives.
 - **Per book:** highlights (4 colors) and tutor conversations are saved for each book. "Work on this page on the canvas" opens the document beside a drawing.
-- **Next:** EPUB support, handwriting directly on PDF pages, and spoken explanations.
+- **EPUB books (built):** paginated like Apple Books, with swipe and arrow page turns, contents, Paper/Sepia/Night themes, text size, and progress by percentage and chapter. Select text to Ask, Explain, Hint, Highlight (saved by CFI) or Copy. The tutor receives the chapter text and the selected passage.
+- **Handwriting on PDF pages (built):** a Write tool with 4 pens, 3 widths, a stroke eraser and undo, stored as page-relative vector strokes. Handwriting is included in the region images sent to the tutor.
+- **Gallery:** the section is now named **Books**, with a Books button on Home and the version and build shown in the sidebar.
 
 ## 5. Stage 2 roadmap: STEM study features (Notability and beyond)
 1. **PDF workspace:** a page view with a thumbnail rail and annotation directly on top. The split view beside your work is done; see 4c.

@@ -47,7 +47,7 @@ writeFileSync(new URL('./dist/artifact.html', import.meta.url), art);
 writeFileSync(new URL('./dist/sw.js', import.meta.url), src('sw.js').replace('__BUILD__', build));
 copyFileSync(new URL('./src/manifest.webmanifest', import.meta.url), new URL('./dist/manifest.webmanifest', import.meta.url));
 mkdirSync(new URL('./dist/vendor/', import.meta.url), { recursive: true });
-for (const f of ['pdf.min.js', 'pdf.worker.min.js']) copyFileSync(new URL('./src/vendor/' + f, import.meta.url), new URL('./dist/vendor/' + f, import.meta.url));
+for (const f of ['pdf.min.js', 'pdf.worker.min.js', 'epub.min.js', 'jszip.min.js']) copyFileSync(new URL('./src/vendor/' + f, import.meta.url), new URL('./dist/vendor/' + f, import.meta.url));
 for (const f of ['icon-192.png', 'icon-512.png', 'apple-touch-icon.png']) {
   const p = new URL('./src/' + f, import.meta.url);
   if (existsSync(p)) copyFileSync(p, new URL('./dist/' + f, import.meta.url));

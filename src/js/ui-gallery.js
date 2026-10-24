@@ -91,7 +91,7 @@
         dotColor ? h('i', { class: 'dot', style: { background: dotColor } }) : A.iconEl(icon || 'gallery'), h('span', { class: 'grow' }, label), n != null ? h('span', { class: 'g-count num' }, String(n)) : null);
       return b;
     };
-    side.append(item('home', 'Home', null, null, 'spark'), item('all', 'Drawings', metas.length, null, 'gallery'), item('library', 'Library', docs.length, null, 'book'));
+    side.append(item('home', 'Home', null, null, 'spark'), item('all', 'Drawings', metas.length, null, 'gallery'), item('library', 'Books', docs.length, null, 'book'));
     side.append(h('div', { class: 'g-side-h' }, h('span', null, 'Courses'), h('button', { class: 'ibtn', title: 'Add a course', 'aria-label': 'Add a course', html: A.icon('plus'), onclick: async () => { const n = await A.dialog({ title: 'New course', input: '', okText: 'Add' }); if (n && A.SU.add(n)) render(); } })));
     A.SU.list().forEach((s) => {
       const b = item(s.id, s.name, count((m) => m.subject === s.id) + docs.filter((d) => d.subject === s.id).length, s.color);
@@ -102,12 +102,12 @@
     if (!A.SU.list().length) side.append(h('button', { class: 'g-nav ghost', onclick: async () => { await A.SU.openSetup(); render(); } }, A.iconEl('plus'), 'Add your courses'));
     const none = count((m) => !m.subject);
     if (A.SU.list().length && none) side.append(item('none', 'No course', none, 'var(--line-strong)'));
-    side.append(h('div', { class: 'grow' }), h('button', { class: 'g-nav ghost', onclick: () => A.UI.openSettings() }, A.iconEl('settings'), 'Settings'));
+    side.append(h('div', { class: 'grow' }), h('button', { class: 'g-nav ghost', onclick: () => A.UI.openSettings() }, A.iconEl('settings'), 'Settings'), h('div', { class: 'g-ver num' }, `Axiom ${A.VERSION} · build ${window.AXIOM_BUILD || 'dev'}`));
 
     const main = h('main', { class: 'g-main' });
     host.append(h('div', { class: 'g-wrap g-layout' }, side, main));
     const newBtn = () => h('button', { class: 'btn primary', onclick: newDrawing }, A.iconEl('plus'), 'New drawing');
-    const addDocBtn = () => h('button', { class: 'btn', onclick: importDocs }, A.iconEl('import'), 'Add PDF or photo');
+    const addDocBtn = () => h('button', { class: 'btn', onclick: importDocs }, A.iconEl('import'), 'Add book or PDF');
     const sorters = { updated: (a, b) => b.updated - a.updated, created: (a, b) => b.created - a.created, name: (a, b) => a.name.localeCompare(b.name) };
     const section = (title, actions, content) => h('section', { class: 'g-sec' }, h('div', { class: 'g-sec-h' }, h('h2', null, title), actions || null), content);
     docs.filter((d) => !d.cover).slice(0, 6).forEach((d) => A.ST.makeCover(d));
@@ -119,7 +119,7 @@
         h('div', null, h('p', { class: 'home-date' }, new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })),
           h('h1', { class: 'home-greet' }, greet + '.'),
           h('p', { class: 'home-sub' }, metas.length || docs.length ? 'Pick up where you left off.' : 'Start a drawing, or add a book or problem set to your library.')),
-        h('div', { class: 'g-actions' }, addDocBtn(), newBtn())));
+        h('div', { class: 'g-actions' }, h('button', { class: 'btn', onclick: () => go('library') }, A.iconEl('book'), 'Books'), addDocBtn(), newBtn())));
       const lastDraw = metas.slice().sort(sorters.updated)[0];
       const lastBook = docs.filter((d) => d.lastRead).sort((a, b) => b.lastRead - a.lastRead)[0];
       if (lastDraw || lastBook) {
@@ -131,7 +131,7 @@
       const recent = metas.slice().sort(sorters.updated).slice(0, 4);
       if (recent.length) { const g = h('div', { class: 'g-grid' }); recent.forEach((m) => g.append(card(m))); main.append(section('Recent drawings', h('button', { class: 'link-btn', onclick: () => go('all') }, 'See all'), g)); }
       const shelfDocs = docs.slice().sort((a, b) => (b.lastRead || b.added) - (a.lastRead || a.added)).slice(0, 8);
-      main.append(section('Library', h('button', { class: 'link-btn', onclick: () => go('library') }, shelfDocs.length ? 'See all' : ''), shelfDocs.length ? shelf(shelfDocs) : emptyLibrary()));
+      main.append(section('Books', h('button', { class: 'link-btn', onclick: () => go('library') }, shelfDocs.length ? 'Open Books' : ''), shelfDocs.length ? shelf(shelfDocs) : emptyLibrary()));
       if (A.SU.list().length) {
         const cg = h('div', { class: 'course-grid' });
         A.SU.list().forEach((s) => cg.append(h('button', { class: 'course-tile', style: { '--c': s.color }, onclick: () => go(s.id) },
@@ -143,9 +143,9 @@
     }
 
     if (filter === 'library') {
-      main.append(h('header', { class: 'page-hero' }, h('div', null, h('h1', { class: 'page-title' }, 'Library'), h('p', { class: 'home-sub' }, 'Books, problem sets and notes. Open one to read with the tutor beside you.')), h('div', { class: 'g-actions' }, addDocBtn())));
+      main.append(h('header', { class: 'page-hero' }, h('div', null, h('h1', { class: 'page-title' }, 'Books'), h('p', { class: 'home-sub' }, 'Textbooks, problem sets and notes (PDF or EPUB). Open one to read with the tutor beside you.')), h('div', { class: 'g-actions' }, addDocBtn())));
       if (!docs.length) { main.append(emptyLibrary()); return; }
-      const reading = docs.filter((d) => d.lastRead && (d.lastPage || 1) > 1).sort((a, b) => b.lastRead - a.lastRead);
+      const reading = docs.filter((d) => d.lastRead && ((d.lastPage || 1) > 1 || d.progress > 0.01)).sort((a, b) => b.lastRead - a.lastRead);
       if (reading.length) main.append(section('Continue reading', null, shelf(reading.slice(0, 8))));
       const books = docs.filter((d) => (d.kind || 'book') === 'book').sort((a, b) => a.name.localeCompare(b.name));
       const sheets = docs.filter((d) => d.kind === 'sheet').sort((a, b) => b.added - a.added);
@@ -185,8 +185,8 @@
   const emptyLibrary = () => h('div', { class: 'lib-empty' },
     h('div', { class: 'lib-empty-art', html: A.icon('book') }),
     h('h3', null, 'Your reading room'),
-    h('p', null, 'Add textbooks, problem sets, solutions and lecture notes as PDFs. Read them full screen, draw a box around any passage with the Pencil, and ask the tutor about exactly that part.'),
-    h('button', { class: 'btn primary', onclick: importDocs }, A.iconEl('import'), 'Add PDF or photo'));
+    h('p', null, 'Add textbooks (PDF or EPUB), problem sets, solutions and lecture notes. Read them full screen, circle any passage with the Pencil, and ask the tutor about exactly that part. From Apple Books: Share › Save to Files, then add it here.'),
+    h('button', { class: 'btn primary', onclick: importDocs }, A.iconEl('import'), 'Add book or PDF'));
 
   function subjectMenu(anchor, id) {
     const s = A.SU.get(id);
@@ -260,7 +260,7 @@
 
   /* ---------- library: covers, shelves ---------- */
   const fmtSize = (n) => (n > 1e6 ? (n / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1e3)) + ' KB');
-  const progressOf = (d) => (d.pages > 1 ? Math.min(1, (d.lastPage || 1) / d.pages) : 0);
+  const progressOf = (d) => (d.type === 'epub' ? d.progress || 0 : d.pages > 1 ? Math.min(1, (d.lastPage || 1) / d.pages) : 0);
   function cover(d) {
     const subj = d.subject && A.SU.get(d.subject);
     const c = h('span', { class: 'cover' + (d.kind === 'sheet' ? ' sheet' : ''), style: { '--c': subj ? subj.color : '#5b6b86' } });
@@ -277,7 +277,7 @@
       h('button', { class: 'book-open', onclick: () => A.emit('read', d.id), 'aria-label': 'Read ' + d.name }, cover(d)),
       h('div', { class: 'book-meta' },
         h('div', { class: 'grow' }, h('div', { class: 'book-title' }, d.name),
-          h('div', { class: 'book-sub' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, d.pages ? (d.lastRead && (d.lastPage || 1) > 1 ? `Page ${d.lastPage} of ${d.pages}` : `${d.pages} page${d.pages === 1 ? '' : 's'}`) : fmtSize(d.size || 0))),
+          h('div', { class: 'book-sub' }, subj ? h('i', { class: 'dot', style: { background: subj.color } }) : null, d.type === 'epub' ? (d.progress ? `${Math.round(d.progress * 100)}% read` : (d.author || 'EPUB')) : d.pages ? (d.lastRead && (d.lastPage || 1) > 1 ? `Page ${d.lastPage} of ${d.pages}` : `${d.pages} page${d.pages === 1 ? '' : 's'}`) : fmtSize(d.size || 0))),
         more),
       p > 0 && d.lastRead ? h('div', { class: 'book-progress' }, h('span', { style: { width: Math.round(p * 100) + '%' } })) : null);
     return el;
@@ -287,7 +287,7 @@
     const p = progressOf(d);
     return h('button', { class: 'cont-card cont-book', onclick: () => A.emit('read', d.id) }, cover(d),
       h('div', { class: 'cont-info' }, h('span', { class: 'cont-kicker' }, 'Reading'), h('span', { class: 'cont-title' }, d.name),
-        h('span', { class: 'cont-sub num' }, d.pages ? `Page ${d.lastPage || 1} of ${d.pages} · ${Math.round(p * 100)}%` : ''),
+        h('span', { class: 'cont-sub num' }, d.type === 'epub' ? `${Math.round(p * 100)}% read` : d.pages ? `Page ${d.lastPage || 1} of ${d.pages} · ${Math.round(p * 100)}%` : ''),
         h('span', { class: 'book-progress wide' }, h('span', { style: { width: Math.round(p * 100) + '%' } })),
         h('span', { class: 'cont-cta' }, 'Continue reading', A.iconEl('chev'))));
   }

@@ -206,7 +206,7 @@
     if (!row) return;
     row.innerHTML = '';
     AI.pending.forEach((a) => {
-      row.append(h('span', { class: 'att-chip' }, a.url ? h('img', { src: a.url, alt: '' }) : A.iconEl('pdf'), h('span', { class: 'att-l' }, a.label),
+      row.append(h('span', { class: 'att-chip' }, a.url ? h('img', { src: a.url, alt: '' }) : A.iconEl(a.kind === 'text' ? 'book' : 'pdf'), h('span', { class: 'att-l' }, a.label),
         h('button', { class: 'chip-x', 'aria-label': 'Remove ' + a.label, html: A.icon('close'), onclick: () => { AI.pending = AI.pending.filter((x) => x !== a); if (ctx.onRemoveAtt) ctx.onRemoveAtt(a); drawChips(); } })));
     });
     const btns = (ctx.attachButtons ? ctx.attachButtons() : []).concat([{ icon: 'import', label: 'Photo', fn: async () => {
@@ -219,7 +219,7 @@
   };
   const msgEl = (m) => {
     if (m.role === 'user') {
-      const atts = (m.att || []).map((a) => (a.url ? h('img', { class: 'msg-img' + (a.page ? ' linked' : ''), src: a.url, alt: a.label, title: a.label, dataset: { att: a.id } }) : h('span', { class: 'att-chip small' }, A.iconEl('pdf'), a.label)));
+      const atts = (m.att || []).map((a) => (a.url ? h('img', { class: 'msg-img' + (a.page ? ' linked' : ''), src: a.url, alt: a.label, title: a.label, dataset: { att: a.id } }) : a.kind === 'text' ? h('blockquote', { class: 'msg-quote' }, a.text.slice(0, 280) + (a.text.length > 280 ? '…' : '')) : h('span', { class: 'att-chip small' }, A.iconEl('pdf'), a.label)));
       return h('div', { class: 'msg user' }, atts.length ? h('div', { class: 'msg-atts' }, ...atts) : null, m.text ? h('div', { class: 'bubble' }, m.text) : null);
     }
     const body = h('div', { class: 'md' });
@@ -282,6 +282,8 @@
       if (a.kind === 'image' && a.url) {
         if (keepImages.has(a.id)) blocks.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: a.url.split(',')[1] } });
         else blocks.push({ type: 'text', text: `[Earlier image omitted: ${a.label}]` });
+      } else if (a.kind === 'text' && a.text) {
+        blocks.push({ type: 'text', text: `Selected passage:\n"""\n${a.text.slice(0, 6000)}\n"""` });
       } else if (a.kind === 'pdf') {
         const b64 = a.b64 || sessionPdf.get(a.id);
         if (b64) blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 }, title: a.label });
@@ -316,7 +318,7 @@
     att.forEach((a) => { a.id = a.id || A.uid(); if (a.kind === 'pdf' && a.b64) sessionPdf.set(a.id, a.b64); });
     AI.pending = [];
     const extra = ctx.contextText ? await ctx.contextText(att) : '';
-    const um = { role: 'user', text, att: att.map((a) => ({ id: a.id, kind: a.kind, label: a.label, url: a.url, page: a.page, rect: a.rect })), ctx: extra || undefined, t: Date.now() };
+    const um = { role: 'user', text, att: att.map((a) => ({ id: a.id, kind: a.kind, label: a.label, url: a.url, page: a.page, rect: a.rect, text: a.kind === 'text' ? a.text : undefined, cfi: a.cfi })), ctx: extra || undefined, t: Date.now() };
     c.msgs.push(um);
     if (c.title === 'New conversation') c.title = (text || att[0].label).slice(0, 48);
     const bm = { role: 'assistant', text: '', t: Date.now() };

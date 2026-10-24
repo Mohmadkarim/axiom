@@ -21,6 +21,12 @@
     }
     return window.pdfjsLib;
   };
+  ST.epubLib = async () => {
+    if (window.ePub) return window.ePub;
+    try { if (!window.JSZip) await loadScript('vendor/jszip.min.js'); await loadScript('vendor/epub.min.js'); }
+    catch (e) { if (!window.JSZip) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'); await loadScript('https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js'); }
+    return window.ePub;
+  };
   ST.loadPdf = async (meta) => {
     if (pdfCache.has(meta.id)) return pdfCache.get(meta.id);
     const lib = await ST.pdfLib();
@@ -47,12 +53,13 @@
   ST.updateDoc = (id, patch) => { const d = ST.doc(id); if (d) { Object.assign(d, patch); A.saveSettings(); } };
   ST.importFile = async (file, subject) => {
     const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+    const isEpub = file.type === 'application/epub+zip' || /\.epub$/i.test(file.name);
     const isImg = file.type.startsWith('image/');
-    if (!isPdf && !isImg) { A.toast('Choose a PDF or an image'); return null; }
+    if (!isPdf && !isImg && !isEpub) { A.toast('Choose a PDF, an EPUB book or an image'); return null; }
     const id = A.uid();
     A.toast('Adding ' + file.name + '…', 1500);
     await A.store.saveFile('doc_' + id, file);
-    const meta = { id, name: file.name.replace(/\.(pdf|png|jpe?g|heic|webp)$/i, '').slice(0, 80) || 'Document', type: isPdf ? 'pdf' : 'image', mime: file.type || (isPdf ? 'application/pdf' : 'image/jpeg'), subject: subject ?? (D.doc && D.doc.subject) ?? null, size: file.size, added: Date.now(), lastPage: 1 };
+    const meta = { id, name: file.name.replace(/\.(pdf|epub|png|jpe?g|heic|webp)$/i, '').slice(0, 80) || 'Document', type: isPdf ? 'pdf' : isEpub ? 'epub' : 'image', kind: isEpub ? 'book' : undefined, mime: file.type || (isPdf ? 'application/pdf' : isEpub ? 'application/epub+zip' : 'image/jpeg'), subject: subject ?? (D.doc && D.doc.subject) ?? null, size: file.size, added: Date.now(), lastPage: 1 };
     S.documents = ST.docs().concat([meta]);
     A.saveSettings();
     A.emit('documents');
@@ -73,6 +80,20 @@
         const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
         await page.render({ canvasContext: ctx, viewport: vp }).promise;
         ST.updateDoc(meta.id, { cover: c.toDataURL('image/jpeg', 0.8), pages: pdf.numPages, kind: meta.kind || (pdf.numPages >= 30 ? 'book' : 'sheet') });
+      } else if (meta.type === 'epub') {
+        const ePub = await ST.epubLib();
+        const blob = await A.store.loadFile('doc_' + meta.id, 'application/epub+zip');
+        const book = ePub(await blob.arrayBuffer());
+        const md = await book.loaded.metadata.catch(() => null);
+        let cover = null;
+        try { const url = await book.coverUrl(); if (url) cover = await blobToJpeg(await (await fetch(url)).blob(), 360); } catch (e) { /* no cover image */ }
+        const patch = { kind: 'book', pages: null };
+        if (cover) patch.cover = cover;
+        if (md && md.title && /[_.-]|^\w+$/.test(meta.name)) patch.name = md.title.slice(0, 80);
+        if (md && md.creator) patch.author = String(md.creator).slice(0, 60);
+        ST.updateDoc(meta.id, patch);
+        Promise.resolve(book.ready).catch(() => {}).then(() => { try { book.destroy(); } catch (e) { /* ignore */ } });
+        if (!cover) { coverBusy.delete(meta.id); A.emit('cover', meta.id); return; }
       } else {
         const blob = await A.store.loadFile('doc_' + meta.id, meta.mime);
         ST.updateDoc(meta.id, { cover: await blobToJpeg(blob, 360), pages: 1, kind: meta.kind || 'sheet' });
@@ -87,7 +108,7 @@
     pdfCache.delete(id); views.delete(id);
     A.emit('documents');
   };
-  ST.pickFile = (accept = 'application/pdf,.pdf,image/*') => new Promise((res) => {
+  ST.pickFile = (accept = 'application/pdf,.pdf,application/epub+zip,.epub,image/*') => new Promise((res) => {
     const inp = h('input', { type: 'file', accept, style: { display: 'none' } });
     inp.addEventListener('change', () => { res(inp.files && inp.files[0]); inp.remove(); });
     document.body.append(inp); inp.click();
@@ -225,6 +246,10 @@
         ib('plus', 'Zoom in', () => this.setZoom(this.zoom * 1.25)),
         ib('spark', 'Ask the tutor about this page', () => this.askTutor()),
         ib('more', 'More', (e) => this.more(e.currentTarget)));
+      if (m.type === 'epub') {
+        this.inner.append(h('div', { class: 'dv-epub-note' }, h('p', { class: 'muted' }, 'EPUB books open in the reader, with the tutor beside the text.'), h('button', { class: 'btn primary', onclick: () => A.emit('read', m.id) }, 'Open in the reader')));
+        return;
+      }
       if (m.type === 'image') {
         const blob = await A.store.loadFile('doc_' + m.id, m.mime || 'image/jpeg');
         this.imgUrl = blob ? URL.createObjectURL(blob) : '';

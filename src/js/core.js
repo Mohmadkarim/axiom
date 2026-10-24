@@ -2,7 +2,7 @@
 'use strict';
 const A = (window.A = {});
 
-A.VERSION = '0.1.0';
+A.VERSION = '0.4';
 A.uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-5);
 A.clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 A.lerp = (a, b, t) => a + (b - a) * t;
