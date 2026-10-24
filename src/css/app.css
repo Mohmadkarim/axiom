@@ -1058,3 +1058,4 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
   .nb-tl .nb-title { display: none; }
   .nb-tr .sb-sep, .nb-tr .ibtn[aria-label="Redo"] { display: none; }
 }
+.rd-index-status { margin: 10px 12px 14px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }

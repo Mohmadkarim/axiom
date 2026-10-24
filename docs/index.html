@@ -1074,6 +1074,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
   .nb-tl .nb-title { display: none; }
   .nb-tr .sb-sep, .nb-tr .ibtn[aria-label="Redo"] { display: none; }
 }
+.rd-index-status { margin: 10px 12px 14px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -1095,7 +1096,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
 </div>
 <div id="toasts" aria-live="polite"></div>
 
-<script>window.AXIOM_BUILD = 'mvmsne16';
+<script>window.AXIOM_BUILD = 'mvmsyxrz';
 /* ---- core.js ---- */
 /* Axiom core: namespace, math, color, events, DOM helpers */
 'use strict';
@@ -8161,7 +8162,7 @@ A.fmtDate = (t) => {
         for (const it of r.items) { if (last && it.x - (last.x + last.w) > it.h * 0.25 && !/\s$/.test(text)) text += ' '; text += it.s; last = it; }
         const x0 = Math.min(...r.items.map((t) => t.x)), x1 = Math.max(...r.items.map((t) => t.x + t.w));
         const y0 = Math.min(...r.items.map((t) => t.y)), y1 = Math.max(...r.items.map((t) => t.y + t.h));
-        return { id: i + 1, text: text.replace(/\s+/g, ' ').trim(), r: [x0 / vp.width, y0 / vp.height, x1 / vp.width, y1 / vp.height] };
+        return { id: i + 1, text: text.replace(/\s+/g, ' ').trim(), fs: r.h, r: [x0 / vp.width, y0 / vp.height, x1 / vp.width, y1 / vp.height] };
       }).filter((l) => l.text);
       lines.forEach((l, i) => (l.id = i + 1));
     } catch (e) { lines = []; }
@@ -8169,6 +8170,135 @@ A.fmtDate = (t) => {
     return lines;
   };
   const linesIn = (lines, r) => lines.filter((l) => { const cx = (l.r[0] + l.r[2]) / 2, cy = (l.r[1] + l.r[3]) / 2; return cx >= r[0] && cx <= r[2] && cy >= r[1] && cy <= r[3]; });
+
+  /* ---------- book index: Axiom reads the whole book once, finds its structure and every stated result ----------
+     Works without a table of contents, running headers or printed page numbers. Cached per book in idx_<docId>. */
+  const IDX_V = 3;
+  const RESULT_RE = /^(Definition|Theorem|Lemma|Corollary|Proposition|Axiom|Postulate|Law|Principle|Claim|Example|Exercise|Remark)s?\s*((?:[0-9]+[.\-])*[0-9]+[a-z]?)?\s*[.:]?\s*(\([^)]{1,60}\))?\s*[.:]?/;
+  const KEEP_KINDS = new Set(['Definition', 'Theorem', 'Lemma', 'Corollary', 'Proposition', 'Axiom', 'Postulate', 'Law', 'Principle', 'Claim']);
+  const headingOf = (l, body) => {
+    const t = l.text.trim();
+    if (t.length < 3 || t.length > 90) return null;
+    let m;
+    if ((m = t.match(/^(chapter|part|lecture|unit)\s+([0-9]+|[IVXLC]+)\b[.:]?\s*(.*)$/i))) return { level: 0, title: t };
+    if ((m = t.match(/^(§|sec\.?|section)\s*\d+(\.\d+)*\.?\s+\S/i))) return { level: 1, title: t };
+    const big = l.fs >= body * 1.18;
+    if ((m = t.match(/^(\d+(\.\d+){0,2})\.?\s+([A-Z][^]{2,80})$/)) && big && !/[.;,]$/.test(t)) return { level: (m[1].match(/\./g) || []).length ? 1 : 0, title: t };
+    const words = t.split(/\s+/).filter((w) => /[A-Za-z]{2}/.test(w)).length;
+    if (l.fs >= body * 1.25 && words >= 1 && /[A-Za-z]{3}/.test(t) && !/[.;,=]$/.test(t) && !/^\d+$/.test(t) && !RESULT_RE.test(t)) return { level: l.fs >= body * 1.7 ? 0 : 1, title: t };
+    return null;
+  };
+  const normHead = (t) => t.toLowerCase().replace(/[0-9ivxlc]+$/i, '').replace(/^[0-9ivxlc]+/i, '').replace(/\d+/g, '#').replace(/\s+/g, ' ').trim();
+  RD.index = null;
+  let indexing = null;
+  RD.buildIndex = async () => {
+    if (!st || !st.pdf) return null;
+    const id = st.meta.id, token = st.token, N = st.pdf.numPages;
+    if (RD.index && RD.index.id === id && RD.index.done >= N) return RD.index;
+    if (indexing && indexing.id === id) return indexing.p;
+    const run = async () => {
+      let idx = null;
+      try { const b = await A.store.loadFile('idx_' + id, 'application/json'); if (b) idx = JSON.parse(await b.text()); } catch (e) { /* none yet */ }
+      if (!idx || idx.v !== IDX_V || idx.pages !== N) idx = { v: IDX_V, id, pages: N, done: 0, labels: null, body: 0, raw: [], heads: [], results: [], scans: [], tops: {} };
+      idx.id = id;
+      RD.index = idx;
+      if (idx.done >= N) return idx;
+      try { const labels = await st.pdf.getPageLabels(); if (labels && labels.some((x, i) => x && x !== String(i + 1))) idx.labels = labels; } catch (e) { /* no labels */ }
+      const sizes = [];
+      for (let n = idx.done + 1; n <= N; n++) {
+        if (!st || st.token !== token) return idx; // book closed
+        const lines = await RD.lines(n);
+        if (!lines.length) { idx.scans.push(n); idx.done = n; continue; }
+        lines.forEach((l) => sizes.push(l.fs));
+        if (!idx.body && sizes.length > 400) { const ss = sizes.slice().sort((a, b) => a - b); idx.body = ss[Math.floor(ss.length / 2)]; }
+        const body = idx.body || (() => { const ss = sizes.slice().sort((a, b) => a - b); return ss[Math.floor(ss.length / 2)] || 10; })();
+        // the first and last line of each page are candidates for running headers / footers
+        const edge = [lines[0], lines[lines.length - 1]].filter(Boolean).map((l) => normHead(l.text)).filter((x) => x.length > 2);
+        idx.tops[n] = (lines[0] || {}).text ? lines[0].text.slice(0, 100) : '';
+        edge.forEach((e) => { idx.raw.push({ n, edge: e }); });
+        for (let i = 0; i < lines.length; i++) {
+          const l = lines[i];
+          const hd = i < lines.length * 0.6 ? headingOf(l, body) : null;
+          if (hd) idx.heads.push({ page: n, level: hd.level, title: hd.title, norm: normHead(hd.title) });
+          const m = l.text.match(RESULT_RE);
+          if (m && (i === 0 || !RESULT_RE.test(lines[i - 1].text) || true)) {
+            const kind = m[1];
+            if (!KEEP_KINDS.has(kind) && kind !== 'Example' && kind !== 'Exercise') continue;
+            let text = l.text;
+            for (let j = i + 1; j < lines.length && j < i + 9 && text.length < 520; j++) {
+              const t = lines[j].text;
+              if (RESULT_RE.test(t) || /^proof\b/i.test(t) || headingOf(lines[j], body)) break;
+              text += ' ' + t;
+            }
+            idx.results.push({ page: n, kind, num: m[2] || '', name: m[3] || '', text: text.slice(0, 560) });
+          }
+        }
+        idx.done = n;
+        if (n % 40 === 0) { A.emit('index:progress', idx); await saveIndex(idx); }
+        if (n % 4 === 0) await new Promise((r) => setTimeout(r, 0)); // stay responsive
+      }
+      // drop running headers that were mistaken for headings
+      const freq = new Map();
+      idx.raw.forEach((r) => freq.set(r.edge, (freq.get(r.edge) || 0) + 1));
+      const running = new Set([...freq].filter(([, c]) => c >= Math.max(4, N * 0.04)).map(([k]) => k));
+      idx.heads = idx.heads.filter((hd, i, arr) => !running.has(hd.norm) && !(i && arr[i - 1].norm === hd.norm && arr[i - 1].page >= hd.page - 1));
+      idx.running = [...running].slice(0, 40);
+      idx.raw = [];
+      await saveIndex(idx);
+      A.emit('index:progress', idx);
+      return idx;
+    };
+    indexing = { id, p: run().finally(() => { indexing = null; }) };
+    return indexing.p;
+  };
+  const saveIndex = (idx) => A.store.saveFile('idx_' + idx.id, new Blob([JSON.stringify(idx)], { type: 'application/json' })).catch(() => {});
+  const resultLabel = (r) => `${r.kind}${r.num ? ' ' + r.num : ''}${r.name ? ' ' + r.name : ''}`;
+  /* structure for a page: from the outline when the PDF has one, otherwise from detected headings */
+  RD.trailOf = async (n) => {
+    const map = await RD.sectionMap();
+    const trail = [];
+    const src = map.length ? map : ((RD.index && RD.index.heads) || []).map((x) => ({ page: x.page, depth: x.level, title: x.title }));
+    for (const e of src) { if (e.page > n) break; trail[e.depth] = e.title; trail.length = e.depth + 1; }
+    return { trail: trail.filter(Boolean), from: map.length ? 'contents' : src.length ? 'headings' : '' };
+  };
+  /* what the book has covered up to page n, sized to a character budget */
+  RD.coveredSoFar = async (n, budget = 22000, focusText = '') => {
+    const idx = RD.index;
+    if (!idx || !idx.done) return '';
+    const map = await RD.sectionMap();
+    const heads = map.length ? map.map((x) => ({ page: x.page, level: x.depth, title: x.title })) : idx.heads;
+    const out = [];
+    // outline so far
+    const before = heads.filter((x) => x.page <= n && x.level <= 1);
+    if (before.length) out.push('Outline of the book up to here:\n' + before.map((x) => `${x.level ? '  ' : ''}${x.title} (p. ${x.page})`).join('\n').slice(-5000));
+    // results: the current chapter in full, earlier chapters shortened
+    const chapStart = (heads.filter((x) => x.page <= n && x.level === 0).pop() || { page: 1 }).page;
+    const res = idx.results.filter((r) => r.page < n || (r.page === n && false)).filter((r) => KEEP_KINDS.has(r.kind));
+    const cur = res.filter((r) => r.page >= chapStart), old = res.filter((r) => r.page < chapStart);
+    let left = budget * 0.55;
+    const curTxt = [];
+    for (let i = cur.length - 1; i >= 0 && left > 0; i--) { const t = `- ${resultLabel(cur[i])} (p. ${cur[i].page}): ${cur[i].text}`; curTxt.unshift(t); left -= t.length; }
+    const oldTxt = [];
+    for (let i = old.length - 1; i >= 0 && left > 0; i--) { if (old[i].kind !== 'Definition' && old[i].kind !== 'Theorem' && old[i].kind !== 'Lemma' && old[i].kind !== 'Corollary' && old[i].kind !== 'Proposition') continue; const t = `- ${resultLabel(old[i])} (p. ${old[i].page}): ${old[i].text.slice(0, 150)}`; oldTxt.unshift(t); left -= t.length; }
+    if (oldTxt.length) out.push('Results stated in earlier chapters (shortened):\n' + oldTxt.join('\n'));
+    if (curTxt.length) out.push('Results stated so far in the current chapter:\n' + curTxt.join('\n'));
+    // results the passage refers to by number, in full, wherever they are in the book
+    const refs = new Set();
+    String(focusText).replace(/(Theorem|Lemma|Corollary|Proposition|Definition|Exercise|Example)\s+((?:\d+[.\-])*\d+[a-z]?)/g, (_, k, num) => refs.add(k + ' ' + num));
+    const refTxt = [];
+    for (const key of refs) {
+      const hit = idx.results.find((r) => `${r.kind} ${r.num}` === key);
+      if (hit) refTxt.push(`- ${resultLabel(hit)} (p. ${hit.page}): ${hit.text}`);
+    }
+    if (refTxt.length) out.push('Results this passage refers to (full statements):\n' + refTxt.join('\n'));
+    // the current section's text up to this page
+    const secStart = (heads.filter((x) => x.page <= n).pop() || { page: Math.max(1, n - 3) }).page;
+    let secTxt = '';
+    for (let p = Math.max(secStart, n - 6); p < n; p++) secTxt += `[p. ${p}]\n` + (await RD.lines(p)).map((l) => l.text).join('\n') + '\n';
+    if (secTxt) out.push('Text of the current section before this page:\n' + secTxt.slice(-Math.max(3000, budget * 0.4)));
+    if (idx.scans.length > idx.pages * 0.5) out.push('(Most pages of this PDF are scanned images without a text layer, so the outline and results above are incomplete.)');
+    return out.join('\n\n');
+  };
 
   /* ---------- where am I: book, chapter, section, printed page (sent to the tutor automatically) ---------- */
   RD.bookInfo = async () => {
@@ -8204,16 +8334,15 @@ A.fmtDate = (t) => {
   };
   /* "Chapter 3 Connectedness and Compactness › §29 Local Compactness" for a page */
   RD.locationOf = async (n) => {
-    const map = await RD.sectionMap();
-    const trail = [];
-    for (const e of map) { if (e.page > n) break; trail[e.depth] = e.title; trail.length = e.depth + 1; }
+    const { trail } = await RD.trailOf(n);
     let printed = null, header = '';
+    if (RD.index && RD.index.labels && RD.index.labels[n - 1]) printed = RD.index.labels[n - 1];
     try {
       const lines = await RD.lines(n);
       const top = (lines[0] && lines[0].text.length < 90 ? lines[0].text : lines.slice(0, 1).map((l) => l.text.slice(0, 90)).join('')) || '';
       header = top.slice(0, 120);
       const m = top.match(/^\s*(\d{1,4})\b/) || top.match(/\b(\d{1,4})\s*$/);
-      if (m) printed = +m[1];
+      if (m && printed == null) printed = +m[1];
     } catch (e) { /* scanned page */ }
     return { trail: trail.filter(Boolean), printed, header };
   };
@@ -8506,7 +8635,7 @@ A.fmtDate = (t) => {
     onRemoveAtt: (a) => { if (st.focus && a.page === st.focus.page) { st.focus = null; drawOverlays(a.page); } },
     systemExtra: () => (st.kind === 'epub'
       ? `The student is reading the EPUB book "${st.meta.name}" in Axiom's reader. The text of the chapter on screen is provided. When you refer to a passage, quote it briefly in a > blockquote; line citations are not available in EPUBs.`
-      : `The student is reading "${st.meta.name}" (${st.pdf ? st.pdf.numPages + ' pages' : ''}) in Axiom's reader. Each message comes with the book, chapter and section, the page text as numbered lines, and the region they selected (as an image plus its text). Their own handwriting on the page may appear in those images. Use the book's own notation and the results stated earlier in the chapter; if the question depends on something defined earlier that you were not shown, say what you are assuming.`),
+      : `The student is reading "${st.meta.name}" (${st.pdf ? st.pdf.numPages + ' pages' : ''}) in Axiom's reader. Each message comes with the book, chapter and section, an outline of the book so far, the definitions and results stated earlier (in full for the current chapter, shortened before that), the full statements of any results the passage cites by number, the text of the current section before this page, the page text as numbered lines, and the region they selected (as an image plus its text). Lean on that material: when the book uses an earlier result, name it (e.g. Theorem 26.3) and state what it gives. Their own handwriting on the page may appear in those images. Use the book's own notation and the results stated earlier in the chapter; if the question depends on something defined earlier that you were not shown, say what you are assuming.`),
     contextText: async (atts) => {
       if (st.kind === 'epub') {
         const chap = epubChapterText();
@@ -8523,6 +8652,11 @@ A.fmtDate = (t) => {
         loc.trail.length ? `Location: ${loc.trail.join(' › ')}.` : (loc.header ? `Running header of the page: "${loc.header}".` : ''),
         `The student is on PDF page ${focusPage}${loc.printed && loc.printed !== focusPage ? ` (printed page number ${loc.printed})` : ''}.]`,
       ].filter(Boolean).join(' ')];
+      // what the book has covered so far (structure, earlier results, referenced results, current section)
+      const focusText = atts.map((a) => a.text || '').join('\n') + '\n' + (await RD.lines(focusPage)).map((l) => l.text).join('\n');
+      const covered = await RD.coveredSoFar(focusPage, A.settings.aiMode === 'app' ? 9000 : 22000, focusText);
+      if (covered) parts.push(covered);
+      else if (RD.index && RD.index.done < st.pdf.numPages) parts.push(`(Axiom is still reading the book: ${RD.index.done} of ${st.pdf.numPages} pages indexed.)`);
       // a little of the previous page, so arguments that start there are not cut off
       if (focusPage > 1 && atts.some((a) => a.page && a.rect && a.rect[1] < 0.3)) {
         const prev = await RD.lines(focusPage - 1);
@@ -8562,6 +8696,7 @@ A.fmtDate = (t) => {
     },
   };
   RD.ctx = readerCtx;
+  A.on('index:progress', () => { if (st && st.railTab === 'toc' && st.rail && !st.rail.hidden) renderRail(); });
 
   /* ---------- navigation ---------- */
   function goto(n, frac = 0, smooth = true) {
@@ -8623,7 +8758,20 @@ A.fmtDate = (t) => {
         st.pdf.getOutline().then(async (ol) => { st.outline = ol || []; renderRail(); }).catch(() => { st.outline = []; renderRail(); });
         return;
       }
-      if (!st.outline.length) { body.append(h('p', { class: 'muted small rd-pad' }, 'This PDF has no table of contents. Use Pages or search instead.')); return; }
+      const status = () => {
+        const ix = RD.index;
+        if (!ix) return null;
+        const res = ix.results.filter((r) => KEEP_KINDS.has(r.kind)).length;
+        return h('p', { class: 'rd-index-status' }, ix.done < ix.pages ? `Reading the book for the tutor… ${ix.done} of ${ix.pages} pages` : `The tutor has read all ${ix.pages} pages · ${res} definitions and results`);
+      };
+      if (!st.outline.length) {
+        const heads = (RD.index && RD.index.heads) || [];
+        if (!heads.length) { body.append(h('p', { class: 'muted small rd-pad' }, RD.index && RD.index.done >= RD.index.pages ? 'No chapters were found in this PDF. Use Pages or search instead.' : 'Finding the chapters in this book…')); const s0 = status(); if (s0) body.append(s0); return; }
+        body.append(h('p', { class: 'muted small rd-pad', style: { paddingBottom: '2px' } }, 'Chapters found by reading the book'));
+        heads.forEach((x) => body.append(h('button', { class: 'rd-toc', style: { paddingLeft: 10 + x.level * 14 + 'px' }, onclick: () => goto(x.page, 0, false) }, h('span', { class: 'grow' }, x.title), h('span', { class: 'num muted small' }, String(x.page)))));
+        const s1 = status(); if (s1) body.append(s1);
+        return;
+      }
       const walk = (items, depth) => items.forEach((it) => {
         const b = h('button', { class: 'rd-toc', style: { paddingLeft: 10 + depth * 14 + 'px' } }, it.title);
         b.addEventListener('click', async () => {
@@ -8637,6 +8785,7 @@ A.fmtDate = (t) => {
         if (it.items && it.items.length && depth < 3) walk(it.items, depth + 1);
       });
       walk(st.outline, 0);
+      { const ix = RD.index; if (ix) body.append(h('p', { class: 'rd-index-status' }, ix.done < ix.pages ? `Reading the book for the tutor… ${ix.done} of ${ix.pages} pages` : `The tutor has read all ${ix.pages} pages · ${ix.results.filter((r) => KEEP_KINDS.has(r.kind)).length} definitions and results`)); }
     } else {
       const hls = st.ann.highlights.slice().sort((a, b) => (a.page || 0) - (b.page || 0) || a.created - b.created);
       if (!hls.length) body.append(h('p', { class: 'muted small rd-pad' }, 'Switch to the highlighter in the top bar, or draw a box and tap Highlight. Your highlights collect here.'));
@@ -8897,6 +9046,8 @@ A.fmtDate = (t) => {
     }
     if (!st || st.token !== token) return;
     const n = st.pdf.numPages;
+    RD.index = null;
+    setTimeout(() => { if (st && st.token === token) RD.buildIndex().then(() => { if (st && st.railTab === 'toc') renderRail(); }); }, 1200);
     total.textContent = '/ ' + n;
     scrub.max = n;
     const p1 = await st.pdf.getPage(1), vp = p1.getViewport({ scale: 1 });
