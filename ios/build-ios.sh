@@ -5,7 +5,7 @@
 set -e
 cd "$(dirname "$0")"
 (cd .. && node build.mjs >/dev/null)
-rm -rf web && mkdir web && cp ../dist/index.html ../dist/*.png web/
+rm -rf web && mkdir web && cp ../dist/index.html ../dist/*.png web/ && cp -R ../dist/vendor web/vendor
 "$HOME/.local/share/xcodegen/xcodegen/bin/xcodegen" generate --quiet
 if [ "$1" = "device" ]; then
   xcodebuild -project Axiom.xcodeproj -scheme Axiom -configuration Release -destination 'generic/platform=iOS' \

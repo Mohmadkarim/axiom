@@ -1,7 +1,7 @@
 // Builds dist/index.html (installable PWA, everything inlined) and dist/artifact.html (claude.ai page form).
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from 'node:fs';
 const src = (p) => readFileSync(new URL('./src/' + p, import.meta.url), 'utf8');
-const ORDER = ['core', 'icons', 'store', 'geom', 'brushes', 'doc', 'render', 'guides', 'input', 'ui-tools', 'ui-color', 'ui-layers', 'ui-panels', 'ui-gallery', 'app'];
+const ORDER = ['core', 'icons', 'store', 'subjects', 'geom', 'brushes', 'doc', 'render', 'guides', 'input', 'stamps', 'ui-tools', 'ui-color', 'ui-layers', 'ui-panels', 'study', 'ai', 'ui-gallery', 'app'];
 const js = ORDER.map((n) => `/* ---- ${n}.js ---- */\n` + src(`js/${n}.js`)).join('\n');
 const css = src('css/app.css');
 const body = src('body.html');
@@ -46,6 +46,8 @@ ${js}</script>
 writeFileSync(new URL('./dist/artifact.html', import.meta.url), art);
 writeFileSync(new URL('./dist/sw.js', import.meta.url), src('sw.js').replace('__BUILD__', build));
 copyFileSync(new URL('./src/manifest.webmanifest', import.meta.url), new URL('./dist/manifest.webmanifest', import.meta.url));
+mkdirSync(new URL('./dist/vendor/', import.meta.url), { recursive: true });
+for (const f of ['pdf.min.js', 'pdf.worker.min.js']) copyFileSync(new URL('./src/vendor/' + f, import.meta.url), new URL('./dist/vendor/' + f, import.meta.url));
 for (const f of ['icon-192.png', 'icon-512.png', 'apple-touch-icon.png']) {
   const p = new URL('./src/' + f, import.meta.url);
   if (existsSync(p)) copyFileSync(p, new URL('./dist/' + f, import.meta.url));

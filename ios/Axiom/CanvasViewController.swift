@@ -127,6 +127,11 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
                 do { try store.saveMeta(id: body["id"] as? String ?? "", meta: body["meta"] as? String ?? ""); result = true }
                 catch let e { result = nil; error = e.localizedDescription }
             case "delete": store.delete(body["id"] as? String ?? ""); result = true
+            case "fileSave":
+                do { try store.saveFile(id: body["id"] as? String ?? "", base64: body["data"] as? String ?? ""); result = true }
+                catch let e { result = nil; error = e.localizedDescription }
+            case "fileLoad": result = store.loadFile(body["id"] as? String ?? "")
+            case "fileDelete": store.deleteFile(body["id"] as? String ?? ""); result = true
             case "settings": store.saveSettings(body["json"] as? String ?? "{}"); result = true
             default: result = nil; error = "unknown op \(op)"
             }

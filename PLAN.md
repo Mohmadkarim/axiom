@@ -84,8 +84,28 @@ axiom/
 
 **Rendering:** the main canvas holds committed strokes in world space under the view matrix, with per-layer offscreen compositing only when a layer needs it (opacity, masks or focus). The overlay canvas holds the live stroke, guides, selection, lasso, cursor and labels. Variable-width strokes are a nonzero union of circles and tangent quads, which gives correct round joins with no holes. New strokes are drawn incrementally when possible.
 
+## 4b. Research from the user's own workflow (screen recording, Oct 24 2026)
+
+- **Concepts:** course folders (Abstract Algebra, Topology, Calculus, Category Theory, Number Theory, Physics…); compact tool wheel with a palette strip; a measurement/rotation popup with presets; settings for handedness, Pencil pressure/tilt/hover, double-tap and squeeze actions, and finger action; export by region (screen, A4 artboard, selection) with DPI.
+- **Notability:** subject-colored folders; PDFs as vertically scrolling pages with handwriting on them; a page-thumbnail rail; a vertical tool rail; "Chat with your notes" (ask anything, practice questions, smart notes); study sessions; version history.
+- **Apple Books:** textbooks as PDFs (Munkres *Topology*, Spivak, Pinter *Abstract Algebra*, Giancoli *Physics*).
+- **Gemini:** very long topology conversations with LaTeX; the student pushes for rigor ("you are doing the poetry again"); generated reference PDFs and study plans.
+- **Pain point:** material, handwritten work and AI live in separate apps. Before exams the student cycles between problem PDFs, solution PDFs and AI chats about their own solution. Course-specific visuals (lenses in optics…) get redrawn over and over.
+
+## 4c. Stage 2, first slice (built)
+- **Studies:** a majors and courses onboarding sheet; a gallery sidebar of colored courses; every drawing and document belongs to a course.
+- **Documents library:** PDFs and problem photos (camera, Photos or Files), saved on the device.
+- **Study panel:** a docked, resizable side panel with tabs. It opens any number of PDFs or photos beside the canvas, renders pages lazily, and supports zoom and pinch. A page can be put on the canvas, all pages can be imported to annotate, and each drawing remembers its open tabs and last page.
+- **Tutor (Claude, official Anthropic SDK in the browser, the user's own API key):**
+  - modes: Explain, Hint (guided), Check my work, Quiz me
+  - context in one tap: canvas view, a selection, the current PDF page, a photo, or a whole PDF
+  - Markdown and KaTeX rendering, streaming, conversations saved per drawing
+  - the system prompt knows the student's majors, courses and current course, and asks for precise language over analogies
+- **Visual tools:** about 60 editable vector diagrams across Math, Topology & geometry, Optics, Mechanics, Circuits, Waves & thermo, Chemistry and CS, ordered by the student's majors.
+- **My visuals:** save any selection to a course's visual library and reuse it.
+
 ## 5. Stage 2 roadmap: STEM study features (Notability and beyond)
-1. **PDF workspace:** a page view with a thumbnail rail, annotation on top, and a split view to put a problem sheet beside your work.
+1. **PDF workspace:** a page view with a thumbnail rail and annotation directly on top. The split view beside your work is done; see 4c.
 2. **Math typesetting:** LaTeX blocks (KaTeX) and handwriting-to-LaTeX conversion.
 3. **Text boxes, sticky notes and links between canvases.**
 4. **Graph and plot objects:** live function plots (y=f(x), parametric, polar) and data tables to scatter plots.

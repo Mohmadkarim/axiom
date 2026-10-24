@@ -7,6 +7,7 @@
 
   /* ================= status bar ================= */
   UI.mountStatus = (el) => {
+    const opt = (b) => (b.classList.add('sb-opt'), b);
     const btn = (icon, title, fn, id) => {
       const b = h('button', { class: 'ibtn', title, 'aria-label': title, id, html: A.icon(icon) });
       b.addEventListener('click', fn);
@@ -19,16 +20,28 @@
     });
     const precBtn = btn('precision', 'Precision (P)', () => togglePrecision(), 'btn-precision');
     const layBtn = btn('layers', 'Layers (L)', () => toggleLayers(), 'btn-layers');
+    const visBtn = btn('shapes', 'Visual tools', (e) => A.V.open(e.currentTarget), 'btn-visuals');
     const left = h('div', { class: 'sb-group panel' },
-      btn('gallery', 'Gallery', () => A.emit('go:gallery')), name, h('div', { class: 'sb-sep' }), precBtn, layBtn);
+      btn('gallery', 'Gallery', () => A.emit('go:gallery')), name, h('div', { class: 'sb-sep' }), precBtn, layBtn, visBtn);
     const readout = h('button', { id: 'readout', class: 'panel', title: 'View options' });
     readout.addEventListener('click', () => viewMenu(readout));
     const right = h('div', { class: 'sb-group panel' },
-      btn('import', 'Import', (e) => importMenu(e.currentTarget)),
-      btn('export', 'Export', () => UI.openExport()),
-      btn('hide', 'Hide interface (H)', () => A.emit('cmd', 'toggleUI')),
+      btn('book', 'Study panel: documents and tutor', () => A.ST.toggle(), 'btn-study'),
+      h('div', { class: 'sb-sep' }),
+      opt(btn('import', 'Import', (e) => importMenu(e.currentTarget))),
+      opt(btn('export', 'Export', () => UI.openExport())),
+      opt(btn('hide', 'Hide interface (H)', () => A.emit('cmd', 'toggleUI'))),
       btn('settings', 'Settings', () => UI.openSettings()),
-      btn('help', 'Help and gestures', () => UI.openHelp()));
+      opt(btn('help', 'Help and gestures', () => UI.openHelp())),
+      (() => { const b = btn('more', 'More', () => {
+        const box = h('div', { class: 'menu' });
+        const it = (icon, label, fn) => { const x = h('button', { onclick: () => { A.closePopovers(); fn(); } }); x.innerHTML = A.icon(icon); x.append(label); box.append(x); };
+        it('import', 'Import', () => importMenu(b));
+        it('export', 'Export', () => UI.openExport());
+        it('hide', 'Hide interface', () => A.emit('cmd', 'toggleUI'));
+        it('help', 'Help and gestures', () => UI.openHelp());
+        A.popover(box, b, { side: 'down' });
+      }); b.classList.add('sb-more'); return b; })());
     el.append(left, readout, right);
     const syncName = () => { name.textContent = D.doc ? D.doc.name : ''; };
     UI.syncName = syncName;
@@ -212,7 +225,7 @@
       selPop.append(ib('duplicate', 'Duplicate', 'duplicate'), ib('copy', 'Copy', 'copy'), ib('trash', 'Delete', 'delete'),
         h('div', { class: 'sb-sep' }), ib('fliph', 'Flip horizontal', 'flipH'), ib('flipv', 'Flip vertical', 'flipV'),
         ib('recolor', 'Apply current color', 'recolor'), ib('front', 'Bring to front', 'front'), ib('back', 'Send to back', 'back'),
-        ib('moveto', 'Move to layer', 'moveto'));
+        ib('moveto', 'Move to layer', 'moveto'), h('div', { class: 'sb-sep' }), ib('bookmark', 'Save as visual', 'saveVisual'), ib('spark', 'Ask the tutor about this', 'askTutor'));
     }
     const ys = c.map((p) => p[1]), xs = c.map((p) => p[0]);
     const r = selPop.getBoundingClientRect();
@@ -304,6 +317,8 @@
     resetView() { R.zoomAt(R.w / 2, R.h / 2, 1 / D.doc.view.zoom, -D.doc.view.rot); },
     fit() { R.fitBB(D.allBB()); },
     toggleGrid() { D.doc.precision.grid = !D.doc.precision.grid; D.changed('precision'); R.render(); renderPrecision(); UI.renderLayers(); },
+    saveVisual() { A.V.saveSelection(); },
+    askTutor() { const a = A.AI.shotSelection(); if (a) { A.AI.attach(a); A.ST.showTutor(); } },
     toggleUI() { A.$('#canvas-view').classList.toggle('ui-hidden'); A.closePopovers(); },
     toggleLayers() { toggleLayers(); },
     togglePrecision() { togglePrecision(); },
@@ -389,6 +404,7 @@
     const it = (icon, label, fn) => { const b = h('button', { onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); box.append(b); };
     it('image', 'Image or photo', async () => { const f = await pickFile('image/*'); if (f) UI.importImageFile(f); });
     it('pdf', 'PDF (problem sheet, notes)', async () => { const f = await pickFile('application/pdf,.pdf'); if (f) UI.importPdf(f); });
+    it('book', 'Open in study panel (PDF or photo)', async () => { const f = await A.ST.pickFile(); if (!f) return; const m = await A.ST.importFile(f); if (m) A.ST.openDoc(m.id); });
     it('paste', 'Paste strokes', () => cmds.paste());
     A.popover(box, anchor, { side: 'down' });
   }
@@ -628,7 +644,13 @@
         })()),
         row('Canvas rotation', 'Twist with two fingers to rotate', toggleSw(S.allowRotate, (v) => set('allowRotate', v), 's-rot')),
         row('Highlight selection', 'Fade everything that is not selected', toggleSw(S.highlightSelection, (v) => { set('highlightSelection', v); R.render(); }, 's-hl')),
+        h('h5', null, 'Studies'),
+        row('Majors and courses', A.SU.majorNames().join(', ') || 'Not set', h('button', { class: 'btn', onclick: async () => { close(); await A.SU.openSetup(); } }, 'Edit')),
+        h('h5', null, 'Tutor'),
+        row('Anthropic API key', S.aiKey ? 'Connected (stored only on this device)' : 'Not connected. Open the study panel to connect.', S.aiKey ? h('button', { class: 'btn', onclick: () => { S.aiKey = ''; A.saveSettings(); rebuild(); A.toast('API key removed'); } }, 'Remove key') : h('span')),
+        row('Default model', null, sel('aiModel', A.AI.models.map((m) => [m.id, m.name]))),
         h('h5', null, 'This drawing'),
+        row('Course', null, (() => { const b = h('button', { class: 'btn' }, A.SU.name(D.doc.subject) || 'None'); b.addEventListener('click', () => A.SU.pickMenu(b, D.doc.subject, (sid) => { D.doc.subject = sid; D.changed('meta'); rebuild(); })); return b; })()),
         row('Paper', null, (() => {
           const r = h('div', { class: 'bg-row' });
           Object.entries(D.papers).forEach(([k, c]) => r.append(h('button', { class: D.doc.paper.bg === c ? 'on' : '', style: { background: c }, 'aria-label': k, onclick: () => { D.doc.paper.bg = c; D.changed('paper'); R.render(); rebuild(); } })));

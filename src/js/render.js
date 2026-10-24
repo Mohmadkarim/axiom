@@ -32,6 +32,8 @@
       c.width = Math.round(R.w * A.dpr); c.height = Math.round(R.h * A.dpr);
     }
     R.cacheValid = false;
+    const cvv = document.getElementById('canvas-view');
+    if (cvv) cvv.classList.toggle('narrow', R.w < 720);
   };
 
   /* ---------- dark canvas (display only) ---------- */

@@ -48,6 +48,26 @@ final class DrawingStore {
         try? fm.removeItem(at: metaURL(id))
     }
 
+    private var filesDir: URL {
+        let d = dir.deletingLastPathComponent().appendingPathComponent("Files", isDirectory: true)
+        try? fm.createDirectory(at: d, withIntermediateDirectories: true)
+        return d
+    }
+
+    func saveFile(id: String, base64: String) throws {
+        guard !safe(id).isEmpty, let data = Data(base64Encoded: base64) else { return }
+        try data.write(to: filesDir.appendingPathComponent(safe(id) + ".bin"), options: .atomic)
+    }
+
+    func loadFile(_ id: String) -> Any {
+        guard let data = try? Data(contentsOf: filesDir.appendingPathComponent(safe(id) + ".bin")) else { return NSNull() }
+        return data.base64EncodedString()
+    }
+
+    func deleteFile(_ id: String) {
+        try? fm.removeItem(at: filesDir.appendingPathComponent(safe(id) + ".bin"))
+    }
+
     func loadSettings() -> String? {
         guard let s = try? String(contentsOf: settingsURL, encoding: .utf8),
               let data = s.data(using: .utf8),

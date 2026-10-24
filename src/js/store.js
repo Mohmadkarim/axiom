@@ -1,9 +1,9 @@
 /* Axiom persistence: IndexedDB for drawings, localStorage for app settings */
 'use strict';
 (() => {
-  const DB_NAME = 'axiom', DB_VER = 1;
+  const DB_NAME = 'axiom', DB_VER = 2;
   let dbp = null;
-  const mem = { docs: new Map(), meta: new Map() }; // fallback when IndexedDB is unavailable
+  const mem = { docs: new Map(), meta: new Map(), files: new Map() }; // fallback when IndexedDB is unavailable
   let useMem = false;
   // native iPad app: drawings are files managed by the app (see ios/Axiom/DrawingStore.swift)
   const NATIVE = !!(window.AXIOM_NATIVE && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.axiom);
@@ -19,6 +19,7 @@
           const db = rq.result;
           if (!db.objectStoreNames.contains('docs')) db.createObjectStore('docs', { keyPath: 'id' });
           if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'id' });
+          if (!db.objectStoreNames.contains('files')) db.createObjectStore('files', { keyPath: 'id' });
         };
         rq.onsuccess = () => res(rq.result);
         rq.onerror = () => { useMem = true; res(null); };
@@ -58,7 +59,7 @@
       return tx('docs', 'readonly', (s) => req(s.get(id)));
     },
     async saveDoc(doc, thumb) {
-      const meta = { id: doc.id, name: doc.name, created: doc.created, updated: doc.updated, thumb: thumb || null, paper: doc.paper.bg };
+      const meta = { id: doc.id, name: doc.name, created: doc.created, updated: doc.updated, thumb: thumb || null, paper: doc.paper.bg, subject: doc.subject || null };
       if (NATIVE) { await post({ op: 'save', id: doc.id, doc: JSON.stringify(doc), meta: JSON.stringify(meta) }); return; }
       await open();
       if (useMem) { mem.docs.set(doc.id, JSON.parse(JSON.stringify(doc))); mem.meta.set(doc.id, meta); return; }
@@ -70,6 +71,36 @@
       await open();
       if (useMem) { mem.meta.set(meta.id, meta); return; }
       await tx('meta', 'readwrite', (s) => s.put(meta));
+    },
+    /* binary files: PDFs, photos, saved visuals (Blob in, Blob out) */
+    async saveFile(id, blob) {
+      if (NATIVE) {
+        const data = await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.readAsDataURL(blob); });
+        await post({ op: 'fileSave', id, data });
+        return;
+      }
+      await open();
+      if (useMem) { mem.files.set(id, blob); return; }
+      const buf = await blob.arrayBuffer(); // raw bytes: Safari can't store Blob objects in IndexedDB
+      await tx('files', 'readwrite', (s) => s.put({ id, buf, type: blob.type }));
+    },
+    async loadFile(id, type = 'application/octet-stream') {
+      if (NATIVE) {
+        const b64 = await post({ op: 'fileLoad', id });
+        if (!b64) return null;
+        return (await fetch('data:' + type + ';base64,' + b64)).blob();
+      }
+      await open();
+      if (useMem) return mem.files.get(id) || null;
+      const r = await tx('files', 'readonly', (s) => req(s.get(id)));
+      if (!r) return null;
+      return r.buf ? new Blob([r.buf], { type: r.type || type }) : r.blob || null;
+    },
+    async deleteFile(id) {
+      if (NATIVE) { await post({ op: 'fileDelete', id }); return; }
+      await open();
+      if (useMem) { mem.files.delete(id); return; }
+      await tx('files', 'readwrite', (s) => s.delete(id));
     },
     async deleteDoc(id) {
       if (NATIVE) { await post({ op: 'delete', id }); return; }
@@ -104,6 +135,14 @@
     activePalette: 0,
     sort: 'updated',
     seenWelcome: false,
+    majors: null,               // e.g. ['math','physics']; null until onboarding
+    subjects: [],               // courses: {id, name, color}
+    documents: [],              // study library meta: {id, name, kind, type, subject, size, added, lastPage}
+    visuals: [],                // saved visuals meta: {id, name, subject, thumb}
+    aiKey: '',
+    aiModel: 'claude-opus-5-5',
+    panelW: 0,
+    galleryFilter: 'all',
     darkCanvas: true,
     penSeen: false,
   });

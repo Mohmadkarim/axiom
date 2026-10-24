@@ -134,6 +134,7 @@
     UI.mountPrecision(A.$('#precision'));
     UI.mountSelection(A.$('#selmenu'), A.$('#selpopup'));
     UI.mountGallery(A.$('#gallery-view'));
+    A.ST.mount(A.$('#studypanel'));
     A.$('#restore-ui').innerHTML = A.icon('eye');
     A.$('#restore-ui').addEventListener('click', () => A.emit('cmd', 'toggleUI'));
     A.on('selmenu:show', () => {});
