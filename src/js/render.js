@@ -422,7 +422,7 @@
       for (const it of l.items) {
         if (o.onlyIds && !o.onlyIds.has(it.id)) continue;
         if (o.hideId && it.id === o.hideId) continue;
-        if (o.noStrokes && it.t === 's') continue;
+        if (o.noStrokes && it.pk) continue; // PencilKit draws this ink itself
         if (sel && sel.has(it.id)) { selected.push(it); continue; }
         if (!G.bbHit(it.bb, vbb)) continue;
         const f = B.isBox(it) ? 1 : fade; // dim ink only; pages and images stay as they are
@@ -538,7 +538,7 @@
   };
 
   /* ---------- offscreen rendering for export / thumbnails ---------- */
-  R.renderRegion = (doc, bb, scale, { bg = true, grid = false, onlyIds = null, maxPx = 8192, noStrokes = false } = {}) => {
+  R.renderRegion = (doc, bb, scale, { bg = true, grid = false, onlyIds = null, maxPx = 8192, noStrokes = false, display = false } = {}) => {
     const bw = Math.max(1, bb[2] - bb[0]), bh = Math.max(1, bb[3] - bb[1]);
     let s = scale;
     const lim = Math.min(maxPx, 16384);
@@ -550,7 +550,8 @@
     const sc = document.createElement('canvas'); sc.width = W; sc.height = H;
     const m = [s, 0, 0, s, -bb[0] * s, -bb[1] * s];
     R.drawScene(c.getContext('2d'), {
-      m, w: W, h: H, doc, bg: bg && !D.isNotebook(doc) ? doc.paper.bg : null, pageBg: bg && D.isNotebook(doc), grid, scratch: sc, sctx: sc.getContext('2d'), dpr: Math.max(1, s), onlyIds, noArtboards: true, noStrokes, hideId: noStrokes ? R.hideId : null,
+      m, w: W, h: H, doc, bg: bg && !D.isNotebook(doc) ? (display ? R.displayBg(doc) : doc.paper.bg) : null, pageBg: bg && D.isNotebook(doc), grid, scratch: sc, sctx: sc.getContext('2d'), dpr: Math.max(1, s), onlyIds, noArtboards: !display, noStrokes, hideId: noStrokes ? R.hideId : null,
+      dark: display && R.darkActive(doc), inkAdapt: display,
     });
     return c;
   };

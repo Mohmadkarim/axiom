@@ -83,6 +83,7 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         nb.load = { [weak self] id in self.flatMap { try? Data(contentsOf: $0.store.fileURL(id)) } }
         nb.onView = { [weak self] z, tx, ty in self?.runJS("window.__axiomPK && __axiomPK('view', {zoom: \(z), tx: \(tx), ty: \(ty)})") }
         nb.onNeedPage = { [weak self] i, sc in self?.runJS("window.__axiomPK && __axiomPK('needPage', {i: \(i), scale: \(sc)})") }
+        nb.onNeedBg = { [weak self] r, sc in self?.runJS("window.__axiomPK && __axiomPK('needBg', {x: \(r.minX), y: \(r.minY), w: \(r.width), h: \(r.height), scale: \(sc)})") }
         nb.onStrokes = { [weak self] json in self?.runJS("window.__axiomPK && __axiomPK('strokes', \(json))") }
         nb.onChanged = { [weak self] in self?.runJS("window.__axiomPK && __axiomPK('changed', null)") }
         notebook = nb
@@ -229,7 +230,7 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
             let ins = body["insets"] as? [Double] ?? [70, 16, 90, 66]
             nb.open(id: body["id"] as? String ?? "doc", rects: rects, zoom: CGFloat(body["zoom"] as? Double ?? 1), tx: CGFloat(body["tx"] as? Double ?? 0), ty: CGFloat(body["ty"] as? Double ?? 0),
                     legacy: body["legacy"] as? [[String: Any]] ?? [], dark: body["dark"] as? Bool ?? false, desk: Self.color(body["desk"] as? String ?? "#111317"),
-                    insets: UIEdgeInsets(top: ins[0], left: ins[1], bottom: ins[2], right: ins[3]))
+                    insets: UIEdgeInsets(top: ins[0], left: ins[1], bottom: ins[2], right: ins[3]), canvas: body["canvas"] as? Bool ?? false)
             passthroughWeb?.passthrough = true
             replyHandler(nb.currentView(), nil); return
         case "pkClose":
@@ -245,6 +246,11 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
             notebook?.setPages(rects); replyHandler(true, nil); return
         case "pkPage":
             if let b64 = body["data"] as? String, let data = Data(base64Encoded: b64) { notebook?.setPageImage(body["i"] as? Int ?? 0, data: data, scale: CGFloat(body["scale"] as? Double ?? 1)) }
+            replyHandler(true, nil); return
+        case "pkBg":
+            if let r = body["rect"] as? [Double], r.count == 4, let b64 = body["data"] as? String, let data = Data(base64Encoded: b64) {
+                notebook?.setBg(CGRect(x: r[0], y: r[1], width: r[2], height: r[3]), data: data)
+            }
             replyHandler(true, nil); return
         case "pkDirty":
             notebook?.markDirty(body["all"] as? Bool ?? true, body["pages"] as? [Int] ?? []); replyHandler(true, nil); return
@@ -269,6 +275,8 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
                 notebook?.copy(from: CGRect(x: f[0], y: f[1], width: f[2] - f[0], height: f[3] - f[1]), to: CGPoint(x: t[0], y: t[1]))
             }
             replyHandler(true, nil); return
+        case "pkDebug":
+            replyHandler(notebook?.debugInfo() ?? [:], nil); return
         case "pkUndo":
             notebook?.undo(); replyHandler(true, nil); return
         case "pkRedo":

@@ -9,15 +9,17 @@
   PK.available = NATIVE;
   PK.active = false;
   const post = (m) => (A.native ? A.native.post(m).catch(() => {}) : Promise.resolve());
-  PK.wanted = (doc) => NATIVE && S.pencilKit !== false && D.isNotebook(doc);
+  PK.wanted = (doc) => NATIVE && S.pencilKit !== false && !!doc;
+  const isCanvas = () => !D.isNotebook(D.doc);
 
-  const stageFrame = () => { const r = A.$('#stage').getBoundingClientRect(); return [r.left, r.top, r.width, r.height]; };
+  // layout position (not getBoundingClientRect: the view's open animation scales it for a moment)
+  const stageFrame = () => { const el = A.$('#stage'); let x = 0, y = 0; for (let e = el; e; e = e.offsetParent) { x += e.offsetLeft; y += e.offsetTop; } return [x, y, el.offsetWidth, el.offsetHeight]; };
   const insets = () => [R.notebookTop || 70, 16, 90, 66];
-  const look = () => ({ dark: R.paperIsDark(), desk: R.deskColor(R.isDarkTheme()) });
+  const look = () => (isCanvas() ? { dark: R.darkActive() || R.paperIsDark(), desk: R.displayBg() } : { dark: R.paperIsDark(), desk: R.deskColor(R.isDarkTheme()) });
 
   /* ---------- open / close ---------- */
   let layout = new Map(); // page id -> rect last sent to the native view
-  const snapLayout = () => new Map(D.doc.pages.map((p, i) => [p.id, D.pageRect(D.doc, i)]));
+  const snapLayout = () => (isCanvas() ? new Map() : new Map(D.doc.pages.map((p, i) => [p.id, D.pageRect(D.doc, i)])));
   function enter() {
     const doc = D.doc;
     // strokes written before PencilKit move into the PencilKit drawing once (a backup copy is kept in the file store)
@@ -41,7 +43,8 @@
     A.$('#canvas-view').classList.add('pk'); document.documentElement.classList.add('pk-on');
     layout = snapLayout();
     const v = doc.view;
-    post(Object.assign({ op: 'pkOpen', id: doc.id, pages: D.pageRects(doc), frame: stageFrame(), insets: insets(), zoom: v.zoom, tx: v.tx, ty: v.ty, legacy }, look()))
+    if (isCanvas() && v.rot) { const [cx, cy] = R.toWorld(R.w / 2, R.h / 2); v.rot = 0; v.tx = R.w / 2 - cx * v.zoom; v.ty = R.h / 2 - cy * v.zoom; } // PencilKit canvases don't rotate
+    post(Object.assign({ op: 'pkOpen', id: doc.id, canvas: isCanvas(), pages: isCanvas() ? [] : D.pageRects(doc), frame: stageFrame(), insets: insets(), zoom: v.zoom, tx: v.tx, ty: v.ty, legacy }, look()))
       .then((cur) => { if (Array.isArray(cur) && D.doc === doc) views.view({ zoom: cur[0], tx: cur[1], ty: cur[2] }); });
     syncTool();
     chromeSoon();
@@ -67,6 +70,7 @@
       R.renderOverlay();
     },
     needPage: (r) => queuePage(r.i, r.scale),
+    needBg: (r) => { bgWant = r; if (!bgBusy) renderBg(); },
     strokes: (list) => mirror(list),
     changed: () => { if (PK.undoing) { PK.undoing = false; return; } (PK.order = PK.order || []).push('ink'); PK.redoOrder = []; A.emit('history'); },
   };
@@ -88,6 +92,18 @@
       post({ op: 'pkPage', i, scale, data: c.toDataURL('image/jpeg', 0.9).split(',')[1] });
     }
     setTimeout(pump, 0);
+  }
+  /* canvases: one background image (paper, grid, artboards, pictures, text, special strokes) around the view */
+  let bgWant = null, bgBusy = false;
+  function renderBg() {
+    if (!PK.active || !bgWant) { bgBusy = false; return; }
+    bgBusy = true;
+    const r = bgWant; bgWant = null;
+    setTimeout(() => {
+      if (!PK.active) { bgBusy = false; return; }
+      const c = R.renderRegion(D.doc, [r.x, r.y, r.x + r.w, r.y + r.h], r.scale, { bg: true, grid: true, noStrokes: true, display: true, maxPx: 6000 });
+      post({ op: 'pkBg', rect: [r.x, r.y, r.w, r.h], data: c.toDataURL('image/jpeg', 0.9).split(',')[1] }).then(() => { bgBusy = false; if (bgWant) renderBg(); });
+    }, 0);
   }
   A.on('doc:changed', (k) => {
     if (!PK.active || k === 'ink' || k === 'meta') return;

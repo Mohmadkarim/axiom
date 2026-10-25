@@ -18,10 +18,18 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
     private var mirrorWork: DispatchWorkItem?
     private var insets = UIEdgeInsets(top: 70, left: 16, bottom: 90, right: 66)
     private var minFit: CGFloat = 1
+    // infinite canvases: world (0,0) sits at `origin` in PencilKit's coordinates; one background image around the view
+    private(set) var isCanvas = false
+    private var origin = CGPoint.zero
+    private static let canvasHalf: CGFloat = 25000
+    private let bgView = UIImageView()
+    private var bgRect = CGRect.null
+    private var bgDirty = true
 
     /// Callbacks to the page code
     var onView: ((CGFloat, CGFloat, CGFloat) -> Void)?          // zoom, tx, ty (stage coordinates)
     var onNeedPage: ((Int, CGFloat) -> Void)?                   // page index, scale
+    var onNeedBg: ((CGRect, CGFloat) -> Void)?                  // world rect, scale (canvases)
     var onStrokes: ((String) -> Void)?                          // mirrored strokes as JSON
     var onChanged: (() -> Void)?                                // a user edit (for the undo stack)
     var save: ((String, Data) -> Void)?
@@ -57,21 +65,29 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
 
     // MARK: - open / close
 
-    func open(id: String, rects: [CGRect], zoom: CGFloat, tx: CGFloat, ty: CGFloat, legacy: [[String: Any]], dark: Bool, desk: UIColor, insets: UIEdgeInsets) {
+    func open(id: String, rects: [CGRect], zoom: CGFloat, tx: CGFloat, ty: CGFloat, legacy: [[String: Any]], dark: Bool, desk: UIColor, insets: UIEdgeInsets, canvas isCanvas: Bool = false) {
         close()
         docId = id
         self.insets = insets
+        self.isCanvas = isCanvas
+        origin = isCanvas ? CGPoint(x: Self.canvasHalf, y: Self.canvasHalf) : .zero
+        canvas.alwaysBounceVertical = !isCanvas
+        canvas.showsVerticalScrollIndicator = !isCanvas
+        bgView.image = nil; bgRect = .null; bgDirty = true
+        if isCanvas { bgView.contentMode = .scaleToFill; pages.addSubview(bgView) } else { bgView.removeFromSuperview() }
         superview?.backgroundColor = desk
         canvas.overrideUserInterfaceStyle = dark ? .dark : .light
         loading = true
         var drawing = PKDrawing()
         if let data = load?("ink_" + id), let d = try? PKDrawing(data: data) { drawing = d }
-        else if !legacy.isEmpty { drawing = PKDrawing(strokes: legacy.compactMap(Self.stroke)) }
+        else if !legacy.isEmpty { let o = origin; drawing = PKDrawing(strokes: legacy.compactMap { Self.stroke($0, offset: o) }) }
         canvas.drawing = drawing
         loading = false
-        setPages(rects)
+        setPages(isCanvas ? [] : rects)
         isHidden = false
         setView(zoom: zoom, tx: tx, ty: ty)
+        bgDirty = true
+        requestVisible()
         if !legacy.isEmpty && load?("ink_" + id) == nil { scheduleSave() }
         scheduleMirror(0.05)
     }
@@ -97,7 +113,7 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
         while pageViews.count < rects.count { let v = UIImageView(); v.contentMode = .scaleToFill; v.backgroundColor = .white; v.layer.shadowColor = UIColor.black.cgColor; v.layer.shadowOpacity = 0.18; v.layer.shadowRadius = 10; v.layer.shadowOffset = CGSize(width: 0, height: 4); pages.addSubview(v); pageViews.append(v); pageScale.append(0) }
         while pageViews.count > rects.count { pageViews.removeLast().removeFromSuperview(); pageScale.removeLast() }
         let bb = rects.reduce(CGRect.null) { $0.union($1) }
-        pages.bounds = CGRect(x: 0, y: 0, width: bb.maxX, height: bb.maxY)
+        pages.bounds = isCanvas || bb.isNull ? CGRect(x: 0, y: 0, width: Self.canvasHalf * 2, height: Self.canvasHalf * 2) : CGRect(x: 0, y: 0, width: bb.maxX, height: bb.maxY)
         for (i, r) in rects.enumerated() { pageViews[i].frame = r }
         dirty = Set(0..<rects.count)
         layoutContent()
@@ -113,14 +129,23 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
     }
 
     func markDirty(_ all: Bool, _ list: [Int]) {
-        if all { dirty = Set(0..<pageRects.count) } else { list.forEach { dirty.insert($0) } }
+        if all { dirty = Set(0..<pageRects.count); bgDirty = true } else { list.forEach { dirty.insert($0) } }
         requestVisible()
+    }
+
+    /// canvases: the background image for a world rect
+    func setBg(_ rect: CGRect, data: Data) {
+        guard isCanvas, let img = UIImage(data: data) else { return }
+        bgView.image = img
+        bgView.frame = rect.offsetBy(dx: origin.x, dy: origin.y)
+        bgRect = rect
     }
 
     private var wantedScale: CGFloat { min(3, max(1, (canvas.zoomScale * UIScreen.main.scale * 2).rounded() / 2)) }
 
     private func requestVisible() {
         guard isOpen else { return }
+        if isCanvas { requestBg(); return }
         let z = canvas.zoomScale
         let visible = CGRect(x: canvas.contentOffset.x / z, y: canvas.contentOffset.y / z, width: canvas.bounds.width / z, height: canvas.bounds.height / z).insetBy(dx: 0, dy: -canvas.bounds.height / z)
         let want = wantedScale
@@ -129,9 +154,30 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
         }
     }
 
+    private var bgScale: CGFloat = 0
+    private func requestBg() {
+        let z = canvas.zoomScale
+        let vis = CGRect(x: canvas.contentOffset.x / z - origin.x, y: canvas.contentOffset.y / z - origin.y, width: canvas.bounds.width / z, height: canvas.bounds.height / z)
+        let want = min(2, z * UIScreen.main.scale)
+        // re-render when the view leaves the image, zoom changed the needed sharpness, or the content changed
+        if !bgDirty, !bgRect.isNull, bgRect.contains(vis), abs(bgScale - want) / max(want, 0.01) < 0.3 { return }
+        let r = vis.insetBy(dx: -vis.width * 0.35, dy: -vis.height * 0.35)
+        bgDirty = false; bgScale = want
+        onNeedBg?(r, want)
+    }
+
     // MARK: - view
 
     private func layoutContent() {
+        if isCanvas {
+            let z = canvas.zoomScale
+            canvas.contentSize = CGSize(width: Self.canvasHalf * 2 * z, height: Self.canvasHalf * 2 * z)
+            canvas.contentInset = .zero
+            canvas.minimumZoomScale = 0.05
+            canvas.maximumZoomScale = 24
+            minFit = 1
+            return
+        }
         let bb = pageRects.reduce(CGRect.null) { $0.union($1) }
         guard !bb.isNull else { return }
         let z = canvas.zoomScale
@@ -149,18 +195,24 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
     func setView(zoom: CGFloat, tx: CGFloat, ty: CGFloat) {
         canvas.zoomScale = zoom
         layoutContent()
-        canvas.contentOffset = CGPoint(x: -tx, y: -ty)
+        let z = canvas.zoomScale
+        canvas.contentOffset = CGPoint(x: origin.x * z - tx, y: origin.y * z - ty)
         report()
     }
 
     func setInsets(_ i: UIEdgeInsets) { insets = i; layoutContent(); report() }
 
-    func currentView() -> [Double] { [Double(canvas.zoomScale), Double(-canvas.contentOffset.x), Double(-canvas.contentOffset.y)] }
+    func debugInfo() -> [String: Any] {
+        let last = canvas.drawing.strokes.last
+        let p = last.map { $0.path[0].location.applying($0.transform) } ?? .zero
+        return ["zoom": canvas.zoomScale, "off": [canvas.contentOffset.x, canvas.contentOffset.y], "inset": [canvas.adjustedContentInset.left, canvas.adjustedContentInset.top], "frame": [frame.minX, frame.minY, canvas.frame.minX, canvas.frame.minY], "first": [p.x, p.y], "bounds": [canvas.bounds.minX, canvas.bounds.minY]]
+    }
+    func currentView() -> [Double] { let z = canvas.zoomScale; return [Double(z), Double(origin.x * z - canvas.contentOffset.x), Double(origin.y * z - canvas.contentOffset.y)] }
 
     private func report() {
         placePages()
         let z = canvas.zoomScale
-        onView?(z, -canvas.contentOffset.x, -canvas.contentOffset.y)
+        onView?(z, origin.x * z - canvas.contentOffset.x, origin.y * z - canvas.contentOffset.y)
     }
 
     @objc private func doubleTap(_ g: UITapGestureRecognizer) {
@@ -299,6 +351,7 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
     /// The page code keeps a copy of the ink (as its own strokes) for page pictures, the tutor and export.
     private func sendMirror() {
         let strokes = canvas.drawing.strokes
+        let o = origin
         DispatchQueue.global(qos: .utility).async { [weak self] in
             var out: [[String: Any]] = []
             out.reserveCapacity(strokes.count)
@@ -309,8 +362,8 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
                 for p in samples { wMax = max(wMax, p.size.width) }
                 for p in samples {
                     let q = p.location.applying(s.transform)
-                    pts.append((Double(q.x) * 10).rounded() / 10)
-                    pts.append((Double(q.y) * 10).rounded() / 10)
+                    pts.append((Double(q.x - o.x) * 10).rounded() / 10)
+                    pts.append((Double(q.y - o.y) * 10).rounded() / 10)
                     pts.append((Double(p.size.width / wMax) * 100).rounded() / 100)
                 }
                 if pts.isEmpty { continue }
@@ -328,7 +381,7 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
     }
 
     /// One of the page code's strokes (x, y, width multiplier triples in world units) as a PencilKit stroke.
-    static func stroke(_ d: [String: Any]) -> PKStroke? {
+    static func stroke(_ d: [String: Any], offset: CGPoint = .zero) -> PKStroke? {
         guard let pts = d["pts"] as? [Double], pts.count >= 3 else { return nil }
         let w = CGFloat(d["w"] as? Double ?? 3)
         let o = CGFloat(d["o"] as? Double ?? 1)
@@ -340,7 +393,7 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
             // the page's own width multipliers are ~0.6 for a steady pen; PencilKit sizes are the full nib width
             let m = CGFloat(pts[i + 2])
             let size = max(1.0, w * 1.6 * (m > 0 ? min(1.4, m / 0.64) : 1))
-            points.append(PKStrokePoint(location: CGPoint(x: pts[i], y: pts[i + 1]), timeOffset: TimeInterval(k) * 0.008, size: CGSize(width: size, height: size), opacity: o, force: min(1, max(0.1, m)), azimuth: 0, altitude: .pi / 2))
+            points.append(PKStrokePoint(location: CGPoint(x: pts[i] + offset.x, y: pts[i + 1] + offset.y), timeOffset: TimeInterval(k) * 0.008, size: CGSize(width: size, height: size), opacity: o, force: min(1, max(0.1, m)), azimuth: 0, altitude: .pi / 2))
             i += 3; k += 1
         }
         if points.count == 1 { let p = points[0]; points.append(PKStrokePoint(location: CGPoint(x: p.location.x + 0.1, y: p.location.y), timeOffset: 0.01, size: p.size, opacity: p.opacity, force: p.force, azimuth: 0, altitude: .pi / 2)) }
