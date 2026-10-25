@@ -62,12 +62,28 @@
       .replace(/(^|[^*])\*([^*\s][^*]*?)\*/g, '$1<em>$2</em>')
       .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
     const out = [];
-    let list = null, para = [];
+    let list = null, para = [], table = null;
     const flushP = () => { if (para.length) { out.push('<p>' + inline(para.join(' ')) + '</p>'); para = []; } };
     const flushL = () => { if (list) { out.push(`<${list.t}>` + list.items.map((i) => '<li>' + inline(i) + '</li>').join('') + `</${list.t}>`); list = null; } };
+    const cells = (l) => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+    const flushT = () => {
+      if (!table) return;
+      const [head, ...rows] = table;
+      out.push('<div class="md-table"><table><thead><tr>' + head.map((c) => '<th>' + inline(c) + '</th>').join('') + '</tr></thead><tbody>' + rows.map((r) => '<tr>' + r.map((c) => '<td>' + inline(c) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>');
+      table = null;
+    };
     for (const raw of s.split('\n')) {
       const line = raw.trimEnd();
       let m;
+      // tables: a header row, a |---|---| rule, then rows
+      if (/^\s*\|.*\|\s*$/.test(line)) {
+        if (/^\s*\|[\s:|-]+\|\s*$/.test(line) && /-/.test(line)) { if (!table && para.length) { table = [cells(para.pop())]; flushP(); } continue; }
+        flushP(); flushL();
+        if (!table) table = [];
+        table.push(cells(line));
+        continue;
+      }
+      flushT();
       if (!line.trim()) { flushP(); flushL(); continue; }
       if ((m = line.match(/^(#{1,4})\s+(.*)$/))) { flushP(); flushL(); const n = Math.min(5, m[1].length + 2); out.push(`<h${n}>${inline(m[2])}</h${n}>`); continue; }
       if ((m = line.match(/^\s*[-*•]\s+(.*)$/))) { flushP(); if (!list || list.t !== 'ul') { flushL(); list = { t: 'ul', items: [] }; } list.items.push(m[1]); continue; }
@@ -77,7 +93,7 @@
       if (list && /^\s{2,}\S/.test(raw)) { list.items[list.items.length - 1] += ' ' + line.trim(); continue; }
       flushL(); para.push(line);
     }
-    flushP(); flushL();
+    flushP(); flushL(); flushT();
     let html = out.join('');
     html = html.replace(/\u0001(\d+)\u0001/g, (_, i) => studyBlock(code[+i], kx) || '<pre><code>' + esc(code[+i].body) + '</code></pre>');
     html = html.replace(/\u0002(\d+)\u0002/g, (_, i) => { const [p, a, b] = cites[+i]; return `<button class="cite" data-p="${p}" data-a="${a}" data-b="${b}" title="Show in the book">p. ${p}${a ? ` · ${a === b ? 'line ' + a : 'lines ' + a + '–' + b}` : ''}</button>`; });

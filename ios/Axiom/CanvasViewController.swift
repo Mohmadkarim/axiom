@@ -10,7 +10,6 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
     #if DEBUG
     private var debugBridge: DebugBridge?
     #endif
-    private let planner = PlannerBridge()
     private lazy var audio: AudioBridge = {
         let a = AudioBridge(filesDir: { [store] in store.filesDir })
         a.onTick = { [weak self] json in self?.runJS("window.__axiomAudio && __axiomAudio(\(json))") }
@@ -27,7 +26,7 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         let settings = store.loadSettings() ?? "null"
         let locked = UserDefaults.standard.object(forKey: "orientationLock") as? Int
         if let m = locked { orientationLock = UIInterfaceOrientationMask(rawValue: UInt(m)) }
-        let boot = "window.AXIOM_NATIVE = { pen: true, platform: 'ios', audio: true, planner: true, orientationLock: \(locked != nil) }; window.AXIOM_SETTINGS = \(settings);"
+        let boot = "window.AXIOM_NATIVE = { pen: true, platform: 'ios', audio: true, orientationLock: \(locked != nil) }; window.AXIOM_SETTINGS = \(settings);"
         content.addUserScript(WKUserScript(source: boot, injectionTime: .atDocumentStart, forMainFrameOnly: true))
 
         let config = WKWebViewConfiguration()
@@ -171,18 +170,6 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
             UIApplication.shared.isIdleTimerDisabled = body["on"] as? Bool ?? false
             replyHandler(true, nil)
             return
-        case "calStatus":
-            replyHandler(planner.hasCalendarAccess, nil); return
-        case "calAccess":
-            planner.requestCalendar { replyHandler($0, nil) }; return
-        case "calCalendars":
-            replyHandler(planner.calendars(), nil); return
-        case "calEvents":
-            replyHandler(planner.events(from: body["from"], to: body["to"], hidden: body["hidden"] as? [String] ?? []), nil); return
-        case "calMirror":
-            replyHandler(planner.mirror(items: body["items"] as? [[String: Any]] ?? [], from: body["from"], to: body["to"]), nil); return
-        case "notifSync":
-            planner.syncReminders(body["list"] as? [[String: Any]] ?? [], ask: body["ask"] as? Bool ?? false) { replyHandler($0, nil) }; return
         case "snapshot":
             // a picture of part of the page, including embedded sites (Desmos) that the page itself cannot read
             let cfg = WKSnapshotConfiguration()

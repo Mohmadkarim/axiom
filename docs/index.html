@@ -1407,123 +1407,143 @@ h5, .g-sec-h h2, .sub, .nb-fly-h, .pp-h, .bk-up-h { font-size: 11px !important; 
 /* zoomed-in pages scroll sideways on both sides instead of being cut off on the left */
 #reader-view .rd-pages { width: max-content; min-width: 100%; margin: 0 auto; }
 
-/* ===== planner: Today, course schedule, week, editor, import ===== */
-.g-sec-h .ibtn { width: 32px; height: 32px; }
-.pl-today-body { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 14px; container-type: inline-size; }
-@media (max-width: 900px) { .pl-today-body { grid-template-columns: minmax(0, 1fr); } }
-.pl-agenda, .pl-next, .pl-card { background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--r-l, 16px); padding: 6px; min-width: 0; }
-.pl-next, .pl-card { padding: 10px 6px 6px; }
-.pl-sub { font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: 0 10px 6px; }
-.pl-none { color: var(--muted); font-size: 14px; margin: 0; padding: 12px; }
-.pl-row { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: var(--r-m, 12px); cursor: default; min-width: 0; }
-.pl-row[role="button"] { cursor: pointer; }
-.pl-row[role="button"]:active { background: var(--panel-2); }
-.pl-row.past { opacity: .5; }
-.pl-row.done .pl-row-t b { text-decoration: line-through; color: var(--muted); }
-.pl-time { width: 50px; flex: none; display: flex; flex-direction: column; font-weight: 650; font-size: 14px; line-height: 1.2; }
-.pl-time small { color: var(--muted); font-weight: 500; font-size: 12px; }
-.pl-bar { width: 4px; align-self: stretch; border-radius: 2px; flex: none; min-height: 30px; }
-.pl-row.cal .pl-bar { opacity: .55; }
-.pl-row-t, .pl-up-t { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
-.pl-row-t b, .pl-up-t b { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pl-row-t small, .pl-up-t small { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pl-check { width: 28px; height: 28px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--line-strong); display: grid; place-items: center; flex: none; color: transparent; }
-.pl-check svg { width: 16px; height: 16px; }
-.pl-check.on { background: #2f9e6b; box-shadow: none; color: #fff; }
-.pl-up { display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: var(--r-m, 12px); text-align: left; width: 100%; min-width: 0; }
-.pl-up:active { background: var(--panel-2); }
-.pl-when { width: 74px; flex: none; font-size: 12.5px; font-weight: 650; color: var(--accent); }
-.pl-up .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-.pl-empty { display: flex; align-items: center; gap: 18px; padding: 18px 20px; background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--r-l, 16px); grid-column: 1 / -1; flex-wrap: wrap; }
-.pl-empty-art { width: 48px; height: 48px; border-radius: 14px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex: none; }
-.pl-empty-art svg { width: 26px; height: 26px; }
-.pl-empty h3 { margin: 0 0 4px; font-size: 16px; }
-.pl-empty p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.45; max-width: 52ch; }
-.pl-empty-acts { display: flex; gap: 8px; flex-wrap: wrap; }
-.pl-course-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
-.pl-course-empty { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border: 1px dashed var(--line-strong); border-radius: var(--r-l, 16px); flex-wrap: wrap; }
-.pl-course-empty p { margin: 0; color: var(--muted); font-size: 13.5px; max-width: 56ch; }
-.pl-note { margin: 4px 10px 8px; font-size: 13px; line-height: 1.45; }
-.pl-note b { font-weight: 650; }
-
-/* editor */
-.pl-edit { width: min(520px, 100%); display: grid; gap: 12px; }
-.pl-f { display: grid; gap: 5px; min-width: 0; }
-.pl-f > span { font-size: 12px; font-weight: 650; color: var(--muted); }
-.pl-f .field { width: 100%; min-width: 0; }
-.pl-f3 { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
-.pl-chk { display: flex; align-items: center; gap: 8px; font-size: 14px; }
-.pl-chk input { width: 20px; height: 20px; accent-color: var(--accent); }
-.pl-acts { margin-top: 4px; align-items: center; }
+/* ===== form fields in sheets ===== */
+.fx-f { display: grid; gap: 5px; min-width: 0; }
+.fx-f > span { font-size: 12px; font-weight: 650; color: var(--muted); }
+.fx-f .field { width: 100%; min-width: 0; margin: 0; }
+.fx-f textarea.field { height: auto; padding: 9px 12px; line-height: 1.4; }
+.fx-f input[type="date"], .fx-f input[type="time"] { -webkit-appearance: none; appearance: none; display: block; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; text-align: left; line-height: 38px; padding: 0 12px; }
+.fx-f input[type="date"]::-webkit-date-and-time-value, .fx-f input[type="time"]::-webkit-date-and-time-value { text-align: left; }
+.fx-acts { margin-top: 4px; align-items: center; }
+.fx-sub { font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: 0 10px 6px; }
+.fx-none { color: var(--muted); font-size: 14px; margin: 0; padding: 12px; }
+.fx-art { width: 48px; height: 48px; border-radius: 14px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex: none; }
+.fx-art svg { width: 26px; height: 26px; }
+.fx-check { width: 28px; height: 28px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--line-strong); display: grid; place-items: center; flex: none; color: transparent; }
+.fx-check svg { width: 16px; height: 16px; }
+.fx-check.on { background: #2f9e6b; box-shadow: none; color: #fff; }
 .danger-text { color: var(--danger) !important; }
 .field.err { box-shadow: 0 0 0 2px var(--danger); }
+.g-sec-h .ibtn { width: 32px; height: 32px; }
 
-/* week */
-.pl-week { position: fixed; inset: 0; z-index: 55; background: var(--bg); display: flex; flex-direction: column; animation: viewIn .22s var(--ease); }
-.pl-wk-bar { display: flex; align-items: center; gap: 6px; padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px; border-bottom: 1px solid var(--line); }
-.pl-wk-title { font-weight: 700; font-size: 17px; margin-left: 4px; }
-.pl-wk-grid { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.pl-wk-head, .pl-wk-allday { display: grid; grid-template-columns: 54px repeat(7, minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
-.pl-wk-day { display: flex; flex-direction: column; align-items: center; padding: 8px 0 6px; font-size: 12px; color: var(--muted); font-weight: 600; }
-.pl-wk-day b { font-size: 18px; color: var(--fg); font-weight: 650; }
-.pl-wk-day.on b { background: var(--accent); color: #fff; border-radius: 50%; width: 30px; height: 30px; display: grid; place-items: center; }
-.pl-wk-allday > div { padding: 4px 2px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.pl-ad { font-size: 11.5px; padding: 2px 6px; border-radius: 6px; background: color-mix(in srgb, var(--c) 22%, transparent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pl-wk-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-.pl-wk-cols { display: grid; grid-template-columns: 54px repeat(7, minmax(0, 1fr)); position: relative; padding-bottom: 24px; }
-.pl-wk-hours { position: relative; }
-.pl-wk-hours span { position: absolute; right: 8px; transform: translateY(-50%); font-size: 11px; color: var(--faint); }
-.pl-wk-hours span:first-child { transform: none; }
-.pl-wk-col { position: relative; border-left: 1px solid var(--line); background-image: linear-gradient(var(--line) 1px, transparent 1px); background-size: 100% 52px; }
-.pl-wk-col.today { background-color: color-mix(in srgb, var(--accent) 4%, transparent); }
-.pl-blk { position: absolute; border-radius: 8px; padding: 4px 6px; text-align: left; overflow: hidden; display: flex; flex-direction: column; gap: 1px; background: color-mix(in srgb, var(--c) 18%, var(--panel-solid)); border-left: 3px solid var(--c); font-size: 12px; line-height: 1.25; color: var(--fg); }
-.pl-blk b { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pl-blk small { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pl-blk.cal { background: color-mix(in srgb, var(--c) 10%, transparent); border-left-color: color-mix(in srgb, var(--c) 70%, transparent); pointer-events: none; }
-.pl-blk.k-exam { background: color-mix(in srgb, var(--c) 30%, var(--panel-solid)); }
-.pl-blk.k-deadline { border-left-style: dashed; }
-.pl-blk.k-study { background: transparent; border: 1.5px dashed color-mix(in srgb, var(--c) 70%, transparent); border-left-width: 3px; }
-.pl-blk.done { opacity: .5; }
-.pl-now { position: absolute; left: -4px; right: 0; height: 2px; background: #e5484d; z-index: 2; }
-.pl-now::before { content: ''; position: absolute; left: 0; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #e5484d; }
-.pl-calmenu { width: 320px; max-width: calc(100vw - 32px); }
-.pl-calmenu .pl-tg, .pl-calmenu .pl-cal { display: flex; align-items: center; gap: 10px; text-align: left; }
-.pl-calmenu .pl-tg b { display: block; font-weight: 600; font-size: 14px; }
-.pl-calmenu small { display: block; color: var(--muted); font-size: 12px; font-weight: 400; }
-.pl-calmenu .pl-cal small { display: inline; }
-.pl-calmenu .sw { width: 36px; height: 22px; border-radius: 11px; background: rgba(120,128,145,.3); position: relative; flex: none; }
-.pl-calmenu .sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .2s var(--ease); }
-.pl-calmenu .sw.on { background: var(--accent); }
-.pl-calmenu .sw.on::after { transform: translateX(14px); }
+/* ===== exam prep ===== */
+.ex-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.ex-card { display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 14px 16px; background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--r-l, 16px); min-width: 0; }
+.ex-card:active { transform: scale(.99); }
+.ex-card-top { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 650; color: var(--muted); }
+.ex-card-top .dot { width: 8px; height: 8px; border-radius: 50%; }
+.ex-left { color: var(--accent); }
+.ex-title { font-size: 17px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ex-sub, .ex-today { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ex-bar { height: 4px; border-radius: 2px; background: var(--panel-2); overflow: hidden; }
+.ex-bar i { display: block; height: 100%; background: var(--accent); border-radius: 2px; transition: width .3s var(--ease); }
 
-/* import */
-.pl-imp { display: grid; gap: 10px; max-height: min(86vh, 900px); }
-.pl-imp-maps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
-.pl-imp-list { overflow-y: auto; max-height: 52vh; border: 1px solid var(--line); border-radius: var(--r-m, 12px); }
-.pl-imp-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--line); min-width: 0; }
-.pl-imp-row:last-child { border-bottom: 0; }
-.pl-imp-row input { width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
-.pl-imp-row .grow { display: flex; flex-direction: column; min-width: 0; }
-.pl-imp-row b { font-weight: 600; font-size: 14.5px; }
-.pl-imp-row small { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pl-chip { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--panel-2); color: var(--muted); flex: none; width: 66px; text-align: center; }
-.pl-chip.k-exam { background: color-mix(in srgb, #e5484d 16%, transparent); color: #e5484d; }
-.pl-chip.k-deadline { background: color-mix(in srgb, #d99a22 18%, transparent); color: #b7791f; }
-.pl-chip.k-class { background: var(--accent-soft); color: var(--accent); }
-/* iPad Safari gives date/time inputs an intrinsic width; make them fit their column */
-.pl-f input[type="date"], .pl-f input[type="time"] { -webkit-appearance: none; appearance: none; display: block; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; text-align: left; }
-.pl-f input[type="date"]::-webkit-date-and-time-value, .pl-f input[type="time"]::-webkit-date-and-time-value { text-align: left; }
-.pl-edit { box-sizing: border-box; overflow-x: hidden; }
-.pl-f .field, .pl-imp .field { margin: 0; }
-.pl-f textarea.field { height: auto; padding: 9px 12px; line-height: 1.4; }
-.pl-f input[type="date"], .pl-f input[type="time"] { line-height: 38px; padding: 0 12px; }
-.pl-edit { gap: 14px; }
-/* dialogs stay above the on-screen keyboard (--vvh is the visible height, set from visualViewport) */
-.modal-back { bottom: auto; height: var(--vvh, 100%); }
-.modal { max-height: calc(var(--vvh, 100vh) - 32px); }
-.pl-time { width: 72px; white-space: nowrap; font-size: 13.5px; }
-.pl-time small { font-size: 12px; }
-.pl-wk-bar .flip svg { transform: scaleX(-1); }
+.ex-edit { width: min(560px, 100%); display: grid; gap: 14px; box-sizing: border-box; }
+.ex-f2 { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, .8fr); }
+.ex-mats { display: grid; gap: 6px; }
+.ex-mat { display: flex; align-items: center; gap: 10px; padding: 8px 6px 8px 12px; border: 1px solid var(--line); border-radius: var(--r-m, 12px); min-width: 0; }
+.ex-mat .grow { display: flex; flex-direction: column; min-width: 0; }
+.ex-mat b { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ex-mat small { color: var(--muted); font-size: 12px; }
+.ex-mat > svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
+.ex-mats-empty { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; padding: 10px 12px; border: 1px dashed var(--line-strong); border-radius: var(--r-m, 12px); }
+.ex-add { justify-self: start; }
+.menu button small { display: block; color: var(--muted); font-size: 12px; font-weight: 400; }
+
+.ex-view { position: fixed; inset: 0; z-index: 55; background: var(--bg); display: flex; flex-direction: column; animation: viewIn .22s var(--ease); }
+.ex-v-bar { display: flex; align-items: center; gap: 10px; padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px; }
+.ex-v-bar .flip svg { transform: scaleX(-1); }
+.ex-v-title { display: flex; flex-direction: column; min-width: 0; }
+.ex-v-title b { font-size: 17px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ex-v-title small { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ex-v-left { font-weight: 700; font-size: 13px; color: var(--accent); background: var(--accent-soft); padding: 5px 10px; border-radius: 999px; white-space: nowrap; }
+.ex-tabs { align-self: center; margin: 0 16px 8px; }
+.ex-tabs[hidden] { display: none; }
+.ex-v-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 8px max(16px, calc((100% - 760px) / 2)) calc(40px + env(safe-area-inset-bottom, 0px)); }
+.ex-building { display: grid; place-items: center; gap: 14px; padding: 80px 20px; text-align: center; color: var(--muted); }
+.ex-building.small { padding: 24px; }
+.ex-building p { margin: 0; max-width: 46ch; line-height: 1.5; }
+.ex-spin { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--panel-2); border-top-color: var(--accent); animation: exspin 1s linear infinite; }
+@keyframes exspin { to { transform: rotate(360deg); } }
+.ex-start { display: grid; justify-items: center; text-align: center; gap: 12px; padding: 60px 20px; }
+.ex-start h3 { margin: 0; font-size: 20px; }
+.ex-start p { margin: 0; color: var(--muted); max-width: 52ch; line-height: 1.5; }
+.ex-err { color: var(--danger); font-size: 13.5px; }
+.ex-summary { padding: 14px 16px; background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--r-l, 16px); display: grid; gap: 8px; }
+.ex-summary .md p { margin: 0; }
+.ex-format { margin: 0; font-size: 13.5px; color: var(--muted); }
+.ex-format b { color: var(--fg); font-weight: 650; }
+.ex-prog { display: grid; gap: 6px; }
+.ex-prog small { color: var(--muted); font-size: 12px; }
+.ex-missed { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 10px 12px 10px 16px; border-radius: var(--r-m, 12px); background: color-mix(in srgb, #d99a22 14%, transparent); font-size: 13.5px; }
+.ex-day { margin-top: 18px; }
+.ex-day-h { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin: 0 4px 8px; }
+.ex-day.today .ex-day-h { color: var(--accent); }
+.ex-day.past { opacity: .6; }
+.ex-sess { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border-radius: var(--r-m, 12px); background: var(--panel-solid); border: 1px solid var(--line); margin-bottom: 8px; }
+.ex-sess .fx-check { margin-top: 2px; }
+.ex-sess.done .md { color: var(--muted); text-decoration: line-through; }
+.ex-sess .md p { margin: 2px 0; }
+.ex-sess-t { display: flex; gap: 8px; align-items: center; }
+.ex-k { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 2px 8px; border-radius: 999px; background: var(--panel-2); color: var(--muted); }
+.ex-k.k-learn { background: var(--accent-soft); color: var(--accent); }
+.ex-k.k-practice { background: color-mix(in srgb, #2f9e6b 16%, transparent); color: #2f9e6b; }
+.ex-k.k-mock { background: color-mix(in srgb, #e5484d 16%, transparent); color: #e5484d; }
+.ex-min { font-size: 12px; color: var(--muted); }
+.ex-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.ex-chip { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--panel-2); color: var(--fg); }
+.ex-chips.pick .ex-chip.on { background: var(--accent); color: #fff; }
+.ex-list { display: grid; gap: 8px; }
+.ex-topic { display: grid; gap: 4px; text-align: left; padding: 12px 14px; border-radius: var(--r-m, 12px); background: var(--panel-solid); border: 1px solid var(--line); }
+.ex-topic-h { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ex-topic-h b { font-size: 15.5px; font-weight: 650; margin-right: auto; }
+.ex-topic small { color: var(--muted); font-size: 13px; line-height: 1.4; }
+.ex-topic .ex-src { color: var(--faint); font-size: 12px; }
+.ex-w { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-transform: capitalize; }
+.ex-w.w-high { background: color-mix(in srgb, #e5484d 16%, transparent); color: #e5484d; }
+.ex-w.w-medium { background: color-mix(in srgb, #d99a22 18%, transparent); color: #b7791f; }
+.ex-w.w-low { background: var(--panel-2); color: var(--muted); }
+.ex-n { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+.ex-gaps { margin-top: 18px; padding: 12px 14px; border: 1px dashed var(--line-strong); border-radius: var(--r-m, 12px); }
+.ex-gaps p { margin: 6px 0; font-size: 13.5px; line-height: 1.45; }
+.ex-guide-h h2 { margin: 6px 0 4px; font-size: 24px; }
+.ex-guide-h p { margin: 0 0 6px; }
+.ex-hint { color: var(--faint); font-size: 12.5px; margin: 4px 0 12px; }
+.ex-guide { display: grid; gap: 2px; }
+.ex-block { padding: 6px 10px; border-radius: 10px; cursor: pointer; }
+.ex-block:active { background: var(--panel-2); }
+.ex-block .md > :first-child { margin-top: 0; } .ex-block .md > :last-child { margin-bottom: 0; }
+.ex-block.heading { margin-top: 14px; }
+.ex-block.heading .md h2 { font-size: 19px; margin: 0; }
+.ex-deeper { margin: 4px 0 10px 18px; padding: 10px 14px; border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); border-radius: 0 10px 10px 0; }
+.ex-deeper.sol { border-left-color: #2f9e6b; background: color-mix(in srgb, #2f9e6b 7%, transparent); }
+.ex-deeper-h { font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+.ex-deeper.sol .ex-deeper-h { color: #2f9e6b; }
+.ex-deeper .md > :first-child { margin-top: 0; } .ex-deeper .md > :last-child { margin-bottom: 0; }
+.ex-ask { display: flex; gap: 8px; align-items: flex-end; margin: 4px 0 10px 18px; }
+.ex-ask .field { margin: 0; flex: 1; min-height: 40px; height: auto; padding: 9px 12px; }
+.ex-qs-h { margin: 22px 0 8px; padding: 0 4px; }
+.ex-q { padding: 12px 14px; border-radius: var(--r-m, 12px); background: var(--panel-solid); border: 1px solid var(--line); margin-bottom: 10px; display: grid; gap: 6px; }
+.ex-q-h { display: flex; align-items: center; gap: 8px; }
+.ex-q-h b { font-size: 13px; color: var(--muted); font-weight: 650; margin-right: auto; }
+.ex-q .md p { margin: 4px 0; }
+.ex-q-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.ex-q-acts .btn { height: 34px; font-size: 13px; }
+.ex-q-out .ex-deeper { margin-left: 0; }
+.ex-practice-new { padding: 14px 16px; background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--r-l, 16px); display: grid; gap: 10px; margin-bottom: 14px; }
+.ex-practice-new .fx-sub { padding: 0; }
+.ex-set { margin-top: 18px; display: grid; gap: 8px; }
+.ex-set-h { display: flex; align-items: baseline; gap: 10px; padding: 0 4px; }
+.ex-set-h b { font-size: 16px; }
+.ex-set-h small { color: var(--muted); font-size: 12.5px; }
+.ex-set > .btn { justify-self: start; }
+/* menus opened from inside a dialog sit above it */
+.popover { z-index: 95; }
+.fx-f3 { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.md-table { overflow-x: auto; margin: 8px 0; }
+.md-table table { border-collapse: collapse; font-size: 14px; min-width: 60%; }
+.md-table th, .md-table td { border: 1px solid var(--line-strong); padding: 6px 10px; text-align: left; vertical-align: top; }
+.md-table th { background: var(--panel-2); font-weight: 650; }
 </style>
 </head>
 <body>
@@ -1545,7 +1565,7 @@ h5, .g-sec-h h2, .sub, .nb-fly-h, .pp-h, .bk-up-h { font-size: 11px !important; 
 </div>
 <div id="toasts" aria-live="polite"></div>
 
-<script>window.AXIOM_BUILD = 'mvmzr4y2';
+<script>window.AXIOM_BUILD = 'mvnfoztq';
 /* ---- core.js ---- */
 /* Axiom core: namespace, math, color, events, DOM helpers */
 'use strict';
@@ -1908,8 +1928,6 @@ A.fmtDate = (t) => {
     wheel: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.2"/><path d="M12 3.5v5.3M12 15.2v5.3M3.5 12h5.3M15.2 12h5.3"/>',
     bar: '<rect x="8" y="3" width="8" height="18" rx="3"/><path d="M10.5 7h3M10.5 11h3M10.5 15h3"/>',
     spark: '<path d="M12 3.5c.6 3.6 2.4 5.6 6 6.4-3.6.8-5.4 2.8-6 6.4-.6-3.6-2.4-5.6-6-6.4 3.6-.8 5.4-2.8 6-6.4Z"/><path d="M18.5 15.5c.25 1.5 1 2.3 2.5 2.6-1.5.3-2.25 1.1-2.5 2.6-.25-1.5-1-2.3-2.5-2.6 1.5-.3 2.25-1.1 2.5-2.6Z"/>',
-    calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
-    clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
     flag: '<path d="M5.5 21V4"/><path d="M5.5 4.5h11l-2 4 2 4h-11"/>',
     target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".9" fill="currentColor"/>',
     doc: '<path d="M6.5 3.5h7l4 4v12a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1Z"/><path d="M13.5 3.5v4h4M9 12h6M9 15.5h6"/>',
@@ -8438,12 +8456,28 @@ A.fmtDate = (t) => {
       .replace(/(^|[^*])\*([^*\s][^*]*?)\*/g, '$1<em>$2</em>')
       .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
     const out = [];
-    let list = null, para = [];
+    let list = null, para = [], table = null;
     const flushP = () => { if (para.length) { out.push('<p>' + inline(para.join(' ')) + '</p>'); para = []; } };
     const flushL = () => { if (list) { out.push(`<${list.t}>` + list.items.map((i) => '<li>' + inline(i) + '</li>').join('') + `</${list.t}>`); list = null; } };
+    const cells = (l) => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+    const flushT = () => {
+      if (!table) return;
+      const [head, ...rows] = table;
+      out.push('<div class="md-table"><table><thead><tr>' + head.map((c) => '<th>' + inline(c) + '</th>').join('') + '</tr></thead><tbody>' + rows.map((r) => '<tr>' + r.map((c) => '<td>' + inline(c) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>');
+      table = null;
+    };
     for (const raw of s.split('\n')) {
       const line = raw.trimEnd();
       let m;
+      // tables: a header row, a |---|---| rule, then rows
+      if (/^\s*\|.*\|\s*$/.test(line)) {
+        if (/^\s*\|[\s:|-]+\|\s*$/.test(line) && /-/.test(line)) { if (!table && para.length) { table = [cells(para.pop())]; flushP(); } continue; }
+        flushP(); flushL();
+        if (!table) table = [];
+        table.push(cells(line));
+        continue;
+      }
+      flushT();
       if (!line.trim()) { flushP(); flushL(); continue; }
       if ((m = line.match(/^(#{1,4})\s+(.*)$/))) { flushP(); flushL(); const n = Math.min(5, m[1].length + 2); out.push(`<h${n}>${inline(m[2])}</h${n}>`); continue; }
       if ((m = line.match(/^\s*[-*•]\s+(.*)$/))) { flushP(); if (!list || list.t !== 'ul') { flushL(); list = { t: 'ul', items: [] }; } list.items.push(m[1]); continue; }
@@ -8453,7 +8487,7 @@ A.fmtDate = (t) => {
       if (list && /^\s{2,}\S/.test(raw)) { list.items[list.items.length - 1] += ' ' + line.trim(); continue; }
       flushL(); para.push(line);
     }
-    flushP(); flushL();
+    flushP(); flushL(); flushT();
     let html = out.join('');
     html = html.replace(/\u0001(\d+)\u0001/g, (_, i) => studyBlock(code[+i], kx) || '<pre><code>' + esc(code[+i].body) + '</code></pre>');
     html = html.replace(/\u0002(\d+)\u0002/g, (_, i) => { const [p, a, b] = cites[+i]; return `<button class="cite" data-p="${p}" data-a="${a}" data-b="${b}" title="Show in the book">p. ${p}${a ? ` · ${a === b ? 'line ' + a : 'lines ' + a + '–' + b}` : ''}</button>`; });
@@ -8988,533 +9022,592 @@ A.fmtDate = (t) => {
   A.on('selection', () => { if (root && root.isConnected && els.chips && ctx === AI.canvasCtx) drawChips(); });
 })();
 
-/* ---- planner.js ---- */
-/* Axiom planner: classes, exams, deadlines and study blocks; the iPad's calendars; reminders; syllabus import */
+/* ---- examprep.js ---- */
+/* Axiom exam prep: give it the syllabus, past exams, problem sets, book chapters and your notes; it maps the topics,
+   transcribes every past question, plans each day until the test, writes a layered study guide per topic and makes practice. */
 'use strict';
 (() => {
   const h = A.h, S = A.settings;
-  const PL = (A.PL = {});
-  const HOUR = 36e5, DAY = 864e5;
-  const KINDS = {
-    class: { label: 'Class', icon: 'clock' },
-    exam: { label: 'Exam', icon: 'flag' },
-    deadline: { label: 'Deadline', icon: 'target' },
-    study: { label: 'Study', icon: 'book' },
-  };
-  const NATIVE = () => !!(window.AXIOM_NATIVE && window.AXIOM_NATIVE.planner && A.native);
+  const EX = (A.EX = {});
+  const DAY = 864e5;
+  const KINDS = { exam: 'Exam', quiz: 'Quiz', lab: 'Lab', other: 'Other' };
+  const ROLES = { syllabus: 'Syllabus', past: 'Past exam', problems: 'Problem set', notes: 'Notes or slides' };
 
-  /* ---------- data ---------- */
-  const plan = () => (S.plan = S.plan || { items: [], mirror: false, remind: true, hiddenCals: [], calOn: false });
-  PL.items = () => plan().items;
-  const save = (ask) => { A.saveSettings(); A.emit('plan'); scheduleSync(ask === true); };
-  PL.add = (it) => { it.id = it.id || A.uid(); plan().items.push(it); save(true); return it; };
-  PL.update = (id, patch) => { const it = PL.items().find((x) => x.id === id); if (it) { Object.assign(it, patch); save(); } return it; };
-  PL.remove = (id) => { plan().items = PL.items().filter((x) => x.id !== id); save(); };
+  /* ---------- storage: metadata in settings, the big prep data and the files in the file store ---------- */
+  const list = () => (S.exams = S.exams || []);
+  EX.list = list;
+  EX.get = (id) => list().find((e) => e.id === id);
+  const saveMeta = () => { A.saveSettings(); A.emit('exams'); };
+  const cache = new Map();
+  const loadPrep = async (id) => {
+    if (cache.has(id)) return cache.get(id);
+    let p = null;
+    try { const b = await A.store.loadFile('exprep_' + id, 'application/json'); if (b) p = JSON.parse(await b.text()); } catch (e) { /* none yet */ }
+    p = p || { topics: [], questions: [], gaps: [], plan: [], guides: {}, answers: {}, practice: [], done: {} };
+    p.guides = p.guides || {}; p.answers = p.answers || {}; p.practice = p.practice || []; p.done = p.done || {};
+    cache.set(id, p);
+    return p;
+  };
+  let saveT = 0;
+  const savePrep = (id) => { clearTimeout(saveT); saveT = setTimeout(() => { const p = cache.get(id); if (p) A.store.saveFile('exprep_' + id, new Blob([JSON.stringify(p)], { type: 'application/json' })).catch(() => {}); }, 300); };
 
   const dayStart = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
-  const weekStart = (t) => { const d = new Date(dayStart(t)); const wd = (d.getDay() + 6) % 7; d.setDate(d.getDate() - wd); return d.getTime(); };
-  const addDays = (t, n) => { const d = new Date(t); d.setDate(d.getDate() + n); return d.getTime(); };
-  const fmtTime = (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const fmtDay = (t) => new Date(t).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
   const isoDate = (t) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
-  const hm = (t) => { const d = new Date(t); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
-  const at = (dateStr, timeStr) => { const [y, m, d] = dateStr.split('-').map(Number); const [hh, mm] = (timeStr || '00:00').split(':').map(Number); return new Date(y, m - 1, d, hh || 0, mm || 0).getTime(); };
-  PL.util = { dayStart, weekStart, addDays, fmtTime, fmtDay, isoDate, hm, at };
+  const daysLeft = (t) => Math.round((dayStart(t) - dayStart(Date.now())) / DAY);
+  const leftLabel = (t) => { const d = daysLeft(t); return d < 0 ? 'Done' : d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : `In ${d} days`; };
+  const fmtDay = (t) => new Date(t).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  const sessions = (p) => p.plan.flatMap((d) => d.sessions.map((s, i) => ({ ...s, key: d.day + ':' + i, day: d.day })));
+  const progressOf = (p) => { const all = sessions(p); return all.length ? all.filter((s) => p.done[s.key]).length / all.length : 0; };
 
-  /* every occurrence of every item between from and to (weekly items repeat until their end date) */
-  PL.occ = (from, to) => {
-    const out = [];
-    for (const it of PL.items()) {
-      const len = Math.max(0, (it.end || it.start) - it.start);
-      if (!it.weekly) { if (it.start < to && (it.start + len) >= from) out.push({ it, start: it.start, end: it.start + len, key: it.id }); continue; }
-      const until = it.until || it.start + 16 * 7 * DAY;
-      let k = Math.max(0, Math.floor((from - it.start) / (7 * DAY)) - 1);
-      for (; ; k++) {
-        const s = addDays(it.start, 7 * k);
-        if (s >= to || s > until) break;
-        if (s + len < from || (it.skip || []).includes(dayStart(s))) continue;
-        out.push({ it, start: s, end: s + len, key: it.id + '@' + dayStart(s) });
-      }
-    }
-    return out.sort((a, b) => a.start - b.start);
-  };
-
-  /* ---------- the iPad's calendars ---------- */
-  let calCache = { from: 0, to: 0, at: 0, events: [] };
-  PL.calAvailable = NATIVE;
-  PL.calEnabled = () => NATIVE() && plan().calOn;
-  PL.connectCalendar = async () => {
-    if (!NATIVE()) { A.toast('Your iPad calendars appear in the Axiom app on iPad.'); return false; }
-    const ok = await A.native.post({ op: 'calAccess' }).catch(() => false);
-    if (!ok) { A.toast('Calendar access is off. Turn it on in Settings › Axiom › Calendars.', 4200); return false; }
-    plan().calOn = true; calCache.at = 0; save();
-    return true;
-  };
-  PL.calEvents = async (from, to) => {
-    if (!PL.calEnabled()) return [];
-    if (calCache.at > Date.now() - 60e3 && from >= calCache.from && to <= calCache.to) return calCache.events.filter((e) => e.start < to && e.end > from);
-    const pad = 14 * DAY;
-    const events = await A.native.post({ op: 'calEvents', from: from - pad, to: to + pad, hidden: plan().hiddenCals || [] }).catch(() => []);
-    calCache = { from: from - pad, to: to + pad, at: Date.now(), events: events || [] };
-    return calCache.events.filter((e) => e.start < to && e.end > from);
-  };
-  A.on('plan', () => { calCache.at = 0; });
-
-  /* ---------- reminders (iPad notifications) and the "Axiom" calendar ---------- */
-  let syncT = 0;
-  let askNext = false;
-  const scheduleSync = (ask) => { if (ask) askNext = true; clearTimeout(syncT); syncT = setTimeout(PL.sync, 1200); };
-  PL.sync = async () => {
-    if (!NATIVE()) return;
-    const now = Date.now(), list = [];
-    if (plan().remind !== false) {
-      for (const o of PL.occ(now, now + 21 * DAY)) {
-        const it = o.it, course = A.SU.name(it.course);
-        const title = (course ? course + ': ' : '') + it.title;
-        const push = (t, body, tag) => { if (t > now) list.push({ id: `${o.key}#${tag}`, title, body, at: t }); };
-        if (it.kind === 'exam') { push(o.start - DAY, `Exam tomorrow at ${fmtTime(o.start)}${it.room ? ' · ' + it.room : ''}${it.covers ? ' · ' + it.covers : ''}`, 'd'); push(o.start - HOUR, `Exam in 1 hour${it.room ? ' · ' + it.room : ''}`, 'h'); }
-        if (it.kind === 'deadline' && !it.done) { push(o.start - DAY, `Due tomorrow at ${fmtTime(o.start)}`, 'd'); push(o.start - 3 * HOUR, `Due in 3 hours`, 'h'); }
-        if (it.kind === 'study') push(o.start, 'Study block starting now', 's');
-        if (it.kind === 'class' && plan().remindClasses) push(o.start - 10 * 6e4, `In 10 minutes${it.room ? ' · ' + it.room : ''}`, 'c');
-      }
-      list.sort((a, b) => a.at - b.at);
-    }
-    const ask = askNext; askNext = false;
-    A.native.post({ op: 'notifSync', list: list.slice(0, 60), ask }).catch(() => {});
-    if (plan().mirror && plan().calOn) {
-      const items = PL.occ(now - 7 * DAY, now + 120 * DAY).map((o) => ({
-        key: o.key, title: (o.it.kind === 'deadline' ? 'Due: ' : o.it.kind === 'exam' ? 'Exam: ' : '') + o.it.title + (A.SU.name(o.it.course) ? ` (${A.SU.name(o.it.course)})` : ''),
-        start: o.it.kind === 'deadline' ? o.start - 30 * 6e4 : o.start, end: o.it.kind === 'deadline' ? o.start : Math.max(o.end, o.start + 15 * 6e4),
-        location: o.it.room || '', notes: [o.it.covers ? 'Covers: ' + o.it.covers : '', o.it.notes || '', 'Added by Axiom.'].filter(Boolean).join('\n'),
-      }));
-      A.native.post({ op: 'calMirror', items, from: now - 7 * DAY, to: now + 120 * DAY }).catch(() => {});
-    }
-  };
-  setTimeout(() => { if (NATIVE() && PL.items().length) PL.sync(); }, 4000);
-
-  /* ---------- what is on a day / coming up ---------- */
-  PL.day = async (t) => {
-    const from = dayStart(t), to = addDays(from, 1);
-    const own = PL.occ(from, to).map((o) => ({ ...o, own: true }));
-    const cal = (await PL.calEvents(from, to)).map((e) => ({ ev: e, start: e.start, end: e.end, allDay: e.allDay, key: e.id }));
-    return own.concat(cal).sort((a, b) => (b.allDay ? 1 : 0) - (a.allDay ? 1 : 0) || a.start - b.start);
-  };
-  PL.upcoming = (days = 21, course = null) => {
-    const now = Date.now();
-    return PL.occ(now - HOUR, now + days * DAY).filter((o) => (o.it.kind === 'exam' || (o.it.kind === 'deadline' && !o.it.done)) && (!course || o.it.course === course));
-  };
-  const daysLeft = (t) => { const d = Math.round((dayStart(t) - dayStart(Date.now())) / DAY); return d <= 0 ? 'Today' : d === 1 ? 'Tomorrow' : `In ${d} days`; };
-  const colorOf = (it) => (it.course ? A.SU.color(it.course) : 'var(--accent)');
-  const withC = (el, c) => { el.style.setProperty('--c', c); return el; };
-
-  /* ---------- Home: Today ---------- */
-  PL.todaySection = () => {
-    const sec = h('section', { class: 'g-sec pl-today' });
-    const weekBtn = h('button', { class: 'link-btn', onclick: () => PL.openWeek() }, 'Week');
-    const addBtn = h('button', { class: 'ibtn', title: 'Add to your plan', 'aria-label': 'Add to your plan', html: A.icon('plus') });
-    addBtn.addEventListener('click', () => addMenu(addBtn));
-    sec.append(h('div', { class: 'g-sec-h' }, h('h2', null, 'Today'), h('div', { class: 'row', style: { gap: '4px' } }, weekBtn, addBtn)));
-    const body = h('div', { class: 'pl-today-body' });
-    sec.append(body);
-    const fill = async () => {
-      const items = await PL.day(Date.now());
-      const up = PL.upcoming(21).filter((o) => dayStart(o.start) > dayStart(Date.now()) || o.it.kind === 'exam');
-      body.innerHTML = '';
-      if (!PL.items().length && !PL.calEnabled()) { body.append(emptyCard()); return; }
-      const agenda = h('div', { class: 'pl-agenda' });
-      const now = Date.now();
-      if (!items.length) agenda.append(h('p', { class: 'pl-none' }, 'Nothing scheduled today.'));
-      items.forEach((o) => agenda.append(row(o, now)));
-      const next = h('div', { class: 'pl-next' }, h('div', { class: 'pl-sub' }, 'Coming up'));
-      if (!up.length) next.append(h('p', { class: 'pl-none' }, 'No exams or deadlines in the next three weeks.'));
-      up.slice(0, 6).forEach((o) => next.append(h('button', { class: 'pl-up', onclick: () => PL.edit(o.it) },
-        h('span', { class: 'pl-when num' }, daysLeft(o.start)),
-        h('span', { class: 'grow pl-up-t' }, h('b', null, o.it.title), h('small', null, [A.SU.name(o.it.course), KINDS[o.it.kind].label + ' · ' + fmtDay(o.start) + ' ' + fmtTime(o.start), o.it.covers].filter(Boolean).join(' · '))),
-        h('i', { class: 'dot', style: { background: colorOf(o.it) } }))));
-      body.append(agenda, next);
-    };
-    fill();
-    const off = A.on('plan', () => { if (!sec.isConnected) return off && off(); fill(); });
-    return sec;
-  };
-  const row = (o, now) => {
-    if (o.ev) {
-      const e = o.ev;
-      return h('div', { class: 'pl-row cal' + (e.end < now ? ' past' : '') },
-        h('span', { class: 'pl-time num' }, e.allDay ? 'All day' : fmtTime(e.start), e.allDay ? null : h('small', null, fmtTime(e.end))),
-        h('span', { class: 'pl-bar', style: { background: e.color } }),
-        h('span', { class: 'grow pl-row-t' }, h('b', null, e.title || 'Busy'), h('small', null, [e.location, e.calendar].filter(Boolean).join(' · '))));
-    }
-    const it = o.it, dl = it.kind === 'deadline';
-    const r = h('div', { class: 'pl-row' + (o.end < now && !dl ? ' past' : '') + (dl && it.done ? ' done' : ''), role: 'button', tabindex: 0 },
-      h('span', { class: 'pl-time num' }, dl ? 'Due' : fmtTime(o.start), h('small', null, dl ? fmtTime(o.start) : fmtTime(o.end))),
-      h('span', { class: 'pl-bar', style: { background: colorOf(it) } }),
-      h('span', { class: 'grow pl-row-t' }, h('b', null, it.title), h('small', null, [KINDS[it.kind].label, A.SU.name(it.course), it.room, it.covers].filter(Boolean).join(' · '))));
-    if (dl) {
-      const ck = h('button', { class: 'pl-check' + (it.done ? ' on' : ''), 'aria-label': it.done ? 'Mark not done' : 'Mark done', html: A.icon('check') });
-      ck.addEventListener('click', (e) => { e.stopPropagation(); PL.update(it.id, { done: !it.done }); });
-      r.append(ck);
-    }
-    r.addEventListener('click', () => PL.edit(it, o.start));
-    return r;
-  };
-  const emptyCard = () => h('div', { class: 'pl-empty' },
-    h('div', { class: 'pl-empty-art', html: A.icon('calendar') }),
-    h('div', { class: 'grow' }, h('h3', null, 'Plan your week'), h('p', null, 'Add a syllabus or a timetable and Axiom fills in your classes, exams and deadlines, with reminders before each one.')),
-    h('div', { class: 'pl-empty-acts' },
-      h('button', { class: 'btn primary', onclick: () => PL.importSyllabus() }, A.iconEl('doc'), 'Import syllabus or timetable'),
-      h('button', { class: 'btn', onclick: () => PL.edit(null, null, { kind: 'class' }) }, 'Add manually'),
-      NATIVE() ? h('button', { class: 'btn', onclick: async () => { if (await PL.connectCalendar()) A.emit('plan'); } }, A.iconEl('calendar'), 'Show my calendar') : null));
-  function addMenu(anchor, defaults = {}) {
-    const box = h('div', { class: 'menu' });
-    const it = (icon, label, fn) => box.append(h('button', { onclick: () => { A.closePopovers(); fn(); } }, A.iconEl(icon), label));
-    it('clock', 'Class', () => PL.edit(null, null, { kind: 'class', ...defaults }));
-    it('flag', 'Exam', () => PL.edit(null, null, { kind: 'exam', ...defaults }));
-    it('target', 'Deadline', () => PL.edit(null, null, { kind: 'deadline', ...defaults }));
-    it('book', 'Study block', () => PL.edit(null, null, { kind: 'study', ...defaults }));
-    box.append(h('hr'));
-    it('doc', 'Import syllabus or timetable…', () => PL.importSyllabus(defaults.course));
-    A.popover(box, anchor, { side: 'down' });
-  }
-  PL.addMenu = addMenu;
-
-  /* ---------- course page: its schedule ---------- */
-  PL.courseSection = (courseId) => {
-    const sec = h('section', { class: 'g-sec pl-course' });
-    const fill = () => {
-      sec.innerHTML = '';
-      const add = h('button', { class: 'ibtn', 'aria-label': 'Add to this course', html: A.icon('plus') });
-      add.addEventListener('click', () => addMenu(add, { course: courseId }));
-      sec.append(h('div', { class: 'g-sec-h' }, h('h2', null, 'Schedule'), add));
-      const classes = PL.items().filter((x) => x.course === courseId && x.kind === 'class');
-      const up = PL.upcoming(120, courseId);
-      if (!classes.length && !up.length) {
-        sec.append(h('div', { class: 'pl-course-empty' }, h('p', null, 'Add the syllabus and Axiom lists the class times, exams with what they cover, and every deadline.'),
-          h('button', { class: 'btn', onclick: () => PL.importSyllabus(courseId) }, A.iconEl('doc'), 'Import syllabus')));
-        return;
-      }
-      const grid = h('div', { class: 'pl-course-grid' });
-      if (classes.length) grid.append(h('div', { class: 'pl-card' }, h('div', { class: 'pl-sub' }, 'Every week'), ...classes.map((c) => h('button', { class: 'pl-up', onclick: () => PL.edit(c) },
-        h('span', { class: 'pl-when' }, new Date(c.start).toLocaleDateString([], { weekday: 'short' })),
-        h('span', { class: 'grow pl-up-t' }, h('b', null, c.title), h('small', null, [fmtTime(c.start) + '–' + fmtTime(c.end), c.room].filter(Boolean).join(' · ')))))));
-      grid.append(h('div', { class: 'pl-card' }, h('div', { class: 'pl-sub' }, 'Exams and deadlines'),
-        ...(up.length ? up.slice(0, 8).map((o) => h('button', { class: 'pl-up', onclick: () => PL.edit(o.it) },
-          h('span', { class: 'pl-when num' }, daysLeft(o.start)),
-          h('span', { class: 'grow pl-up-t' }, h('b', null, o.it.title), h('small', null, [fmtDay(o.start) + ' ' + fmtTime(o.start), o.it.covers].filter(Boolean).join(' · '))))) : [h('p', { class: 'pl-none' }, 'Nothing coming up.')])));
-      const subj = A.SU.get(courseId);
-      if (subj && (subj.grading || subj.attendance)) grid.append(h('div', { class: 'pl-card' }, h('div', { class: 'pl-sub' }, 'From the syllabus'),
-        subj.grading ? h('p', { class: 'pl-note' }, h('b', null, 'Grading '), subj.grading) : null,
-        subj.attendance ? h('p', { class: 'pl-note' }, h('b', null, 'Attendance '), subj.attendance) : null));
-      sec.append(grid);
-    };
-    fill();
-    const off = A.on('plan', () => { if (!sec.isConnected) return off && off(); fill(); });
+  /* ---------- Home and course pages: what you are preparing for ---------- */
+  EX.homeSection = (course = null) => {
+    const items = list().filter((e) => (!course || e.course === course) && daysLeft(e.date) >= -1).sort((a, b) => a.date - b.date);
+    if (!items.length) return null;
+    const sec = h('section', { class: 'g-sec ex-home' });
+    sec.append(h('div', { class: 'g-sec-h' }, h('h2', null, 'Preparing for'), h('button', { class: 'ibtn', 'aria-label': 'New exam prep', html: A.icon('plus'), onclick: () => EX.create({ course }) })));
+    const row = h('div', { class: 'ex-cards' });
+    items.forEach((e) => {
+      const card = h('button', { class: 'ex-card', onclick: () => EX.open(e.id) },
+        h('div', { class: 'ex-card-top' }, h('i', { class: 'dot', style: { background: A.SU.color(e.course) } }), h('span', { class: 'ex-kind' }, KINDS[e.kind] || 'Exam'), h('span', { class: 'grow' }), h('span', { class: 'ex-left num' }, leftLabel(e.date))),
+        h('b', { class: 'ex-title' }, e.title),
+        h('small', { class: 'ex-sub' }, [A.SU.name(e.course), fmtDay(e.date)].filter(Boolean).join(' · ')),
+        h('div', { class: 'ex-bar' }, h('i', { style: { width: '0%' } })),
+        h('small', { class: 'ex-today' }, e.built ? '' : 'Add materials to build your plan'));
+      row.append(card);
+      if (e.built) loadPrep(e.id).then((p) => {
+        card.querySelector('.ex-bar i').style.width = Math.round(progressOf(p) * 100) + '%';
+        const today = sessions(p).filter((s) => s.day === isoDate(Date.now()) && !p.done[s.key]);
+        card.querySelector('.ex-today').textContent = today.length ? 'Today: ' + today[0].task : daysLeft(e.date) > 0 ? 'Nothing left for today' : '';
+      });
+    });
+    sec.append(row);
     return sec;
   };
 
-  /* ---------- editor ---------- */
-  PL.edit = (item, occStart, defaults = {}) => {
-    const isNew = !item;
-    const base = item || { kind: defaults.kind || 'study', title: '', course: defaults.course || null, start: defaults.start || (() => { const d = new Date(); d.setMinutes(0, 0, 0); d.setHours(d.getHours() + 1); return d.getTime(); })(), weekly: (defaults.kind || 'study') === 'class' };
-    const st = { ...base };
-    if (!st.end) st.end = st.start + (st.kind === 'exam' ? 2 * HOUR : st.kind === 'class' ? 110 * 6e4 : HOUR);
+  /* ---------- create / edit: what the test is and what to learn from ---------- */
+  EX.create = (defaults = {}) => editSheet(null, defaults);
+  function editSheet(exam, defaults = {}) {
+    const isNew = !exam;
+    const st = exam ? JSON.parse(JSON.stringify(exam)) : { id: A.uid(), title: '', kind: 'exam', course: defaults.course || null, date: dayStart(Date.now() + 7 * DAY) + 9.5 * 36e5, files: [], books: [], notebooks: [], notes: '', created: Date.now() };
     const back = h('div', { class: 'modal-back' });
+    const box = h('div', { class: 'modal ex-edit', role: 'dialog', 'aria-label': 'Exam prep' });
+    back.append(box); document.body.append(back);
     const close = () => back.remove();
-    const box = h('div', { class: 'modal pl-edit', role: 'dialog', 'aria-label': isNew ? 'Add to plan' : 'Edit' });
-    const draw = () => {
+    back.addEventListener('pointerdown', (e) => { if (e.target === back) close(); });
+    const lab = (t, el) => h('label', { class: 'fx-f' }, h('span', null, t), el);
+    const draw = async () => {
       box.innerHTML = '';
-      const seg = h('div', { class: 'seg full' }, ...Object.entries(KINDS).map(([k, v]) => h('button', { class: st.kind === k ? 'on' : '', onclick: () => { st.kind = k; if (k === 'class') st.weekly = true; else if (isNew) st.weekly = false; draw(); } }, v.label)));
-      const title = h('input', { class: 'field', value: st.title, placeholder: { class: 'e.g. Linear Algebra lecture', exam: 'e.g. Midterm 1', deadline: 'e.g. Problem set 3', study: 'What will you study?' }[st.kind] });
+      const title = h('input', { class: 'field', value: st.title, placeholder: { exam: 'e.g. Midterm 1', quiz: 'e.g. Quiz 4', lab: 'e.g. Lab 3: Kirchhoff’s laws', other: 'e.g. Oral presentation' }[st.kind] });
       title.addEventListener('input', () => { st.title = title.value; });
+      const seg = h('div', { class: 'seg full' }, ...Object.entries(KINDS).map(([k, v]) => h('button', { class: st.kind === k ? 'on' : '', onclick: () => { st.title = title.value; st.kind = k; draw(); } }, v)));
       const course = h('select', { class: 'field' }, h('option', { value: '' }, 'No course'), ...A.SU.list().map((s) => h('option', { value: s.id, selected: st.course === s.id }, s.name)), h('option', { value: '__new' }, 'New course…'));
-      course.addEventListener('change', async () => { if (course.value === '__new') { const n = await A.dialog({ title: 'New course', input: '', okText: 'Add' }); const s = n && A.SU.add(n); st.course = s ? s.id : st.course; draw(); } else st.course = course.value || null; });
-      const date = h('input', { class: 'field', type: 'date', value: isoDate(st.start) });
-      const t1 = h('input', { class: 'field', type: 'time', value: hm(st.start) });
-      const t2 = h('input', { class: 'field', type: 'time', value: hm(st.end) });
-      const dl = st.kind === 'deadline';
-      const lab = (t, el) => h('label', { class: 'pl-f' }, h('span', null, t), el);
-      const rows = [seg, lab('Title', title), lab('Course', course), h('div', { class: 'pl-f3' }, lab(st.weekly ? 'First day' : 'Date', date), lab(dl ? 'Due' : 'Starts', t1), dl ? null : lab('Ends', t2))];
-      let weekly = null, until = null;
-      if (st.kind !== 'deadline') {
-        weekly = h('input', { type: 'checkbox', checked: !!st.weekly });
-        weekly.addEventListener('change', () => { st.weekly = weekly.checked; sync(); draw(); });
-        rows.push(h('label', { class: 'pl-chk' }, weekly, h('span', null, 'Every week')));
-        if (st.weekly) { until = h('input', { class: 'field', type: 'date', value: isoDate(st.until || st.start + 15 * 7 * DAY) }); rows.push(lab('Until', until)); }
+      course.addEventListener('change', async () => { if (course.value === '__new') { const n = await A.dialog({ title: 'New course', input: '', okText: 'Add' }); const s = n && A.SU.add(n); if (s) st.course = s.id; st.title = title.value; draw(); } else st.course = course.value || null; });
+      const d = new Date(st.date);
+      const date = h('input', { class: 'field', type: 'date', value: isoDate(st.date) });
+      const time = h('input', { class: 'field', type: 'time', value: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` });
+      const readDate = () => { if (date.value) { const [y, m, dd] = date.value.split('-').map(Number); const [hh, mm] = (time.value || '09:00').split(':').map(Number); st.date = new Date(y, m - 1, dd, hh, mm).getTime(); } };
+      date.addEventListener('change', readDate); time.addEventListener('change', readDate);
+      // materials
+      const mats = h('div', { class: 'ex-mats' });
+      st.files.forEach((f, i) => mats.append(h('div', { class: 'ex-mat' }, A.iconEl(/pdf/.test(f.type) ? 'pdf' : 'image'), h('span', { class: 'grow' }, h('b', null, f.name), h('small', null, ROLES[f.role])), h('button', { class: 'ibtn', 'aria-label': 'Remove ' + f.name, html: A.icon('close'), onclick: () => { st.files.splice(i, 1); st.title = title.value; draw(); } }))));
+      st.books.forEach((b, i) => { const m = A.ST.doc(b.docId); mats.append(h('div', { class: 'ex-mat' }, A.iconEl('book'), h('span', { class: 'grow' }, h('b', null, m ? m.title || m.name : 'Book'), h('small', null, `Pages ${b.from}–${b.to}`)), h('button', { class: 'ibtn', 'aria-label': 'Remove book', html: A.icon('close'), onclick: () => { st.books.splice(i, 1); st.title = title.value; draw(); } }))); });
+      if (st.notebooks.length) {
+        const metas = (await A.store.listMeta()).filter(Boolean);
+        st.notebooks.forEach((id, i) => { const m = metas.find((x) => x.id === id); mats.append(h('div', { class: 'ex-mat' }, A.iconEl(m && m.kind === 'notebook' ? 'notebook' : 'canvas'), h('span', { class: 'grow' }, h('b', null, m ? m.name : 'Notebook'), h('small', null, 'Your handwritten notes')), h('button', { class: 'ibtn', 'aria-label': 'Remove notes', html: A.icon('close'), onclick: () => { st.notebooks.splice(i, 1); st.title = title.value; draw(); } }))); });
       }
-      const room = h('input', { class: 'field', value: st.room || '', placeholder: 'Room or link' });
-      const covers = h('input', { class: 'field', value: st.covers || '', placeholder: 'e.g. Chapters 3–5' });
-      const notes = h('textarea', { class: 'field', rows: 2, placeholder: 'Notes' }); notes.value = st.notes || '';
-      if (st.kind === 'class' || st.kind === 'exam') rows.push(lab('Where', room));
-      if (st.kind === 'exam' || st.kind === 'deadline') rows.push(lab(st.kind === 'exam' ? 'Covers' : 'What to hand in', covers));
-      rows.push(lab('Notes', notes));
-      const sync = () => {
-        st.title = title.value.trim(); st.room = room.value.trim() || undefined; st.covers = covers.value.trim() || undefined; st.notes = notes.value.trim() || undefined;
-        if (date.value) { st.start = at(date.value, t1.value || '09:00'); st.end = dl ? st.start : at(date.value, t2.value || hm(st.start + HOUR)); if (st.end <= st.start && !dl) st.end = st.start + HOUR; }
-        if (until && until.value) st.until = at(until.value, '23:59');
-        if (!st.weekly) delete st.until;
+      if (!mats.children.length) mats.append(h('p', { class: 'ex-mats-empty' }, 'Add the syllabus or topic list, past exams, problem sets, the book chapters and your notes. The more you add, the sharper the plan.'));
+      const addBtn = h('button', { class: 'btn ex-add' }, A.iconEl('plus'), 'Add material');
+      addBtn.addEventListener('click', () => { st.title = title.value; materialMenu(addBtn, st, draw); });
+      const notes = h('textarea', { class: 'field', rows: 3, placeholder: st.kind === 'lab' ? 'Which experiment, what the lab sheet asks, what the TA said…' : 'What the instructor said is covered, the format (e.g. 4 proofs, 2 hours, closed book)…' });
+      notes.value = st.notes || '';
+      notes.addEventListener('input', () => { st.notes = notes.value; });
+      const save = (andBuild) => {
+        st.title = title.value.trim(); readDate();
+        if (!st.title) { title.classList.add('err'); title.focus(); return; }
+        const i = list().findIndex((e) => e.id === st.id);
+        if (i >= 0) list()[i] = Object.assign(list()[i], st); else list().push(st);
+        saveMeta(); close();
+        EX.open(st.id, andBuild);
       };
-      const saveBtn = h('button', { class: 'btn primary', onclick: () => {
-        sync();
-        if (!st.title) { title.focus(); title.classList.add('err'); return; }
-        if (isNew) PL.add(st); else PL.update(item.id, st);
-        close();
-        if (isNew) A.toast(KINDS[st.kind].label + ' added', 1400);
-      } }, isNew ? 'Add' : 'Save');
-      const acts = h('div', { class: 'row gap pl-acts' });
-      if (!isNew) {
-        acts.append(h('button', { class: 'btn ghost-btn danger-text', onclick: async () => {
-          if (item.weekly && occStart) {
-            const box2 = h('div', { class: 'menu' });
-            box2.append(h('button', { onclick: () => { A.closePopovers(); PL.update(item.id, { skip: (item.skip || []).concat([dayStart(occStart)]) }); close(); } }, 'Only this week'));
-            box2.append(h('button', { class: 'danger', onclick: () => { A.closePopovers(); PL.remove(item.id); close(); } }, 'Every week'));
-            A.popover(box2, acts.firstChild, { side: 'up' });
-            return;
-          }
-          if (await A.dialog({ title: 'Delete this?', okText: 'Delete', danger: true })) { PL.remove(item.id); close(); }
-        } }, 'Delete'));
-      }
-      acts.append(h('div', { class: 'grow' }), h('button', { class: 'btn', onclick: close }, 'Cancel'), saveBtn);
-      box.append(h('h3', null, isNew ? 'Add to your plan' : 'Edit'), ...rows, acts);
+      box.append(
+        h('h3', null, isNew ? 'Prepare for a test' : 'Edit'),
+        seg, lab('What is it', title), h('div', { class: 'fx-f3 ex-f2' }, lab('Course', course), lab('Date', date), lab('Time', time)),
+        h('div', { class: 'fx-f' }, h('span', null, 'Materials'), mats, addBtn),
+        lab('Anything else', notes),
+        h('div', { class: 'row gap end fx-acts' }, h('button', { class: 'btn', onclick: close }, 'Cancel'),
+          h('button', { class: 'btn primary', onclick: () => save(true) }, isNew ? 'Build my prep' : 'Save and rebuild'),
+          isNew ? null : h('button', { class: 'btn', onclick: () => save(false) }, 'Save')));
       if (isNew && !st.title) setTimeout(() => title.focus(), 60);
     };
     draw();
-    back.append(box);
+  }
+  function materialMenu(anchor, st, redraw) {
+    const box = h('div', { class: 'menu' });
+    const file = (role, icon, sub) => box.append(h('button', { onclick: async () => {
+      A.closePopovers();
+      const f = await A.ST.pickFile('application/pdf,.pdf,image/*');
+      if (!f) return;
+      if (f.size > 25e6) return A.toast('That file is over 25 MB. Split it or add the relevant pages.');
+      const id = A.uid();
+      await A.store.saveFile('exf_' + id, f);
+      st.files.push({ id, name: f.name.replace(/\.[a-z]+$/i, '').slice(0, 60), type: f.type || (/\.pdf$/i.test(f.name) ? 'application/pdf' : 'image/jpeg'), role, size: f.size });
+      redraw();
+    } }, A.iconEl(icon), h('span', { class: 'grow' }, ROLES[role], h('small', null, sub))));
+    file('syllabus', 'doc', 'Or the topic list');
+    file('past', 'flag', 'PDF or photos, one at a time');
+    file('problems', 'quiz', 'Homework, recitation sheets');
+    file('notes', 'image', 'Lecture slides or photos of notes');
+    box.append(h('hr'));
+    box.append(h('button', { onclick: () => { A.closePopovers(); pickBook(anchor, st, redraw); } }, A.iconEl('book'), h('span', { class: 'grow' }, 'Chapters from a book', h('small', null, 'From your library'))));
+    box.append(h('button', { onclick: () => { A.closePopovers(); pickNotebook(anchor, st, redraw); } }, A.iconEl('notebook'), h('span', { class: 'grow' }, 'One of your notebooks', h('small', null, 'Handwritten notes'))));
+    A.popover(box, anchor, { side: 'up' });
+  }
+  async function pickBook(anchor, st, redraw) {
+    const docs = A.ST.docs().filter((d) => d.type === 'pdf');
+    if (!docs.length) return A.toast('Add the textbook in Books first.');
+    const back = h('div', { class: 'modal-back' });
+    const close = () => back.remove();
+    let sel = docs.find((d) => d.subject === st.course) || docs[0];
+    const book = h('select', { class: 'field' }, ...docs.map((d) => h('option', { value: d.id, selected: d === sel }, d.title || d.name)));
+    const from = h('input', { class: 'field', type: 'number', min: 1, value: 1, inputmode: 'numeric' });
+    const to = h('input', { class: 'field', type: 'number', min: 1, value: Math.min(sel.pages || 30, 40), inputmode: 'numeric' });
+    book.addEventListener('change', () => { sel = docs.find((d) => d.id === book.value); to.value = Math.min(sel.pages || 30, 40); });
+    back.append(h('div', { class: 'modal small ex-edit' }, h('h3', null, 'Chapters from a book'),
+      h('label', { class: 'fx-f' }, h('span', null, 'Book'), book),
+      h('div', { class: 'fx-f3 ex-f2' }, h('label', { class: 'fx-f' }, h('span', null, 'From PDF page'), from), h('label', { class: 'fx-f' }, h('span', null, 'To page'), to)),
+      h('p', { class: 'muted small' }, 'Up to 80 pages. Use the page numbers the reader shows at the bottom.'),
+      h('div', { class: 'row gap end fx-acts' }, h('button', { class: 'btn', onclick: close }, 'Cancel'), h('button', { class: 'btn primary', onclick: () => {
+        const a = Math.max(1, parseInt(from.value, 10) || 1), b = Math.max(a, Math.min(a + 79, parseInt(to.value, 10) || a));
+        st.books.push({ docId: sel.id, from: a, to: b }); close(); redraw();
+      } }, 'Add'))));
     back.addEventListener('pointerdown', (e) => { if (e.target === back) close(); });
     document.body.append(back);
-  };
-
-  /* ---------- week view ---------- */
-  PL.openWeek = (t = Date.now()) => {
-    let ws = weekStart(t);
-    const back = h('div', { class: 'pl-week', role: 'dialog', 'aria-label': 'Week' });
-    const title = h('div', { class: 'pl-wk-title' });
-    const grid = h('div', { class: 'pl-wk-grid' });
-    const close = () => { back.remove(); A.emit('plan'); };
-    const ib = (icon, label, fn) => h('button', { class: 'ibtn', title: label, 'aria-label': label, html: A.icon(icon), onclick: fn });
-    const prev = ib('chev', 'Previous week', () => { ws = addDays(ws, -7); draw(); }); prev.classList.add('flip');
-    const optsBtn = ib('more', 'Calendar options', () => calOptions(optsBtn, draw));
-    const addBtn = ib('plus', 'Add', () => addMenu(addBtn));
-    back.append(h('div', { class: 'pl-wk-bar' },
-      ib('close', 'Close', close), title, h('div', { class: 'grow' }),
-      h('button', { class: 'btn ghost-btn', onclick: () => { ws = weekStart(Date.now()); draw(); } }, 'Today'),
-      prev, ib('chev', 'Next week', () => { ws = addDays(ws, 7); draw(); }), optsBtn, addBtn), grid);
-    document.body.append(back);
-    const draw = async () => {
-      const we = addDays(ws, 7);
-      title.textContent = `${new Date(ws).toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${new Date(addDays(ws, 6)).toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
-      const own = PL.occ(ws, we), cal = await PL.calEvents(ws, we);
-      const timed = own.map((o) => (o.it.kind === 'deadline' ? { o, s: Math.max(dayStart(o.start), o.start - 30 * 6e4), e: o.start } : { o, s: o.start, e: Math.max(o.end, o.start + 20 * 6e4) })).concat(cal.filter((e) => !e.allDay).map((e) => ({ ev: e, s: e.start, e: e.end })));
-      let h0 = 8, h1 = 20;
-      timed.forEach((b) => { const d = new Date(b.s); h0 = Math.min(h0, d.getHours()); const de = new Date(b.e); h1 = Math.max(h1, dayStart(b.e) > dayStart(b.s) ? 24 : de.getHours() + (de.getMinutes() ? 1 : 0)); });
-      h1 = Math.min(24, Math.max(h1, h0 + 6));
-      const PX = 52; // px per hour
-      grid.innerHTML = '';
-      grid.style.setProperty('--rows', h1 - h0);
-      const head = h('div', { class: 'pl-wk-head' }, h('span'));
-      const cols = h('div', { class: 'pl-wk-cols' });
-      const hours = h('div', { class: 'pl-wk-hours' });
-      for (let k = h0; k < h1; k++) hours.append(h('span', { class: 'num', style: { top: (k - h0) * PX + 'px' } }, `${String(k).padStart(2, '0')}:00`));
-      cols.append(hours);
-      const today = dayStart(Date.now());
-      for (let d = 0; d < 7; d++) {
-        const ds = addDays(ws, d);
-        head.append(h('span', { class: 'pl-wk-day' + (ds === today ? ' on' : '') }, new Date(ds).toLocaleDateString([], { weekday: 'short' }), h('b', { class: 'num' }, new Date(ds).getDate())));
-        const col = h('div', { class: 'pl-wk-col' + (ds === today ? ' today' : ''), style: { height: (h1 - h0) * PX + 'px' } });
-        col.addEventListener('click', (e) => {
-          if (e.target !== col) return;
-          const y = e.offsetY, hr = h0 + Math.floor(y / PX * 2) / 2;
-          const start = ds + hr * HOUR;
-          PL.edit(null, null, { kind: 'study', start: new Date(ds).setHours(Math.floor(hr), (hr % 1) * 60, 0, 0) || start });
-        });
-        // lay out overlapping blocks side by side
-        const blocks = timed.filter((b) => dayStart(b.s) === ds).sort((a, b) => a.s - b.s);
-        const lanes = [];
-        blocks.forEach((b) => { let L = lanes.findIndex((end) => end <= b.s); if (L < 0) { L = lanes.length; lanes.push(0); } lanes[L] = b.e; b.lane = L; });
-        blocks.forEach((b) => {
-          const top = (new Date(b.s).getHours() + new Date(b.s).getMinutes() / 60 - h0) * PX, height = Math.max(22, (b.e - b.s) / HOUR * PX - 2);
-          const w = 100 / Math.max(1, lanes.length);
-          const st = { top: top + 'px', height: height + 'px', left: `calc(${b.lane * w}% + 2px)`, width: `calc(${w}% - 4px)` };
-          if (b.ev) {
-            col.append(withC(h('div', { class: 'pl-blk cal', style: st, title: b.ev.title }, h('b', null, b.ev.title || 'Busy'), h('small', { class: 'num' }, fmtTime(b.s))), b.ev.color));
-          } else {
-            const it = b.o.it;
-            const el = withC(h('button', { class: 'pl-blk k-' + it.kind + (it.done ? ' done' : ''), style: st }, h('b', null, it.title), h('small', { class: 'num' }, (it.kind === 'deadline' ? 'Due ' + fmtTime(b.e) : fmtTime(b.s)) + (it.room ? ' · ' + it.room : ''))), colorOf(it));
-            el.addEventListener('click', () => PL.edit(it, b.o.start));
-            col.append(el);
-          }
-        });
-        if (ds === today) { const n = new Date(); const y = (n.getHours() + n.getMinutes() / 60 - h0) * PX; if (y > 0 && y < (h1 - h0) * PX) col.append(h('i', { class: 'pl-now', style: { top: y + 'px' } })); }
-        cols.append(col);
-      }
-      const allDay = cal.filter((e) => e.allDay);
-      const ad = h('div', { class: 'pl-wk-allday' }, h('span'));
-      for (let d = 0; d < 7; d++) { const ds = addDays(ws, d); ad.append(h('div', null, ...allDay.filter((e) => e.start < addDays(ds, 1) && e.end > ds).map((e) => withC(h('span', { class: 'pl-ad' }, e.title), e.color)))); }
-      grid.append(...[head, allDay.length ? ad : null, h('div', { class: 'pl-wk-scroll' }, cols)].filter(Boolean));
-      const sc = grid.querySelector('.pl-wk-scroll');
-      const n = new Date();
-      if (ws === weekStart(Date.now())) sc.scrollTop = Math.max(0, (n.getHours() - h0 - 1) * PX);
-    };
-    const off = A.on('plan', () => { if (!back.isConnected) return off && off(); draw(); });
-    draw();
-  };
-  async function calOptions(anchor, redraw) {
-    const p = plan();
-    const box = h('div', { class: 'menu pl-calmenu' });
-    const toggle = (label, sub, on, fn) => box.append(h('button', { class: 'pl-tg', onclick: async () => { await fn(!on); A.closePopovers(); redraw(); } }, h('span', { class: 'grow' }, h('b', null, label), sub ? h('small', null, sub) : null), h('span', { class: 'sw' + (on ? ' on' : '') })));
-    if (NATIVE()) {
-      toggle('Show my iPad calendars', 'Google, iCloud or Outlook calendars added to this iPad', !!p.calOn, async (v) => { if (v) await PL.connectCalendar(); else { p.calOn = false; save(); } });
-      if (p.calOn) {
-        toggle('Add my plan to the Calendar app', 'Classes, exams, deadlines and study blocks go to a calendar named “Axiom”', !!p.mirror, (v) => { p.mirror = v; save(); });
-        const cals = await A.native.post({ op: 'calCalendars' }).catch(() => []);
-        if (cals && cals.length) {
-          box.append(h('hr'), h('div', { class: 'sub' }, 'Calendars shown'));
-          cals.forEach((c) => {
-            const shown = !(p.hiddenCals || []).includes(c.id);
-            box.append(h('button', { class: 'pl-cal', onclick: () => { p.hiddenCals = shown ? (p.hiddenCals || []).concat([c.id]) : (p.hiddenCals || []).filter((x) => x !== c.id); save(); A.closePopovers(); redraw(); } },
-              h('i', { class: 'dot', style: { background: c.color } }), h('span', { class: 'grow' }, c.title, h('small', null, ' ' + c.source)), shown ? A.iconEl('check') : null));
-          });
-        }
-      }
-      box.append(h('hr'));
-      toggle('Reminders', 'A day and an hour before exams; before deadlines; when study blocks start', p.remind !== false, (v) => { p.remind = v; save(v); });
-      toggle('Remind me before classes', '10 minutes before each class', !!p.remindClasses, (v) => { p.remindClasses = v; save(); });
-    } else {
-      box.append(h('p', { class: 'muted small', style: { padding: '8px 12px', margin: 0 } }, 'Your iPad calendars and reminders work in the Axiom app on iPad.'));
-    }
-    A.popover(box, anchor, { side: 'down' });
+  }
+  async function pickNotebook(anchor, st, redraw) {
+    const metas = (await A.store.listMeta()).filter((m) => m && !st.notebooks.includes(m.id)).sort((a, b) => (b.subject === st.course) - (a.subject === st.course) || b.updated - a.updated);
+    if (!metas.length) return A.toast('No notebooks yet.');
+    const box = h('div', { class: 'menu' });
+    metas.slice(0, 20).forEach((m) => box.append(h('button', { onclick: () => { A.closePopovers(); st.notebooks.push(m.id); redraw(); } }, A.iconEl(m.kind === 'notebook' ? 'notebook' : 'canvas'), h('span', { class: 'grow' }, m.name, h('small', null, A.SU.name(m.subject) || '')))));
+    A.popover(box, anchor, { side: 'up' });
   }
 
-  /* ---------- syllabus / timetable import, read by Claude ---------- */
+  /* ---------- Claude ---------- */
+  const needKey = async () => {
+    if (S.aiKey) return true;
+    const go = await A.dialog({ title: 'Exam prep uses the tutor', body: 'Axiom sends your materials to Claude to build the plan. Add your Anthropic API key in Settings › Tutor first.', okText: 'Open Settings' });
+    if (go && A.UI.openSettings) A.UI.openSettings();
+    return false;
+  };
+  const client = async () => { const Anthropic = await A.AI.sdk(); return new Anthropic({ apiKey: S.aiKey, dangerouslyAllowBrowser: true }); };
+  const model = () => S.aiModel || 'claude-opus-5-5';
+  const b64 = (blob) => new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.readAsDataURL(blob); });
+  const STYLE = 'The student is a university STEM student (mathematics and physics). Use precise mathematical language; give structural reasons (definitions, hypotheses of theorems, why a step is valid), not recipes; no analogies unless asked. Write all mathematics in LaTeX ($...$ inline, $$...$$ display). Markdown formatting.';
+  async function bookText(b, budget) {
+    const meta = A.ST.doc(b.docId);
+    if (!meta) return '';
+    try {
+      const pdf = await A.ST.loadPdf(meta);
+      let out = '';
+      for (let n = b.from; n <= Math.min(b.to, pdf.numPages) && out.length < budget; n++) {
+        const tc = await (await pdf.getPage(n)).getTextContent();
+        out += `\n[p. ${n}]\n` + tc.items.map((it) => it.str).join(' ').replace(/\s+/g, ' ');
+      }
+      return `Book "${meta.title || meta.name}", PDF pages ${b.from}–${b.to}:${out.slice(0, budget)}`;
+    } catch (e) { return ''; }
+  }
+  const shotNotebook = async (id, max = 8) => {
+    const doc = await A.store.loadDoc(id).catch(() => null);
+    if (!doc || !doc.layers) return [];
+    const out = [];
+    const shoot = (bb) => { const w = bb[2] - bb[0], hh = bb[3] - bb[1]; const k = Math.min(2, 900 / Math.max(w, hh)); out.push(A.R.renderRegion(doc, bb, k, { bg: true, grid: false }).toDataURL('image/jpeg', 0.8).split(',')[1]); };
+    if (doc.kind === 'notebook') A.D.pageRects(doc).forEach((rc) => { if (out.length < max && doc.layers.some((l) => l.items.some((it) => A.G.bbHit(it.bb, rc)))) shoot(rc); });
+    else { let bb = null; doc.layers.forEach((l) => l.items.forEach((it) => { bb = bb ? [Math.min(bb[0], it.bb[0]), Math.min(bb[1], it.bb[1]), Math.max(bb[2], it.bb[2]), Math.max(bb[3], it.bb[3])] : it.bb.slice(); })); if (bb) shoot(bb); }
+    return out.map((data) => ({ name: doc.name, data }));
+  };
+  async function materialBlocks(e) {
+    const blocks = [], index = [];
+    for (const [i, f] of e.files.entries()) {
+      const blob = await A.store.loadFile('exf_' + f.id, f.type).catch(() => null);
+      if (!blob) continue;
+      const data = await b64(blob);
+      index.push(`File ${i + 1}: "${f.name}" (${ROLES[f.role]})`);
+      blocks.push({ type: 'text', text: `File ${i + 1}: "${f.name}" — ${ROLES[f.role]}` });
+      blocks.push(/pdf/.test(f.type) ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data }, title: f.name } : { type: 'image', source: { type: 'base64', media_type: f.type || 'image/jpeg', data } });
+    }
+    for (const b of e.books) { const t = await bookText(b, 90000); if (t) { blocks.push({ type: 'text', text: t }); index.push(t.split(':')[0]); } }
+    for (const id of e.notebooks) {
+      const shots = await shotNotebook(id);
+      shots.forEach((s, k) => { if (!k) blocks.push({ type: 'text', text: `The student's handwritten notes "${s.name}":` }); blocks.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: s.data } }); });
+      if (shots.length) index.push(`Notes "${shots[0].name}" (${shots.length} pages)`);
+    }
+    return { blocks, index };
+  }
   const SCHEMA = {
     type: 'object',
     properties: {
-      course: { type: 'string', description: 'Course code and name if the document is about one course, else empty' },
-      term_start: { type: 'string', description: 'YYYY-MM-DD first day of classes if stated, else empty' },
-      term_end: { type: 'string', description: 'YYYY-MM-DD last day of classes if stated, else empty' },
-      grading: { type: 'string', description: 'Grading weights in one short line, else empty' },
-      attendance: { type: 'string', description: 'Attendance rule in one short line (minimum % or allowed absences), else empty' },
-      items: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            kind: { type: 'string', enum: ['class', 'exam', 'deadline'] },
-            title: { type: 'string' },
-            course: { type: 'string', description: 'Course code or name this belongs to' },
-            weekday: { type: 'string', enum: ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], description: 'For weekly classes' },
-            date: { type: 'string', description: 'YYYY-MM-DD for exams and deadlines; empty for weekly classes unless a first date is stated' },
-            start: { type: 'string', description: 'HH:MM 24-hour; for deadlines the due time (23:59 if none)' },
-            end: { type: 'string', description: 'HH:MM 24-hour or empty' },
-            room: { type: 'string' },
-            covers: { type: 'string', description: 'For exams: chapters/sections/topics covered. For deadlines: what to submit and where' },
-          },
-          required: ['kind', 'title', 'course', 'weekday', 'date', 'start', 'end', 'room', 'covers'],
-          additionalProperties: false,
-        },
-      },
+      summary: { type: 'string', description: 'Two or three sentences: what this test is about and how to win it' },
+      format: { type: 'string', description: 'The expected format (length, number and type of questions) if it can be inferred, else empty' },
+      topics: { type: 'array', items: { type: 'object', properties: {
+        id: { type: 'string', description: 'short id like t1' }, title: { type: 'string' }, weight: { type: 'string', enum: ['high', 'medium', 'low'] },
+        why: { type: 'string', description: 'What exactly gets asked about it (from past exams / syllabus)' }, sources: { type: 'string', description: 'Where to learn it: book pages, files, notes' },
+        subtopics: { type: 'array', items: { type: 'string' } } }, required: ['id', 'title', 'weight', 'why', 'sources', 'subtopics'], additionalProperties: false } },
+      questions: { type: 'array', items: { type: 'object', properties: {
+        id: { type: 'string', description: 'q1, q2…' }, source: { type: 'string', description: 'e.g. "Midterm 2023, Q3" or "Problem set 2, #4"' },
+        file: { type: 'integer', description: 'File number it comes from (1-based), 0 if none' }, page: { type: 'integer', description: 'Page within that file (1-based), 0 if unknown' },
+        text: { type: 'string', description: 'The full question, transcribed faithfully in Markdown with LaTeX' }, topics: { type: 'array', items: { type: 'string' } },
+        difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'] } }, required: ['id', 'source', 'file', 'page', 'text', 'topics', 'difficulty'], additionalProperties: false } },
+      gaps: { type: 'array', items: { type: 'object', properties: { topic: { type: 'string' }, note: { type: 'string' } }, required: ['topic', 'note'], additionalProperties: false }, description: 'Topics in the syllabus or chapters that past exams never asked about' },
+      plan: { type: 'array', items: { type: 'object', properties: {
+        day: { type: 'string', description: 'YYYY-MM-DD' },
+        sessions: { type: 'array', items: { type: 'object', properties: {
+          minutes: { type: 'integer' }, kind: { type: 'string', enum: ['learn', 'practice', 'review', 'mock'] },
+          topics: { type: 'array', items: { type: 'string' } }, task: { type: 'string', description: 'One concrete instruction, e.g. "Work past questions q3, q7 without notes"' } },
+          required: ['minutes', 'kind', 'topics', 'task'], additionalProperties: false } } }, required: ['day', 'sessions'], additionalProperties: false } },
     },
-    required: ['course', 'term_start', 'term_end', 'grading', 'attendance', 'items'],
+    required: ['summary', 'format', 'topics', 'questions', 'gaps', 'plan'],
     additionalProperties: false,
   };
-  const readFileB64 = (f) => new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.readAsDataURL(f); });
-  PL.importSyllabus = async (courseId = null) => {
-    if (!S.aiKey) {
-      const go = await A.dialog({ title: 'Reading a syllabus uses the tutor', body: 'Axiom sends the document to Claude to read the dates. Add your Anthropic API key in Settings › Tutor first.', okText: 'Open Settings' });
-      if (go) A.UI.openSettings && A.UI.openSettings();
-      return;
-    }
-    const f = await A.ST.pickFile('application/pdf,.pdf,image/*');
-    if (!f) return;
-    const back = h('div', { class: 'modal-back' });
-    const box = h('div', { class: 'modal wide pl-imp', role: 'dialog', 'aria-label': 'Import syllabus' }, h('h3', null, 'Reading ' + f.name.slice(0, 60)), h('p', { class: 'muted' }, h('span', { class: 'thinking' }, 'Finding classes, exams and deadlines', h('i', null, '.'), h('i', null, '.'), h('i', null, '.'))));
-    back.append(box); document.body.append(back);
-    const close = () => back.remove();
+  async function build(e, onStatus) {
+    const p = await loadPrep(e.id);
+    onStatus('Gathering your materials…');
+    const { blocks, index } = await materialBlocks(e);
+    if (!blocks.length && !e.notes) throw new Error('Add at least one material (a syllabus, past exam, chapters or notes) first.');
+    const today = new Date(), left = Math.max(0, daysLeft(e.date));
+    const doneNote = Object.keys(p.done).length ? `\nThe student has already completed these sessions: ${sessions(p).filter((s) => p.done[s.key]).map((s) => s.task).join('; ').slice(0, 2000)}` : '';
+    onStatus(`Reading ${index.length || 'your'} material${index.length === 1 ? '' : 's'} and planning ${left} day${left === 1 ? '' : 's'}… this takes a minute or two.`);
+    const c = await client();
+    const stream = c.messages.stream({
+      model: model(), max_tokens: 48000,
+      output_config: { effort: 'medium', format: { type: 'json_schema', schema: SCHEMA } },
+      system: `You prepare a university student for a ${KINDS[e.kind].toLowerCase()}: "${e.title}"${A.SU.name(e.course) ? ` in ${A.SU.name(e.course)}` : ''}, on ${new Date(e.date).toLocaleString('en', { dateStyle: 'full', timeStyle: 'short' })}. Today is ${today.toLocaleDateString('en', { dateStyle: 'full' })}, so there ${left === 1 ? 'is 1 day' : `are ${left} days`} left.
+${STYLE}
+Work from the materials only (and standard knowledge of the subject to fill gaps):
+1. Topics: exactly what will be tested, specific (named theorems, techniques, derivations, lab procedures), weighted by how often past exams and problem sets use them. Use ids t1, t2, …
+2. Questions: transcribe EVERY question from the past exams and problem sets faithfully (all parts), with its file number and page, tagged with topic ids.
+3. Gaps: syllabus or chapter topics that past exams never asked; they still need preparation.
+4. Plan: one entry per day from today until the day before the test (today included${left === 0 ? '; the test is today, so make a short plan for the remaining hours' : ''}). 1–4 sessions per day of 25–50 minutes. Start with high-weight topics, alternate learning with practice on real past questions (name them by id), use spaced review, and end with a timed mock exam built from past questions the day before. ${e.kind === 'lab' ? 'For a lab: theory, the procedure step by step, the pre-lab questions, error analysis and the report format.' : ''}${doneNote}`,
+      messages: [{ role: 'user', content: blocks.concat([{ type: 'text', text: (e.notes ? `Notes from the student: ${e.notes}\n\n` : '') + 'Build the preparation.' }]) }],
+    });
+    let chars = 0;
+    stream.on('text', (t) => { chars += t.length; if (chars % 400 < t.length) onStatus(`Writing your plan… ${Math.round(chars / 1000)}k characters`); });
+    const msg = await stream.finalMessage();
+    if (msg.stop_reason === 'refusal') throw new Error('The tutor declined this request.');
+    const txt = (msg.content.find((x) => x.type === 'text') || {}).text || '';
     let data;
-    try {
-      const b64 = await readFileB64(f);
-      const pdf = /pdf/i.test(f.type) || /\.pdf$/i.test(f.name);
-      const doc = pdf ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } } : { type: 'image', source: { type: 'base64', media_type: f.type || 'image/jpeg', data: b64 } };
-      const Anthropic = await A.AI.sdk();
-      const client = new Anthropic({ apiKey: S.aiKey, dangerouslyAllowBrowser: true });
-      const today = new Date();
-      const res = await client.messages.create({
-        model: S.aiModel || 'claude-opus-5-5',
-        max_tokens: 16000,
-        output_config: { effort: 'low', format: { type: 'json_schema', schema: SCHEMA } },
-        system: `You read university syllabi, course schedules and timetables and extract the student's schedule. Today is ${isoDate(today)} (${today.toLocaleDateString('en', { weekday: 'long' })}). Only include what the document states. Weekly lectures, recitations and labs are kind "class" with a weekday and times. Midterms, finals, quizzes with a date are "exam"; homework, projects, reports with a due date are "deadline". If a year is missing, use the academic year that contains today. Keep titles short (e.g. "Lecture", "Recitation", "Midterm 1", "Homework 3"). Courses the student might have: ${A.SU.list().map((s) => s.name).join(', ') || 'unknown'}.`,
-        messages: [{ role: 'user', content: [doc, { type: 'text', text: 'Extract the schedule from this document.' }] }],
-      });
-      const txt = (res.content.find((c) => c.type === 'text') || {}).text || '{}';
-      data = JSON.parse(txt);
-    } catch (e) {
-      box.innerHTML = '';
-      box.append(h('h3', null, 'Couldn’t read that document'), h('p', { class: 'muted' }, String(e && e.message || e).slice(0, 300)), h('div', { class: 'row end' }, h('button', { class: 'btn', onclick: close }, 'Close')));
-      return;
-    }
-    importPreview(box, close, data, courseId);
-  };
-  const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const matchCourse = (name) => {
-    const n = norm(name);
-    if (!n) return null;
-    const code = (String(name).match(/[A-Za-z]{2,5}\s?\d{3,4}/) || [''])[0];
-    return A.SU.list().find((s) => norm(s.name) === n || (code && norm(s.name).includes(norm(code))) || (n.length > 4 && (norm(s.name).includes(n) || n.includes(norm(s.name))))) || null;
-  };
-  function importPreview(box, close, data, courseId) {
-    const items = (data.items || []).filter((x) => x.title);
-    box.innerHTML = '';
-    if (!items.length) { box.append(h('h3', null, 'No dates found'), h('p', { class: 'muted' }, 'Axiom couldn’t find class times, exams or deadlines in this document.'), h('div', { class: 'row end' }, h('button', { class: 'btn', onclick: close }, 'Close'))); return; }
-    // course mapping: one select per course name found
-    const names = [...new Set(items.map((x) => x.course || data.course || '').map((x) => x.trim()))];
-    const map = {};
-    names.forEach((n) => { const m = (courseId && names.length === 1) ? A.SU.get(courseId) : matchCourse(n || data.course); map[n] = m ? m.id : (n ? '__new:' + n : ''); });
-    const termStart = data.term_start ? at(data.term_start, '00:00') : dayStart(Date.now());
-    const termEnd = data.term_end ? at(data.term_end, '23:59') : null;
-    const WD = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 0 };
-    const toItem = (x) => {
-      let start;
-      if (x.kind === 'class' && x.weekday && !x.date) {
-        const d = new Date(Math.max(termStart, weekStart(Date.now()))); while (d.getDay() !== WD[x.weekday]) d.setDate(d.getDate() + 1);
-        start = at(isoDate(d.getTime()), x.start || '09:00');
-      } else if (x.date) start = at(x.date, x.start || (x.kind === 'deadline' ? '23:59' : '09:00'));
-      else return null;
-      const end = x.end ? at(isoDate(start), x.end) : start + (x.kind === 'deadline' ? 0 : x.kind === 'exam' ? 2 * HOUR : 110 * 6e4);
-      return { kind: x.kind, title: x.title, start, end: Math.max(end, start), weekly: x.kind === 'class', until: x.kind === 'class' ? (termEnd || start + 15 * 7 * DAY) : undefined, room: x.room || undefined, covers: x.covers || undefined, src: 'syllabus', _course: (x.course || data.course || '').trim() };
-    };
-    const rows = items.map(toItem).filter(Boolean).map((it) => ({ it, on: true }));
-    const list = h('div', { class: 'pl-imp-list' });
-    rows.forEach((r) => {
-      const ck = h('input', { type: 'checkbox', checked: true });
-      ck.addEventListener('change', () => { r.on = ck.checked; });
-      list.append(h('label', { class: 'pl-imp-row' }, ck,
-        h('span', { class: 'pl-chip k-' + r.it.kind }, KINDS[r.it.kind].label),
-        h('span', { class: 'grow' }, h('b', null, r.it.title), h('small', null, [r.it._course, r.it.weekly ? 'Every ' + new Date(r.it.start).toLocaleDateString([], { weekday: 'long' }) + ' ' + fmtTime(r.it.start) + '–' + fmtTime(r.it.end) : fmtDay(r.it.start) + ' ' + fmtTime(r.it.start), r.it.room, r.it.covers].filter(Boolean).join(' · ')))));
-    });
-    const maps = h('div', { class: 'pl-imp-maps' });
-    names.forEach((n) => {
-      const sel = h('select', { class: 'field' }, h('option', { value: '' }, 'No course'), ...A.SU.list().map((s) => h('option', { value: s.id, selected: map[n] === s.id }, s.name)), n ? h('option', { value: '__new:' + n, selected: map[n] === '__new:' + n }, 'New course: ' + n) : null);
-      sel.addEventListener('change', () => { map[n] = sel.value; });
-      // a new course takes the document's full name ("MATH 261 Linear Algebra") when the items only gave the code
-      const full = data.course && n && norm(data.course).includes(norm(n)) ? data.course : n;
-      if (full !== n) { const o = sel.querySelector(`option[value="__new:${CSS.escape(n)}"]`); if (o) { o.value = '__new:' + full; o.textContent = 'New course: ' + full; if (map[n] === '__new:' + n) { map[n] = o.value; sel.value = o.value; } } }
-      maps.append(h('label', { class: 'pl-f' }, h('span', null, n ? `“${n}” goes to` : 'Course'), sel));
-    });
-    const extra = [data.grading ? 'Grading: ' + data.grading : '', data.attendance ? 'Attendance: ' + data.attendance : ''].filter(Boolean);
-    box.append(...[h('h3', null, `Found ${rows.length} item${rows.length === 1 ? '' : 's'}`), h('p', { class: 'muted small' }, 'Check them, then add. You can edit anything later.'), maps, list,
-      extra.length ? h('p', { class: 'pl-note muted small' }, extra.join(' · ')) : null,
-      h('div', { class: 'row gap end pl-acts' }, h('button', { class: 'btn', onclick: close }, 'Cancel'), h('button', { class: 'btn primary', onclick: () => {
-        const ids = {};
-        Object.entries(map).forEach(([n, v]) => { if (v && v.startsWith('__new:')) { const s = A.SU.add(v.slice(6)); ids[n] = s && s.id; } else ids[n] = v || null; });
-        let n = 0;
-        rows.filter((r) => r.on).forEach((r) => { const it = { ...r.it, course: ids[r.it._course] || null }; delete it._course; plan().items.push(Object.assign(it, { id: A.uid() })); n++; });
-        const target = ids[names[0]];
-        const s = target && A.SU.get(target);
-        if (s && names.length === 1) { if (data.grading) s.grading = data.grading; if (data.attendance) s.attendance = data.attendance; }
-        save(true);
-        close();
-        A.toast(`Added ${n} item${n === 1 ? '' : 's'} to your plan`, 2000);
-      } }, 'Add to my plan'))].filter(Boolean));
+    try { data = JSON.parse(txt); } catch (err) { throw new Error(msg.stop_reason === 'max_tokens' ? 'The materials were too long to finish in one go. Remove a file and try again.' : 'The answer could not be read. Try again.'); }
+    // a new plan starts today: ticks belonged to the old sessions (they were sent to Claude above as already done)
+    Object.assign(p, { summary: data.summary, format: data.format, topics: data.topics, questions: data.questions, gaps: data.gaps, plan: data.plan, builtAt: Date.now(), done: {} });
+    e.built = true; saveMeta(); savePrep(e.id);
+    return p;
   }
+
+  /* ---------- the prep view ---------- */
+  let view = null;
+  EX.open = async (id, buildNow = false) => {
+    const e = EX.get(id);
+    if (!e) return;
+    const p = await loadPrep(id);
+    if (view) view.remove();
+    view = h('div', { class: 'ex-view', role: 'dialog', 'aria-label': e.title });
+    const st = { tab: e.built ? 'plan' : 'plan', stack: [] };
+    const titleEl = h('div', { class: 'ex-v-title' });
+    const leftEl = h('span', { class: 'ex-v-left num' });
+    const body = h('div', { class: 'ex-v-body' });
+    const tabs = h('div', { class: 'seg ex-tabs' });
+    const close = () => { view.remove(); view = null; A.emit('exams'); };
+    const backBtn = h('button', { class: 'ibtn flip', 'aria-label': 'Back', html: A.icon('chev'), onclick: () => { if (st.stack.length) { st.stack.pop(); draw(); } else close(); } });
+    const more = h('button', { class: 'ibtn', 'aria-label': 'More', html: A.icon('more') });
+    more.addEventListener('click', () => {
+      const box = h('div', { class: 'menu' });
+      const it = (icon, label, fn, cls) => box.append(h('button', { class: cls || '', onclick: () => { A.closePopovers(); fn(); } }, A.iconEl(icon), label));
+      it('rename', 'Edit details and materials', () => { close(); editSheet(e); });
+      if (e.built) it('restore', 'Re-plan from today', () => runBuild());
+      it('trash', 'Delete this prep', async () => {
+        if (!(await A.dialog({ title: `Delete “${e.title}”?`, body: 'The plan, guides, practice and the files you added to it are deleted. Your books and notebooks stay.', okText: 'Delete', danger: true }))) return;
+        e.files.forEach((f) => A.store.deleteFile('exf_' + f.id).catch(() => {}));
+        A.store.deleteFile('exprep_' + e.id).catch(() => {});
+        cache.delete(e.id);
+        S.exams = list().filter((x) => x.id !== e.id); saveMeta(); close();
+      }, 'danger');
+      A.popover(box, more, { side: 'down' });
+    });
+    view.append(h('div', { class: 'ex-v-bar' }, backBtn, titleEl, h('div', { class: 'grow' }), leftEl, more), tabs, body);
+    document.body.append(view);
+    await A.AI.katex();
+    const md = (s) => { const d = h('div', { class: 'md' }); d.innerHTML = A.AI.md(s || '', window.katex); return d; };
+    const topicName = (tid) => (p.topics.find((t) => t.id === tid) || {}).title || tid;
+    const chips = (ids) => h('div', { class: 'ex-chips' }, ...(ids || []).map((tid) => h('button', { class: 'ex-chip', onclick: (ev) => { ev.stopPropagation(); st.stack.push({ topic: tid }); draw(); } }, topicName(tid))));
+
+    async function runBuild() {
+      if (!(await needKey())) return;
+      st.building = 'Starting…'; st.error = null; st.stack = []; st.tab = 'plan'; draw();
+      try { await build(e, (s) => { st.building = s; const el = body.querySelector('.ex-building p'); if (el) el.textContent = s; }); st.building = null; }
+      catch (err) { st.building = null; st.error = String(err && err.message || err); }
+      draw();
+    }
+
+    function draw() {
+      titleEl.innerHTML = '';
+      titleEl.append(h('b', null, e.title), h('small', null, [A.SU.name(e.course), KINDS[e.kind], fmtDay(e.date) + ' ' + new Date(e.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })].filter(Boolean).join(' · ')));
+      leftEl.textContent = leftLabel(e.date);
+      tabs.innerHTML = '';
+      const top = st.stack[st.stack.length - 1];
+      tabs.hidden = !!top || !e.built;
+      [['plan', 'Plan'], ['topics', 'Topics'], ['questions', 'Past questions'], ['practice', 'Practice']].forEach(([k, l]) => tabs.append(h('button', { class: st.tab === k ? 'on' : '', onclick: () => { st.tab = k; draw(); } }, l)));
+      body.innerHTML = '';
+      body.scrollTop = 0;
+      if (st.building) { body.append(h('div', { class: 'ex-building' }, h('div', { class: 'ex-spin' }), h('p', null, st.building))); return; }
+      if (top && top.topic) return drawGuide(top.topic);
+      if (!e.built) return drawStart();
+      ({ plan: drawPlan, topics: drawTopics, questions: drawQuestions, practice: drawPractice })[st.tab]();
+    }
+    function drawStart() {
+      const mats = e.files.length + e.books.length + e.notebooks.length;
+      body.append(h('div', { class: 'ex-start' },
+        h('div', { class: 'fx-art', html: A.icon('flag') }),
+        h('h3', null, mats ? 'Ready to build your prep' : 'Add your materials'),
+        h('p', null, mats ? `${mats} material${mats === 1 ? '' : 's'} added. Axiom maps the topics, transcribes every past question, and plans each day until ${fmtDay(e.date)}.` : 'Past exams, problem sets, the syllabus, book chapters and your notes make the plan specific to this test.'),
+        st.error ? h('p', { class: 'ex-err' }, st.error) : null,
+        h('div', { class: 'row gap' }, h('button', { class: 'btn', onclick: () => { close(); editSheet(e); } }, mats ? 'Edit materials' : 'Add materials'), mats || e.notes ? h('button', { class: 'btn primary', onclick: runBuild }, 'Build my prep') : null)));
+    }
+    function drawPlan() {
+      if (st.error) body.append(h('p', { class: 'ex-err' }, st.error));
+      body.append(h('div', { class: 'ex-summary' }, md(p.summary || ''), p.format ? h('p', { class: 'ex-format' }, h('b', null, 'Format '), p.format) : null,
+        h('div', { class: 'ex-prog' }, h('div', { class: 'ex-bar' }, h('i', { style: { width: Math.round(progressOf(p) * 100) + '%' } })), h('small', { class: 'num' }, `${Math.round(progressOf(p) * 100)}% of the plan done`))));
+      const today = isoDate(Date.now());
+      const missed = sessions(p).filter((s) => s.day < today && !p.done[s.key]);
+      if (missed.length) body.append(h('div', { class: 'ex-missed' }, h('span', { class: 'grow' }, `${missed.length} session${missed.length === 1 ? '' : 's'} from earlier days not done.`), h('button', { class: 'btn', onclick: runBuild }, 'Re-plan from today')));
+      p.plan.forEach((d) => {
+        const isToday = d.day === today, past = d.day < today;
+        const [y, m, dd] = d.day.split('-').map(Number);
+        const day = h('div', { class: 'ex-day' + (isToday ? ' today' : '') + (past ? ' past' : '') }, h('div', { class: 'ex-day-h' }, isToday ? 'Today' : new Date(y, m - 1, dd).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })));
+        d.sessions.forEach((s, i) => {
+          const key = d.day + ':' + i, done = !!p.done[key];
+          const ck = h('button', { class: 'fx-check' + (done ? ' on' : ''), 'aria-label': done ? 'Mark not done' : 'Mark done', html: A.icon('check') });
+          ck.addEventListener('click', () => { if (p.done[key]) delete p.done[key]; else p.done[key] = Date.now(); savePrep(e.id); draw(); });
+          day.append(h('div', { class: 'ex-sess' + (done ? ' done' : '') }, ck, h('div', { class: 'grow' }, h('div', { class: 'ex-sess-t' }, h('span', { class: 'ex-k k-' + s.kind }, s.kind), h('span', { class: 'num ex-min' }, s.minutes + ' min')), md(s.task), chips(s.topics))));
+        });
+        body.append(day);
+      });
+    }
+    function drawTopics() {
+      const count = (tid) => p.questions.filter((q) => (q.topics || []).includes(tid)).length;
+      const listEl = h('div', { class: 'ex-list' });
+      p.topics.forEach((t) => listEl.append(h('button', { class: 'ex-topic', onclick: () => { st.stack.push({ topic: t.id }); draw(); } },
+        h('div', { class: 'ex-topic-h' }, h('b', null, t.title), h('span', { class: 'ex-w w-' + t.weight }, t.weight), count(t.id) ? h('span', { class: 'ex-n num' }, count(t.id) + ' past Q') : null, p.guides[t.id] ? h('span', { class: 'ex-n' }, 'Guide') : null),
+        h('small', null, t.why), t.sources ? h('small', { class: 'ex-src' }, t.sources) : null)));
+      body.append(listEl);
+      if (p.gaps && p.gaps.length) body.append(h('div', { class: 'ex-gaps' }, h('div', { class: 'fx-sub' }, 'Never asked in past exams, still to know'), ...p.gaps.map((g) => h('p', null, h('b', null, g.topic + ' '), g.note))));
+    }
+
+    /* layered study guide per topic: big picture, numbered parts; tap any block to ask, the answer goes right under it */
+    async function drawGuide(tid) {
+      const t = p.topics.find((x) => x.id === tid) || { id: tid, title: tid, why: '', sources: '', subtopics: [] };
+      const head = h('div', { class: 'ex-guide-h' }, h('h2', null, t.title), h('p', { class: 'muted' }, t.why));
+      body.append(head);
+      let g = p.guides[tid];
+      if (!g) {
+        if (!(await needKey())) return;
+        const wrap = h('div', { class: 'ex-guide' }), live = md('');
+        wrap.append(live); body.append(wrap);
+        live.innerHTML = '<span class="thinking">Writing the guide<i>.</i><i>.</i><i>.</i></span>';
+        try {
+          const c = await client();
+          const qs = p.questions.filter((q) => (q.topics || []).includes(tid)).slice(0, 8).map((q) => `- (${q.id}, ${q.source}) ${q.text}`).join('\n');
+          let text = '';
+          const stream = c.messages.stream({ model: model(), max_tokens: 16000, output_config: { effort: 'medium' },
+            system: `You write one living study guide for a topic, read top-down. ${STYLE}
+Format exactly:
+## Big picture
+4–7 numbered one-line statements; line k maps to part k.
+## 1. <title>
+Start with the main idea in one sentence, then the core content: definitions with hypotheses, key results, the formula in a $$ block, short bullets, one small worked example. Every symbol defined before use. Mark approximations and assumptions explicitly.
+(continue ## 2., ## 3. …)
+## Quick reference
+A small table of the rules and formulas needed in the exam.
+Keep the big picture and the parts short; depth comes later as follow-up blocks. Separate paragraphs with blank lines.`,
+            messages: [{ role: 'user', content: `Topic: ${t.title}\nWhat gets asked: ${t.why}\nSubtopics: ${(t.subtopics || []).join('; ')}\nWhere it is in the student's materials: ${t.sources}\nPast questions on it:\n${qs || '(none)'}\nTest: ${e.title} (${KINDS[e.kind]}).` }] });
+          stream.on('text', (d) => { text += d; live.innerHTML = A.AI.md(text, window.katex); });
+          await stream.finalMessage();
+          g = p.guides[tid] = { blocks: splitBlocks(text), at: Date.now() };
+          savePrep(e.id);
+        } catch (err) { live.innerHTML = ''; live.append(h('p', { class: 'ex-err' }, 'Could not write the guide: ' + (err.message || err))); return; }
+        if (st.stack[st.stack.length - 1] !== undefined && st.stack[st.stack.length - 1].topic === tid) draw();
+        return;
+      }
+      const wrap = h('div', { class: 'ex-guide' });
+      g.blocks.forEach((b, i) => {
+        const el = h('div', { class: 'ex-block' + (/^#/.test(b.md) ? ' heading' : '') }, md(b.md));
+        el.addEventListener('click', (ev) => { if (ev.target.closest('a, button, input, textarea')) return; askUnder(el, i); });
+        wrap.append(el);
+        (b.deeper || []).forEach((d) => wrap.append(h('div', { class: 'ex-deeper' }, h('div', { class: 'ex-deeper-h' }, 'Deeper: ' + d.q), md(d.md))));
+      });
+      body.append(h('p', { class: 'ex-hint' }, 'Tap any line to ask about it. The answer appears right under it.'), wrap);
+      const qs = p.questions.filter((q) => (q.topics || []).includes(tid));
+      if (qs.length) { body.append(h('div', { class: 'fx-sub ex-qs-h' }, 'Past questions on this')); qs.forEach((q) => body.append(questionCard(q))); }
+
+      function askUnder(el, i) {
+        const open = wrap.querySelector('.ex-ask'); if (open) open.remove();
+        const inp = h('textarea', { class: 'field', rows: 1, placeholder: 'What is unclear about this part?' });
+        const go = h('button', { class: 'send-btn', 'aria-label': 'Ask', html: A.icon('send') });
+        const box = h('div', { class: 'ex-ask' }, inp, go);
+        let after = el; while (after.nextElementSibling && after.nextElementSibling.classList.contains('ex-deeper')) after = after.nextElementSibling;
+        after.after(box);
+        setTimeout(() => inp.focus(), 30);
+        const send = async () => {
+          const q = inp.value.trim(); if (!q || !(await needKey())) return;
+          const ans = h('div', { class: 'ex-deeper' }, h('div', { class: 'ex-deeper-h' }, 'Deeper: ' + q), md(''));
+          box.replaceWith(ans);
+          const live = ans.lastChild; live.innerHTML = '<span class="thinking">Thinking<i>.</i><i>.</i><i>.</i></span>';
+          const above = g.blocks.slice(0, i + 1).map((b) => b.md + (b.deeper || []).map((d) => `\n\n### Deeper: ${d.q}\n${d.md}`).join('')).join('\n\n');
+          try {
+            const c = await client(); let text = '';
+            const stream = c.messages.stream({ model: model(), max_tokens: 8000, output_config: { effort: 'medium' },
+              system: `You answer a follow-up question about one line of a study guide. The answer is inserted directly under that line. ${STYLE}
+Rules: assume ONLY what appears in the guide above the line (given below). If you need a term not defined above, define it first. Build from definitions: what the objects are, which assumptions are made where, which step is an approximation. Give the structural reason. Include one tiny concrete example or numeric check when it makes the step obvious. Be concise; do not repeat the guide. No heading.`,
+              messages: [{ role: 'user', content: `The guide up to and including the line:\n"""\n${above.slice(-14000)}\n"""\n\nThe line the student asks about:\n"""\n${g.blocks[i].md}\n"""\n\nQuestion: ${q}` }] });
+            stream.on('text', (d) => { text += d; live.innerHTML = A.AI.md(text, window.katex); });
+            await stream.finalMessage();
+            (g.blocks[i].deeper = g.blocks[i].deeper || []).push({ q, md: text, at: Date.now() });
+            savePrep(e.id);
+          } catch (err) { live.innerHTML = ''; live.append(h('p', { class: 'ex-err' }, String(err.message || err))); }
+        };
+        go.addEventListener('click', send);
+        inp.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); send(); } });
+      }
+    }
+    const splitBlocks = (text) => {
+      const out = []; let cur = [];
+      const flush = () => { const s = cur.join('\n').trim(); if (s) out.push({ md: s }); cur = []; };
+      let inMath = false, inCode = false;
+      text.split('\n').forEach((line) => {
+        if (/^```/.test(line)) inCode = !inCode;
+        if ((line.match(/\$\$/g) || []).length % 2) inMath = !inMath;
+        if (!inMath && !inCode && /^#{1,3}\s/.test(line)) { flush(); out.push({ md: line.trim() }); return; }
+        if (!inMath && !inCode && !line.trim()) { flush(); return; }
+        cur.push(line);
+      });
+      flush();
+      return out;
+    };
+
+    function questionCard(q) {
+      const ans = p.answers[q.id] || {};
+      const card = h('div', { class: 'ex-q' }, h('div', { class: 'ex-q-h' }, h('b', null, q.source), h('span', { class: 'ex-w w-' + (q.difficulty === 'hard' ? 'high' : q.difficulty === 'easy' ? 'low' : 'medium') }, q.difficulty)), md(q.text), chips(q.topics));
+      const out = h('div', { class: 'ex-q-out' });
+      const showStored = () => { out.innerHTML = ''; if (ans.hint) out.append(h('div', { class: 'ex-deeper' }, h('div', { class: 'ex-deeper-h' }, 'Hint'), md(ans.hint))); if (ans.solution) out.append(h('div', { class: 'ex-deeper sol' }, h('div', { class: 'ex-deeper-h' }, 'Solution'), md(ans.solution))); };
+      showStored();
+      const gen = (kind) => async () => {
+        if (ans[kind]) { showStored(); return; }
+        if (!(await needKey())) return;
+        const box = h('div', { class: 'ex-deeper' + (kind === 'solution' ? ' sol' : '') }, h('div', { class: 'ex-deeper-h' }, kind === 'hint' ? 'Hint' : 'Solution'), md(''));
+        out.append(box);
+        const live = box.lastChild; live.innerHTML = '<span class="thinking">Thinking<i>.</i><i>.</i><i>.</i></span>';
+        try {
+          const c = await client(); let text = '';
+          const stream = c.messages.stream({ model: model(), max_tokens: 16000, output_config: { effort: kind === 'hint' ? 'low' : 'high' },
+            system: `${STYLE} ${kind === 'hint' ? 'Give one hint that unlocks the next step. Do not solve it. Two to four sentences.' : 'Give a complete, rigorous solution: state what is used (with hypotheses checked), every step justified, and end with what the examiner looks for and common mistakes.'}`,
+            messages: [{ role: 'user', content: `Question (${q.source}):\n${q.text}` }] });
+          stream.on('text', (d) => { text += d; live.innerHTML = A.AI.md(text, window.katex); });
+          await stream.finalMessage();
+          ans[kind] = text; p.answers[q.id] = ans; savePrep(e.id);
+        } catch (err) { live.innerHTML = ''; live.append(h('p', { class: 'ex-err' }, String(err.message || err))); }
+      };
+      const acts = h('div', { class: 'ex-q-acts' },
+        h('button', { class: 'btn', onclick: gen('hint') }, 'Hint'),
+        h('button', { class: 'btn', onclick: gen('solution') }, 'Solution'),
+        q.file > 0 && e.files[q.file - 1] ? h('button', { class: 'btn', onclick: () => solveInNotebook(q) }, A.iconEl('notebook'), 'Solve in a notebook') : null);
+      card.append(acts, out);
+      return card;
+    }
+    async function solveInNotebook(q) {
+      const f = e.files[q.file - 1];
+      try {
+        const blob = await A.store.loadFile('exf_' + f.id, f.type);
+        let url, w, hh;
+        if (/pdf/.test(f.type)) {
+          const lib = await A.ST.pdfLib();
+          const pdf = await lib.getDocument({ data: new Uint8Array(await blob.arrayBuffer()) }).promise;
+          const page = await pdf.getPage(Math.min(Math.max(1, q.page || 1), pdf.numPages));
+          const vp1 = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: Math.min(2.5, 1800 / vp1.width) });
+          const c = h('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+          const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+          await page.render({ canvasContext: ctx, viewport: vp }).promise;
+          url = c.toDataURL('image/jpeg', 0.88); w = c.width; hh = c.height;
+        } else {
+          url = await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(blob); });
+          const im = await new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.src = url; }); w = im.naturalWidth; hh = im.naturalHeight;
+        }
+        // one practice notebook per test, so all the worked questions live together
+        let nbId = e.notebookId;
+        const metas = (await A.store.listMeta()).filter(Boolean);
+        if (!nbId || !metas.some((m) => m.id === nbId)) {
+          const ln = S.lastNotebook || {};
+          const doc = A.D.create({ name: e.title + ' · practice', bg: ln.color || '#ffffff', kind: 'notebook', page: { template: ln.tpl || 'grid', color: ln.color || '#ffffff', size: ln.size || 'a4', orient: 'portrait', scroll: 'vertical' } });
+          doc.subject = e.course || null;
+          await A.store.saveDoc(doc, null);
+          nbId = e.notebookId = doc.id; saveMeta();
+        }
+        A.UI.pendingInsert = { url, w, h: hh, label: q.source };
+        close();
+        A.emit('open', nbId);
+      } catch (err) { A.toast('Could not open that page: ' + (err.message || err)); }
+    }
+    function drawQuestions() {
+      if (!p.questions.length) { body.append(h('p', { class: 'fx-none' }, 'No past questions were found. Add past exams or problem sets and re-plan.')); return; }
+      const by = new Map();
+      p.questions.forEach((q) => { const k = q.source.replace(/,?\s*(Q|#|Problem|Question)\s*\d+.*$/i, '') || 'Questions'; if (!by.has(k)) by.set(k, []); by.get(k).push(q); });
+      for (const [k, qs] of by) { body.append(h('div', { class: 'fx-sub ex-qs-h' }, k)); qs.forEach((q) => body.append(questionCard(q))); }
+    }
+
+    /* practice: new problems in the style of the past exams, and a timed mock exam */
+    function drawPractice() {
+      const pick = new Set(p.topics.filter((t) => t.weight === 'high').slice(0, 3).map((t) => t.id));
+      const tbox = h('div', { class: 'ex-chips pick' });
+      p.topics.forEach((t) => { const b = h('button', { class: 'ex-chip' + (pick.has(t.id) ? ' on' : ''), onclick: () => { if (pick.has(t.id)) pick.delete(t.id); else pick.add(t.id); b.classList.toggle('on'); } }, t.title); tbox.append(b); });
+      body.append(h('div', { class: 'ex-practice-new' }, h('div', { class: 'fx-sub' }, 'Make practice problems'), tbox,
+        h('div', { class: 'row gap' }, h('button', { class: 'btn primary', onclick: () => makeSet('set', [...pick]) }, 'Five problems on these'), h('button', { class: 'btn', onclick: () => makeSet('mock', p.topics.map((t) => t.id)) }, A.iconEl('timer'), 'Mock exam'))));
+      p.practice.slice().reverse().forEach((set) => body.append(drawSet(set)));
+    }
+    const SET_SCHEMA = { type: 'object', properties: { title: { type: 'string' }, minutes: { type: 'integer', description: 'Suggested time limit' }, problems: { type: 'array', items: { type: 'object', properties: { text: { type: 'string' }, topics: { type: 'array', items: { type: 'string' } }, solution: { type: 'string' } }, required: ['text', 'topics', 'solution'], additionalProperties: false } } }, required: ['title', 'minutes', 'problems'], additionalProperties: false };
+    async function makeSet(kind, tids) {
+      if (!(await needKey())) return;
+      if (!tids.length) return A.toast('Pick at least one topic.');
+      const holder = h('div', { class: 'ex-building small' }, h('div', { class: 'ex-spin' }), h('p', null, kind === 'mock' ? 'Writing a mock exam in the style of your past exams…' : 'Writing five problems…'));
+      body.querySelector('.ex-practice-new').after(holder);
+      try {
+        const c = await client();
+        const examples = p.questions.slice(0, 14).map((q) => `- ${q.source}: ${q.text}`).join('\n').slice(0, 12000);
+        const res = await c.messages.stream({ model: model(), max_tokens: 24000, output_config: { effort: 'medium', format: { type: 'json_schema', schema: SET_SCHEMA } },
+          system: `${STYLE} You write new practice problems for "${e.title}". Match the style, length and difficulty of the past questions; never copy them. Every problem gets a complete rigorous solution.`,
+          messages: [{ role: 'user', content: `${kind === 'mock' ? `A full mock ${KINDS[e.kind].toLowerCase()} with the expected format${p.format ? ` (${p.format})` : ''}, covering the topics in proportion to their weight.` : 'Five problems, from easier to harder.'}\nTopics: ${tids.map((tid) => { const t = p.topics.find((x) => x.id === tid); return t ? `${t.id}: ${t.title} (${t.why})` : tid; }).join('\n')}\nPast questions for style:\n${examples || '(none given)'}` }] }).finalMessage();
+        const data = JSON.parse((res.content.find((x) => x.type === 'text') || {}).text || '{}');
+        p.practice.push({ id: A.uid(), kind, title: data.title, minutes: data.minutes, problems: data.problems || [], at: Date.now() });
+        savePrep(e.id); draw();
+      } catch (err) { holder.innerHTML = ''; holder.append(h('p', { class: 'ex-err' }, 'Could not make the problems: ' + (err.message || err))); }
+    }
+    function drawSet(set) {
+      const card = h('div', { class: 'ex-set' }, h('div', { class: 'ex-set-h' }, h('b', null, set.title || (set.kind === 'mock' ? 'Mock exam' : 'Practice')), h('small', { class: 'num' }, `${set.problems.length} problem${set.problems.length === 1 ? '' : 's'} · ${set.minutes} min · ${A.fmtDate(set.at)}`)));
+      if (set.kind === 'mock') {
+        const timer = h('button', { class: 'btn' }, A.iconEl('timer'), `Start ${set.minutes}-minute timer`);
+        timer.addEventListener('click', () => {
+          const end = Date.now() + set.minutes * 6e4;
+          const tick = () => { const s = Math.max(0, Math.round((end - Date.now()) / 1000)); timer.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} left`; if (s > 0 && timer.isConnected) setTimeout(tick, 1000); else if (timer.isConnected) { timer.textContent = 'Time is up'; A.toast('Time is up. Check your answers against the solutions.', 3000); } };
+          tick();
+        });
+        card.append(timer);
+      }
+      set.problems.forEach((pr, i) => {
+        const sol = h('div', { class: 'ex-deeper sol', hidden: true }, h('div', { class: 'ex-deeper-h' }, 'Solution'), md(pr.solution));
+        card.append(h('div', { class: 'ex-q' }, h('div', { class: 'ex-q-h' }, h('b', null, `Problem ${i + 1}`)), md(pr.text), chips(pr.topics),
+          h('div', { class: 'ex-q-acts' }, h('button', { class: 'btn', onclick: (ev) => { sol.hidden = !sol.hidden; ev.currentTarget.textContent = sol.hidden ? 'Show solution' : 'Hide solution'; } }, 'Show solution')), sol));
+      });
+      return card;
+    }
+
+    draw();
+    if (buildNow && (e.files.length || e.books.length || e.notebooks.length || e.notes)) runBuild();
+  };
 })();
 
 /* ---- reader.js ---- */
@@ -11873,6 +11966,7 @@ A.fmtDate = (t) => {
         it('notebook', 'Notebook', 'Pages to write on', newNotebook);
         it('canvas', 'Canvas', 'Infinite space to think', newDrawing);
         it('book', 'Book or PDF', 'Read with the tutor', importDocs);
+        it('flag', 'Exam prep', 'A plan, topics and practice for a test', () => A.EX.create({ course: A.SU.get(S.galleryFilter) ? S.galleryFilter : null }));
         box.append(h('hr'));
         it('import', 'Import Axiom file', '.axiom project', importProject);
         A.popover(box, b, { side: 'down' });
@@ -11902,7 +11996,7 @@ A.fmtDate = (t) => {
           h('h1', { class: 'home-greet' }, greet + '.'),
           h('p', { class: 'home-sub' }, metas.length || docs.length ? 'Pick up where you left off.' : 'Start a drawing, or add a book or problem set to your library.')),
         h('div', { class: 'g-actions' }, newMenuBtn())));
-      main.append(A.PL.todaySection());
+      { const ex = A.EX.homeSection(); if (ex) main.append(ex); }
       const lastNb = notebooks.slice().sort(sorters.updated)[0];
       const lastCv = canvases.slice().sort(sorters.updated)[0];
       const lastBook = docs.filter((d) => d.lastRead).sort((a, b) => b.lastRead - a.lastRead)[0];
@@ -11973,7 +12067,7 @@ A.fmtDate = (t) => {
     main.append(h('header', { class: 'page-hero' },
       h('div', null, h('h1', { class: 'page-title' }, subj ? h('i', { class: 'dot big', style: { background: subj.color } }) : null, title)),
       h('div', { class: 'g-actions' }, ...acts)));
-    if (subj) main.append(A.PL.courseSection(subj.id));
+    if (subj) { const ex = A.EX.homeSection(subj.id); if (ex) main.append(ex); }
     const anyHere = metas.some((m) => filter === 'notebooks' ? isNb(m) : filter === 'canvases' ? !isNb(m) : filter === 'favorites' ? m.fav : filter === 'none' ? !m.subject : m.subject === filter);
     if (anyHere) main.append(h('div', { class: 'g-tools' }, h('div', { class: 'g-search' }, A.iconEl('search'), search), sortBtn()));
     const body = h('div');

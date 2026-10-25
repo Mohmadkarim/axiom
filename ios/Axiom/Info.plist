@@ -27,8 +27,6 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>Axiom shows your classes and events next to your study plan, and can add your study blocks and deadlines to an Axiom calendar.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Axiom can photograph problem sheets and pages to add them to your notes.</string>
 	<key>NSMicrophoneUsageDescription</key>

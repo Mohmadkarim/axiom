@@ -48,4 +48,3 @@ targets:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         NSPhotoLibraryAddUsageDescription: Axiom saves exported drawings to your photo library when you ask it to.
-        NSCalendarsFullAccessUsageDescription: Axiom shows your classes and events next to your study plan, and can add your study blocks and deadlines to an Axiom calendar.

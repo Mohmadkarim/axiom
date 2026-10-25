@@ -267,6 +267,7 @@
         it('notebook', 'Notebook', 'Pages to write on', newNotebook);
         it('canvas', 'Canvas', 'Infinite space to think', newDrawing);
         it('book', 'Book or PDF', 'Read with the tutor', importDocs);
+        it('flag', 'Exam prep', 'A plan, topics and practice for a test', () => A.EX.create({ course: A.SU.get(S.galleryFilter) ? S.galleryFilter : null }));
         box.append(h('hr'));
         it('import', 'Import Axiom file', '.axiom project', importProject);
         A.popover(box, b, { side: 'down' });
@@ -296,7 +297,7 @@
           h('h1', { class: 'home-greet' }, greet + '.'),
           h('p', { class: 'home-sub' }, metas.length || docs.length ? 'Pick up where you left off.' : 'Start a drawing, or add a book or problem set to your library.')),
         h('div', { class: 'g-actions' }, newMenuBtn())));
-      main.append(A.PL.todaySection());
+      { const ex = A.EX.homeSection(); if (ex) main.append(ex); }
       const lastNb = notebooks.slice().sort(sorters.updated)[0];
       const lastCv = canvases.slice().sort(sorters.updated)[0];
       const lastBook = docs.filter((d) => d.lastRead).sort((a, b) => b.lastRead - a.lastRead)[0];
@@ -367,7 +368,7 @@
     main.append(h('header', { class: 'page-hero' },
       h('div', null, h('h1', { class: 'page-title' }, subj ? h('i', { class: 'dot big', style: { background: subj.color } }) : null, title)),
       h('div', { class: 'g-actions' }, ...acts)));
-    if (subj) main.append(A.PL.courseSection(subj.id));
+    if (subj) { const ex = A.EX.homeSection(subj.id); if (ex) main.append(ex); }
     const anyHere = metas.some((m) => filter === 'notebooks' ? isNb(m) : filter === 'canvases' ? !isNb(m) : filter === 'favorites' ? m.fav : filter === 'none' ? !m.subject : m.subject === filter);
     if (anyHere) main.append(h('div', { class: 'g-tools' }, h('div', { class: 'g-search' }, A.iconEl('search'), search), sortBtn()));
     const body = h('div');
