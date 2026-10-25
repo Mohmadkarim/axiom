@@ -1394,16 +1394,6 @@ h5, .g-sec-h h2, .sub, .nb-fly-h, .pp-h, .bk-up-h { font-size: 11px !important; 
 #reader-view .rd-inkbar[hidden] { display: none; }
 #reader-view .rd-inkbar::-webkit-scrollbar { display: none; }
 
-/* ===== Apple Pencil calibration ===== */
-.pc-back { position: fixed; inset: 0; z-index: 9000; background: var(--bg); touch-action: none; }
-.pc-target { position: absolute; width: 64px; height: 64px; margin: -32px 0 0 -32px; pointer-events: none; transition: left .25s var(--ease), top .25s var(--ease); }
-.pc-target::before, .pc-target::after { content: ''; position: absolute; background: var(--accent); }
-.pc-target::before { left: 31px; top: 0; width: 2px; height: 64px; }
-.pc-target::after { top: 31px; left: 0; height: 2px; width: 64px; }
-.pc-target.hit::before, .pc-target.hit::after { background: #2f9e6b; }
-.pc-panel { position: absolute; left: 50%; bottom: calc(40px + env(safe-area-inset-bottom, 0px)); translate: -50% 0; width: min(440px, calc(100vw - 32px)); text-align: center; display: grid; gap: 10px; justify-items: center; }
-.pc-panel h3 { margin: 0; font-size: 18px; }
-.pc-msg { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
 /* zoomed-in pages scroll sideways on both sides instead of being cut off on the left */
 #reader-view .rd-pages { width: max-content; min-width: 100%; margin: 0 auto; }
 
@@ -1548,6 +1538,24 @@ h5, .g-sec-h h2, .sub, .nb-fly-h, .pp-h, .bk-up-h { font-size: 11px !important; 
 /* ===== notebooks on PencilKit: the page is transparent over the pages; the native view shows through ===== */
 html.pk-on, html.pk-on body, html.pk-on #app, html.pk-on #canvas-view, html.pk-on #stage { background: transparent !important; }
 #canvas-view.pk #main { visibility: hidden; }
+html.pk-on #reader-view.pk, html.pk-on #reader-view.pk .rd-main { background: transparent !important; }
+#reader-view.pk .rd-pages { visibility: hidden; }
+
+/* ===== crop pictures ===== */
+.crop-ui { position: fixed; inset: 0; z-index: 85; touch-action: none; }
+.crop-img { position: absolute; pointer-events: none; transform-origin: center; }
+.crop-shade { position: absolute; inset: 0; background: rgba(8, 10, 16, .55); pointer-events: none; }
+.crop-box { position: absolute; box-shadow: 0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,.25); cursor: move; background-image: linear-gradient(rgba(255,255,255,.35) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.35) 1px, transparent 1px); background-size: 33.333% 33.333%; background-position: -1px -1px; }
+.crop-h { position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px; }
+.crop-h::after { content: ''; position: absolute; left: 11px; top: 11px; width: 12px; height: 12px; background: #fff; border-radius: 3px; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+.crop-h.h-n, .crop-h.h-s { left: 50%; } .crop-h.h-e, .crop-h.h-w { top: 50%; }
+.crop-h.h-nw, .crop-h.h-n, .crop-h.h-ne { top: 0; } .crop-h.h-sw, .crop-h.h-s, .crop-h.h-se { top: 100%; }
+.crop-h.h-nw, .crop-h.h-w, .crop-h.h-sw { left: 0; } .crop-h.h-ne, .crop-h.h-e, .crop-h.h-se { left: 100%; }
+.crop-h.h-n::after, .crop-h.h-s::after { width: 22px; height: 6px; left: 6px; top: 14px; }
+.crop-h.h-e::after, .crop-h.h-w::after { width: 6px; height: 22px; left: 14px; top: 6px; }
+.crop-bar { position: absolute; display: flex; gap: 6px; padding: 6px; border-radius: var(--r-m, 12px); }
+.ex-home + .g-tools, .ex-home + div > .g-tools { margin-top: 22px; }
+.g-sec.ex-home { margin-bottom: 18px; }
 </style>
 </head>
 <body>
@@ -1569,7 +1577,7 @@ html.pk-on, html.pk-on body, html.pk-on #app, html.pk-on #canvas-view, html.pk-o
 </div>
 <div id="toasts" aria-live="polite"></div>
 
-<script>window.AXIOM_BUILD = 'mvnqfdxm';
+<script>window.AXIOM_BUILD = 'mvnubx9j';
 /* ---- core.js ---- */
 /* Axiom core: namespace, math, color, events, DOM helpers */
 'use strict';
@@ -1935,6 +1943,7 @@ A.fmtDate = (t) => {
     flag: '<path d="M5.5 21V4"/><path d="M5.5 4.5h11l-2 4 2 4h-11"/>',
     target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".9" fill="currentColor"/>',
     doc: '<path d="M6.5 3.5h7l4 4v12a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1Z"/><path d="M13.5 3.5v4h4M9 12h6M9 15.5h6"/>',
+    crop: '<path d="M6.5 2.5v13.5a1.5 1.5 0 0 0 1.5 1.5h13.5"/><path d="M2.5 6.5h13.5a1.5 1.5 0 0 1 1.5 1.5v13.5"/>',
     chevup: '<path d="m6 15 6-6 6 6"/>',
     graph: '<path d="M4 3.5v16.5h16.5"/><path d="M7 16.5c1.8-5.5 3.6-7.6 5.6-4.9 2 2.7 3.9 1.1 6.1-6.1"/>',
     send: '<path d="M12 19V5"/><path d="m6 11 6-6 6 6"/>',
@@ -2986,7 +2995,11 @@ A.fmtDate = (t) => {
     ctx.save();
     ctx.globalAlpha = (item.o ?? 1) * alphaMul;
     ctx.transform(...item.m);
-    ctx.drawImage(im, 0, 0, item.iw, item.ih);
+    const c = item.crop;
+    if (c) {
+      const kx = im.naturalWidth / c.iw0, ky = im.naturalHeight / c.ih0;
+      ctx.drawImage(im, c.x * kx, c.y * ky, c.w * kx, c.h * ky, 0, 0, item.iw, item.ih);
+    } else ctx.drawImage(im, 0, 0, item.iw, item.ih);
     ctx.restore();
   };
   B.imageCorners = (item) => {
@@ -3016,7 +3029,10 @@ A.fmtDate = (t) => {
       return `<g transform="matrix(${item.m.map((v) => +v.toFixed(4)).join(' ')})" opacity="${item.o ?? 1}">${rect}<text font-family="${fam}" font-size="${item.fs}" font-weight="${item.bold ? 700 : 400}" fill="${item.bg ? '#2a2620' : item.c}" xml:space="preserve">${spans}</text></g>`;
     }
     if (item.t === 'i') {
-      return `<image href="${esc(item.src)}" width="${item.iw}" height="${item.ih}" transform="matrix(${item.m.map((v) => +v.toFixed(4)).join(' ')})" opacity="${item.o ?? 1}"/>`;
+      const tf = `transform="matrix(${item.m.map((v) => +v.toFixed(4)).join(' ')})" opacity="${item.o ?? 1}"`;
+      const c = item.crop;
+      if (c) return `<g ${tf}><svg width="${item.iw}" height="${item.ih}" viewBox="${c.x} ${c.y} ${c.w} ${c.h}" preserveAspectRatio="none"><image href="${esc(item.src)}" width="${c.iw0}" height="${c.ih0}"/></svg></g>`;
+      return `<image href="${esc(item.src)}" width="${item.iw}" height="${item.ih}" ${tf}/>`;
     }
     const c = B.catalog[item.b] || B.catalog.pen;
     const sink = G.svgSink();
@@ -4012,7 +4028,7 @@ A.fmtDate = (t) => {
   };
 
   /* ---------- offscreen rendering for export / thumbnails ---------- */
-  R.renderRegion = (doc, bb, scale, { bg = true, grid = false, onlyIds = null, maxPx = 8192, noStrokes = false, display = false } = {}) => {
+  R.renderRegion = (doc, bb, scale, { bg = true, grid = false, onlyIds = null, maxPx = 8192, noStrokes = false, display = false, onImage = null } = {}) => {
     const bw = Math.max(1, bb[2] - bb[0]), bh = Math.max(1, bb[3] - bb[1]);
     let s = scale;
     const lim = Math.min(maxPx, 16384);
@@ -4025,7 +4041,7 @@ A.fmtDate = (t) => {
     const m = [s, 0, 0, s, -bb[0] * s, -bb[1] * s];
     R.drawScene(c.getContext('2d'), {
       m, w: W, h: H, doc, bg: bg && !D.isNotebook(doc) ? (display ? R.displayBg(doc) : doc.paper.bg) : null, pageBg: bg && D.isNotebook(doc), grid, scratch: sc, sctx: sc.getContext('2d'), dpr: Math.max(1, s), onlyIds, noArtboards: !display, noStrokes, hideId: noStrokes ? R.hideId : null,
-      dark: display && R.darkActive(doc), inkAdapt: display,
+      dark: display && R.darkActive(doc), inkAdapt: display, onImage,
     });
     return c;
   };
@@ -4485,7 +4501,6 @@ A.fmtDate = (t) => {
         // Concepts-style tap+hold: switch to lasso selection
         this.done = true;
         IN.liveDraw = null;
-        if (this.rec.id === 7777) IN.inkSuspend();
         action = new LassoAction(this.rec, this.lastS, { temp: true });
         action.owner = this.rec.id;
         R.renderOverlay();
@@ -4500,7 +4515,6 @@ A.fmtDate = (t) => {
       const r = G.recognize(this.pts);
       if (r) {
         this.shape = r;
-        if (this.rec.id === 7777) IN.inkSuspend();
         const [hx, hy] = R.toWorld(this.lastS.x, this.lastS.y);
         this.shapeHold = [hx, hy];
         if (r.kind === 'line' || r.kind === 'arc' || r.kind === 'polyline') this.shapePivot = [r.pts[0], r.pts[1]];
@@ -4655,14 +4669,13 @@ A.fmtDate = (t) => {
       D.commit();
       R.appendItem(item, layer);
       R.renderOverlayNow();
-      if (this.rec.id === 7777) IN.inkDone();
       if (D.doc.precision.measure && G.count(pts) >= 2 && !this.cat.mask) {
         IN.lastMeasure = { item, until: performance.now() + 2200 };
         setTimeout(() => R.renderOverlay(), 2300);
       }
       A.emit('layers:thumbs');
     }
-    cancel() { this.done = true; clearTimeout(this.holdTimer); IN.liveDraw = null; if (this.rec.id === 7777) IN.inkSuspend(); R.renderOverlay(); }
+    cancel() { this.done = true; clearTimeout(this.holdTimer); IN.liveDraw = null; R.renderOverlay(); }
   }
 
   /* ---- slice eraser / stroke eraser ---- */
@@ -5424,13 +5437,16 @@ A.fmtDate = (t) => {
   });
   window.__axiomPen = (phase, samples, predicted) => {
     if (!samples || !samples.length) return;
-    if (A.PK && A.PK.ownsPen()) return; // PencilKit draws, erases or lassos this stroke itself
+    // PencilKit draws, erases or lassos this stroke itself, unless it starts on a picture/text box/selection the page owns
+    if (A.PK && A.PK.ownsPen()) {
+      if (phase === 'b') IN.webPenStroke = A.PK.onWebTarget(samples[0][0], samples[0][1]);
+      if (!IN.webPenStroke) return;
+    }
     if (!D.doc || A.$('#canvas-view').hidden) return;
     const last = samples[samples.length - 1];
     const withLists = (ev, list, pred) => { ev.getCoalescedEvents = () => list.map((s) => nativeEv(s, 'pointermove')); ev.getPredictedEvents = () => (pred || []).map((s) => nativeEv(s, 'pointermove')); return ev; };
     if (phase === 'b') {
       onDown(nativeEv(samples[0], 'pointerdown'));
-      if (IN.inkOn && !(action instanceof DrawAction)) IN.inkSuspend();
       if (samples.length > 1) onMove(withLists(nativeEv(last, 'pointermove'), samples.slice(1), []));
     } else if (phase === 'm') {
       onMove(withLists(nativeEv(last, 'pointermove'), samples, predicted));
@@ -5441,80 +5457,7 @@ A.fmtDate = (t) => {
   };
 
 
-  /* ---------- Apple Pencil calibration: the user taps targets; the average gap becomes a correction for every pen sample ---------- */
-  IN.penXY = (e) => {
-    const o = (e.pointerType === 'pen' && A.settings.penOffset) || null;
-    return o ? [e.clientX + o.x, e.clientY + o.y] : [e.clientX, e.clientY];
-  };
-  IN.calibratePen = () => {
-    const spots = [[0.5, 0.42], [0.22, 0.25], [0.78, 0.25], [0.22, 0.75], [0.78, 0.75]];
-    const back = A.h('div', { class: 'pc-back' });
-    const target = A.h('div', { class: 'pc-target' });
-    const msg = A.h('p', { class: 'pc-msg' }, 'Touch the centre of the cross with the tip of your Apple Pencil.');
-    const cancel = A.h('button', { class: 'btn', onclick: () => back.remove() }, 'Cancel');
-    back.append(target, A.h('div', { class: 'pc-panel' }, A.h('h3', null, 'Calibrate Apple Pencil'), msg, A.h('div', { class: 'row gap' }, cancel)));
-    document.body.append(back);
-    const got = [];
-    let k = 0, tx = 0, ty = 0, ready = false;
-    const place = () => { tx = Math.round(innerWidth * spots[k][0]); ty = Math.round(innerHeight * spots[k][1]); target.style.left = tx + 'px'; target.style.top = ty + 'px'; target.classList.remove('hit'); setTimeout(() => { ready = true; }, 320); };
-    place();
-    back.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('button')) return;
-      e.preventDefault();
-      if (!ready) return;
-      if (e.pointerType !== 'pen' && A.settings.penSeen) { msg.textContent = 'Use the Apple Pencil, not your finger.'; return; }
-      if (Math.hypot(tx - e.clientX, ty - e.clientY) > 40) { msg.textContent = 'That was too far from the cross. Touch its centre.'; return; }
-      ready = false;
-      got.push([tx - e.clientX, ty - e.clientY]);
-      target.classList.add('hit');
-      k++;
-      if (k < spots.length) { setTimeout(place, 220); msg.textContent = `Good. ${spots.length - k} more.`; return; }
-      // drop the worst tap, average the rest
-      const mean = (arr) => [arr.reduce((a, v) => a + v[0], 0) / arr.length, arr.reduce((a, v) => a + v[1], 0) / arr.length];
-      let [mx, my] = mean(got);
-      const kept = got.slice().sort((a, b) => Math.hypot(a[0] - mx, a[1] - my) - Math.hypot(b[0] - mx, b[1] - my)).slice(0, got.length - 1);
-      [mx, my] = mean(kept);
-      const small = Math.hypot(mx, my) < 1.5;
-      A.settings.penOffset = small ? null : { x: Math.round(mx * 10) / 10, y: Math.round(my * 10) / 10 };
-      A.saveSettings();
-      target.remove();
-      const dir = (v, a, b) => (Math.abs(v) < 0.5 ? '' : `${Math.abs(v).toFixed(1)} pt ${v > 0 ? a : b}`);
-      msg.textContent = small ? 'Your Pencil already lines up (under 1.5 pt). No correction needed.'
-        : `Ink was landing ${[dir(-mx, 'to the right of', 'to the left of'), dir(-my, 'below', 'above')].filter(Boolean).join(' and ')} the tip. It is now corrected to sit under the tip.`;
-      cancel.textContent = 'Done';
-    });
-  };
-
-  /* ---------- native live ink: tell the iPad layer what the current pen looks like ---------- */
-  let inkKey = '', inkT = 0;
-  IN.inkOn = false;
-  const post = (msg) => { if (A.native) A.native.post(msg).catch(() => {}); };
-  IN.inkSuspend = () => post({ op: 'inkSuspend' });
-  IN.inkDone = () => requestAnimationFrame(() => requestAnimationFrame(() => post({ op: 'inkClear' })));
-  const displayColor = (c) => { const old = B.lift; B.lift = !B.dark && R.paperIsDark(); const v = B.col(c); B.lift = old; return v; };
-  const inkStyle = () => {
-    if (!A.native || !IN.nativePen || A.settings.nativeInk === false || (A.PK && A.PK.active)) return { enabled: false };
-    const rv = A.$('#reader-view');
-    if ((rv && !rv.hidden) || !D.doc || A.$('#canvas-view').hidden) return { enabled: false };
-    const slot = B.slot(), c = slot && B.catalog[slot.b];
-    if (!c || !(c.kind === 'var' || c.kind === 'line') || c.mask || c.soft || slot.b === 'tape' || GU.active()) return { enabled: false };
-    const z = D.doc.view.zoom, o = A.settings.penOffset || { x: 0, y: 0 };
-    return { enabled: true, color: displayColor(slot.color), alpha: slot.opacity == null ? c.opacity : slot.opacity, width: slot.size * z,
-      minMul: B.widthMul(slot.b, 0.15, 0, true), maxMul: B.widthMul(slot.b, 1, 0, true), cap: c.cap === 'butt' ? 'butt' : 'round', dx: o.x, dy: o.y };
-  };
-  IN.syncInk = () => {
-    if (inkT) return;
-    inkT = requestAnimationFrame(() => {
-      inkT = 0;
-      const st = inkStyle(), key = JSON.stringify(st);
-      IN.inkOn = !!st.enabled;
-      if (key === inkKey) return;
-      inkKey = key;
-      post(Object.assign({ op: 'inkStyle' }, st));
-    });
-  };
-  ['slot', 'slot:live', 'slot:size', 'slot:select', 'tool:select', 'view', 'theme', 'doc:open', 'open', 'doc:close', 'go:gallery', 'read', 'precision', 'stage:resize'].forEach((ev) => A.on(ev, IN.syncInk));
-  setInterval(IN.syncInk, 1500); // catches anything the events miss (cheap: only posts when the style changes)
+  IN.penXY = (e) => [e.clientX, e.clientY];
 
   IN.cancelAll = () => { if (action && action.cancel) action.cancel(); action = null; pointers.clear(); };
 
@@ -5523,7 +5466,7 @@ A.fmtDate = (t) => {
     const doc = D.doc;
     const accent = R.accent();
     // live stroke (the native ink layer draws Pencil strokes itself, right on the tip)
-    if (IN.liveDraw && !(IN.inkOn && IN.liveDraw.rec.id === 7777 && !IN.liveDraw.shape)) {
+    if (IN.liveDraw) {
       const d = IN.liveDraw;
       const it = d.liveItem();
       if (it.pts.length) {
@@ -7317,9 +7260,11 @@ A.fmtDate = (t) => {
         ib('copy', 'Copy', () => A.emit('cmd', 'copy')),
         ib('trash', 'Delete', () => A.emit('cmd', 'delete')),
         ib('spark', 'Ask the tutor about this', () => A.emit('cmd', 'askTutor')),
+        (() => { const b = ib('crop', 'Crop picture', () => A.CROP.start()); b.classList.add('sp-crop'); return b; })(),
         h('div', { class: 'sb-sep' }),
         ib('more', 'More', (b) => selMore(b)));
     }
+    selPop.querySelector('.sp-crop').hidden = !A.CROP.canCrop();
     const ys = c.map((p) => p[1]), xs = c.map((p) => p[0]);
     const r = selPop.getBoundingClientRect();
     const stage = A.$('#stage').getBoundingClientRect();
@@ -7834,8 +7779,6 @@ A.fmtDate = (t) => {
         }
       } else if (cur === 'interaction') {
         add(h('h5', null, 'Touch input'),
-          row('Apple Pencil calibration', S.penOffset ? `Correcting ${S.penOffset.x} pt across, ${S.penOffset.y} pt down` : 'Tap five targets so ink sits exactly under the tip', h('button', { class: 'btn', onclick: () => A.IN.calibratePen() }, S.penOffset ? 'Recalibrate' : 'Calibrate')),
-          NATIVE ? row('Fast ink', 'Draw the stroke you are writing natively, right under the Pencil tip', toggleSw(S.nativeInk !== false, (v) => { set('nativeInk', v); A.IN.syncInk(); }, 's-ink')) : null,
           row('Finger action', 'What your finger does when you use an Apple Pencil', sel('fingerAction', [['none', 'Do nothing'], ['pan', 'Pan'], ['draw', 'Draw'], ['select', 'Select'], ['auto', 'Auto']])),
           row('Two fingers: canvas rotation', 'Twist to rotate canvases (notebooks never rotate)', toggleSw(S.allowRotate && !S.rotLock, (v) => { set('allowRotate', true); set('rotLock', !v); A.emit('view'); }, 's-rot')),
           row('Two fingers: canvas zoom', 'Turn off to lock the zoom level', toggleSw(!S.zoomLock, (v) => { set('zoomLock', !v); A.emit('view'); }, 's-zoom')),
@@ -10130,7 +10073,96 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
     drawStroke(ctx, s, p.ink.width, p.ink.height); drawTail(ctx, s, p.ink.width, p.ink.height);
     if (p.live) { const lc = p.live.getContext('2d'); lc.clearRect(0, 0, p.live.width, p.live.height); }
   };
+  /* ---------- Write mode on Apple's PencilKit (iPad app): the pages show natively under Apple's ink ---------- */
+  const PKW = 1000, PKGAP = 24;
+  const rpk = { on: false, rects: [], view: null };
+  const pkRects = () => { let y = 0; return st.pages.map((p) => { const r = [0, y, PKW, y + PKW * p.aspect]; y = r[3] + PKGAP; return r; }); };
+  const mainFrame = () => { const el = st.main; let x = 0, y = 0; for (let e = el; e; e = e.offsetParent) { x += e.offsetLeft; y += e.offsetTop; } return [x, y, el.offsetWidth, el.offsetHeight]; };
+  const pkInsets = () => [76, 16, 70, 16];
+  const pkTool = () => {
+    if (!rpk.on) return;
+    const t = st.inkTool === 'eraser' ? { tool: 'eraser', mode: 'vector' } : { tool: 'ink', ink: 'pen', color: INK[st.inkColor] || INK.black, alpha: 1, width: st.inkWidth * PKW };
+    A.PK.post(Object.assign({ op: 'pkTool', finger: false }, t));
+  };
+  function enterPK() {
+    if (rpk.on || !st || st.kind !== 'pdf' || !A.PK || !A.PK.available || S.pencilKit === false || !st.pages.length) return;
+    rpk.on = true;
+    rpk.rects = pkRects();
+    const legacy = [];
+    Object.entries(st.ann.ink || {}).forEach(([n, list]) => {
+      const r = rpk.rects[+n - 1]; if (!r) return;
+      const H = r[3] - r[1];
+      (list || []).forEach((sk) => {
+        const pts = [];
+        for (let i = 0; i < sk.pts.length; i += 3) pts.push(sk.pts[i] * PKW, r[1] + sk.pts[i + 1] * H, (0.35 + 0.65 * sk.pts[i + 2]) * 0.64);
+        legacy.push({ b: 'pen', c: sk.c, w: sk.w * PKW, o: sk.o || 1, pts });
+      });
+    });
+    const f = mainFrame(), ins = pkInsets();
+    const pageW = Math.min(Math.max(240, f[2] - 64), 980) * st.zoom;
+    const zoom = pageW / PKW, top = rpk.rects[Math.max(0, st.page - 1)] || rpk.rects[0];
+    A.PK.alt = pkEvent;
+    host.classList.add('pk'); document.documentElement.classList.add('pk-on');
+    A.PK.post({ op: 'pkOpen', id: 'rd_' + st.meta.id, pages: rpk.rects, frame: f, insets: ins, zoom, tx: (f[2] - PKW * zoom) / 2, ty: ins[0] - top[1] * zoom, legacy, dark: false, desk: getComputedStyle(document.body).backgroundColor.startsWith('rgb') ? rgbHex(getComputedStyle(st.main).backgroundColor) : '#1b1d22' })
+      .then((cur) => { if (Array.isArray(cur)) rpk.view = { zoom: cur[0], tx: cur[1], ty: cur[2] }; });
+    pkTool();
+    A.PK.chrome();
+  }
+  const rgbHex = (c) => { const m = String(c).match(/\d+/g); if (!m || m.length < 3 || (m[3] !== undefined && +m[3] === 0)) return '#1b1d22'; return '#' + m.slice(0, 3).map((v) => (+v).toString(16).padStart(2, '0')).join(''); };
+  function leavePK() {
+    if (!rpk.on) return;
+    rpk.on = false;
+    A.PK.alt = null;
+    A.PK.post({ op: 'pkClose' });
+    host.classList.remove('pk'); document.documentElement.classList.remove('pk-on');
+    // come back to the page that was on screen
+    if (rpk.view && st) {
+      const y = (pkInsets()[0] - rpk.view.ty) / rpk.view.zoom;
+      let n = 1; rpk.rects.forEach((r, i) => { if (r[1] <= y + 1) n = i + 1; });
+      requestAnimationFrame(() => { st && st.pages.forEach((p) => drawInkPage(p)); goto(n, 0, false); });
+    }
+  }
+  RD.pkActive = () => rpk.on;
+  function pkEvent(kind, data) {
+    if (!rpk.on || !st) return;
+    if (kind === 'view') rpk.view = data;
+    else if (kind === 'needPage') pkPage(data.i, data.scale);
+    else if (kind === 'strokes') {
+      const ink = {};
+      (data || []).forEach((sk) => {
+        let ys = 0, n = 0; for (let i = 1; i < sk.pts.length; i += 3) { ys += sk.pts[i]; n++; }
+        const cy = ys / Math.max(1, n);
+        let pi = rpk.rects.findIndex((r) => cy >= r[1] - PKGAP / 2 && cy <= r[3] + PKGAP / 2);
+        if (pi < 0) pi = cy < 0 ? 0 : rpk.rects.length - 1;
+        const r = rpk.rects[pi], H = r[3] - r[1], pts = [];
+        for (let i = 0; i < sk.pts.length; i += 3) pts.push(sk.pts[i] / PKW, (sk.pts[i + 1] - r[1]) / H, A.clamp((sk.pts[i + 2] - 0.35) / 0.65, 0.05, 1));
+        (ink[pi + 1] = ink[pi + 1] || []).push({ id: A.uid(), c: sk.c, w: sk.w / PKW, o: sk.o, pts });
+      });
+      st.ann.ink = ink;
+      saveAnn();
+    }
+  }
+  const pkQueue = new Map(); let pkBusy = false;
+  function pkPage(i, scale) { pkQueue.set(i, scale); if (!pkBusy) pkPump(); }
+  async function pkPump() {
+    if (!rpk.on || !pkQueue.size) { pkBusy = false; return; }
+    pkBusy = true;
+    const [i, scale] = pkQueue.entries().next().value; pkQueue.delete(i);
+    try {
+      const page = await st.pdf.getPage(i + 1);
+      const vp1 = page.getViewport({ scale: 1 });
+      const sc = Math.min(scale * PKW / vp1.width, 4096 / vp1.width, Math.sqrt(10e6 / (vp1.width * vp1.height)));
+      const vp = page.getViewport({ scale: sc });
+      const c = h('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+      const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      if (rpk.on) await A.PK.post({ op: 'pkPage', i, scale, data: c.toDataURL('image/jpeg', 0.9).split(',')[1] });
+    } catch (e) { /* skip */ }
+    pkPump();
+  }
+
   RD.inkUndo = () => {
+    if (rpk.on) { A.PK.post({ op: 'pkUndo' }); return; }
     const last = st.inkHist.pop();
     if (!last) return A.toast('Nothing to undo');
     const arr = inkOf(last.page);
@@ -10549,7 +10581,7 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
     host.classList.remove('chrome-hidden');
     S.readerTutor = open; A.saveSettings();
     if (open && !t.querySelector('.tutor')) { t.querySelector('.rd-tutor-body').innerHTML = ''; A.AI.mount(t.querySelector('.rd-tutor-body'), readerCtx); }
-    requestAnimationFrame(() => layout());
+    requestAnimationFrame(() => { layout(); if (rpk.on) A.PK.post({ op: 'pkFrame', frame: mainFrame(), insets: pkInsets() }); });
   }
   function toggleRail(open = st.rail.hidden) {
     st.rail.hidden = !open;
@@ -10678,10 +10710,11 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
     const subj = meta.subject && A.SU.get(meta.subject);
     const toolSeg = h('div', { class: 'seg rd-tools' });
     const inkBar = h('div', { class: 'rd-group panel rd-inkbar', hidden: true });
-    const setTool = (t) => { st.tool = t; [...toolSeg.children].forEach((b) => b.classList.toggle('on', b.dataset.t === t)); host.dataset.tool = t; inkBar.hidden = t !== 'write'; clearActions(); };
+    const setTool = (t) => { st.tool = t; [...toolSeg.children].forEach((b) => b.classList.toggle('on', b.dataset.t === t)); host.dataset.tool = t; inkBar.hidden = t !== 'write'; clearActions(); if (t === 'write') enterPK(); else leavePK(); };
     [['read', 'Read', 'book', 'Read: circle any passage with the Pencil to ask about it'], ['highlight', 'Highlight', 'b-highlighter', 'Highlight passages with the Pencil'], ['write', 'Write', 'b-pen', 'Write on the page with the Pencil']].forEach(([t, l, ic, tip]) => { const b = h('button', { dataset: { t }, title: tip }); b.innerHTML = A.icon(ic); b.append(l); b.addEventListener('click', () => setTool(t)); toolSeg.append(b); });
     const drawInkBar = () => {
       inkBar.innerHTML = '';
+      pkTool();
       Object.entries(INK).forEach(([k, c]) => inkBar.append(h('button', { class: 'rd-ink-c' + (st.inkTool === 'pen' && st.inkColor === k ? ' on' : ''), style: { background: c }, 'aria-label': k + ' pen', onclick: () => { st.inkTool = 'pen'; st.inkColor = k; drawInkBar(); } })));
       inkBar.append(h('div', { class: 'sb-sep' }));
       [[0.0018, 'Fine'], [0.0026, 'Medium'], [0.0042, 'Bold']].forEach(([w, l]) => inkBar.append(h('button', { class: 'rd-ink-w' + (Math.abs(st.inkWidth - w) < 1e-6 ? ' on' : ''), title: l, 'aria-label': l + ' line', onclick: () => { st.inkWidth = w; st.inkTool = 'pen'; drawInkBar(); } }, h('i', { style: { height: Math.round(w * 900) + 'px' } }))));
@@ -10691,10 +10724,9 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
       const opts = ib('more', 'Pen options', () => {
         const m = h('div', { class: 'menu' });
         m.append(h('button', { class: S.readerSmooth ? 'on' : '', onclick: () => { A.closePopovers(); S.readerSmooth = !S.readerSmooth; A.saveSettings(); A.toast(S.readerSmooth ? 'New strokes are smoothed' : 'Strokes stay exactly as written', 1600); } }, A.iconEl(S.readerSmooth ? 'check' : 'minus'), 'Smooth strokes'));
-        m.append(h('button', { onclick: () => { A.closePopovers(); A.IN.calibratePen(); } }, A.iconEl('target'), 'Calibrate Apple Pencil…'));
         A.popover(m, opts, { side: 'down' });
       });
-      inkBar.append(opts);
+      if (!(A.PK && A.PK.available)) inkBar.append(opts);
     };
     drawInkBar();
     const moreBtn = { _open: null };
@@ -10857,6 +10889,7 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
   }
   RD.close = (silent) => {
     if (!st) return;
+    leavePK();
     try { st.io && st.io.disconnect(); } catch (e) { /* ignore */ }
     try { if (st.rendition) st.rendition.destroy(); } catch (e) { /* ignore */ }
     if (st.book) { const bk = st.book; Promise.resolve(bk.ready).catch(() => {}).then(() => { try { bk.destroy(); } catch (e) { /* ignore */ } }); }
@@ -10870,7 +10903,7 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
   RD.isOpen = () => !!st;
   RD.mount = (el) => {
     host = el;
-    addEventListener('resize', () => { if (st) { applyWidth(); layout(); } });
+    addEventListener('resize', () => { if (st) { applyWidth(); layout(); if (rpk.on) A.PK.post({ op: 'pkFrame', frame: mainFrame(), insets: pkInsets() }); } });
     addEventListener('keydown', (e) => {
       if (!st || /INPUT|TEXTAREA/.test((document.activeElement || {}).tagName || '')) return;
       if (e.key === 'ArrowRight' || e.key === 'PageDown') { goto(st.page + 1); e.preventDefault(); }
@@ -11492,7 +11525,7 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
     renderRec(); renderRail(); AUD.renderBar();
     A.toast(`Saved ${r.name} (${fmtT(dur)}). Play it from the bar at the bottom.`, 2400);
   };
-  AUD.stopAll = () => { if (AUD.recording) AUD.stop(); AUD.pause(); AUD.playing = null; R.replay = null; };
+  AUD.stopAll = () => { if (AUD.recording) AUD.stop(); AUD.pause(); AUD.playing = null; R.replay = null; if (A.PK && A.PK.active) A.PK.syncReplay(); };
   /* strokes written while recording (or while playing back) are time-stamped to that recording */
   A.IN.stamp = () => {
     if (!on()) return null;
@@ -11514,6 +11547,7 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
     if (d && AUD.playing) AUD.playing.dur = d;
     R.replay = AUD.playing && AUD.replay ? { rid: AUD.playing.id, t: playing || t > 0 ? t : 1e9 } : null;
     R.render();
+    if (A.PK && A.PK.active) A.PK.syncReplay();
     AUD.renderBar(true);
   };
   window.__axiomAudio = (st) => { if (st && !st.rec) onTick(st.t, st.playing, st.d); };
@@ -11600,7 +11634,7 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
         it('trash', 'Delete this recording', async () => {
           const r = AUD.playing;
           if (!(await A.dialog({ title: `Delete “${r.name}”?`, body: 'The audio is removed. Your writing stays.', okText: 'Delete', danger: true }))) return;
-          AUD.pause(); AUD.playing = null; R.replay = null;
+          AUD.pause(); AUD.playing = null; R.replay = null; if (A.PK && A.PK.active) A.PK.syncReplay();
           D.doc.recordings = D.doc.recordings.filter((x) => x.id !== r.id);
           D.changed('meta');
           try { if (NATIVE_AUDIO) await A.native.post({ op: 'audioDelete', id: r.id }); else await A.store.deleteFile('rec_' + r.id); } catch (e) { /* ignore */ }
@@ -11791,9 +11825,8 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
     A.$('#canvas-view').classList.add('pk'); document.documentElement.classList.add('pk-on');
     layout = snapLayout();
     const v = doc.view;
-    if (isCanvas() && v.rot) { const [cx, cy] = R.toWorld(R.w / 2, R.h / 2); v.rot = 0; v.tx = R.w / 2 - cx * v.zoom; v.ty = R.h / 2 - cy * v.zoom; } // PencilKit canvases don't rotate
-    post(Object.assign({ op: 'pkOpen', id: doc.id, canvas: isCanvas(), pages: isCanvas() ? [] : D.pageRects(doc), frame: stageFrame(), insets: insets(), zoom: v.zoom, tx: v.tx, ty: v.ty, legacy }, look()))
-      .then((cur) => { if (Array.isArray(cur) && D.doc === doc) views.view({ zoom: cur[0], tx: cur[1], ty: cur[2] }); });
+    post(Object.assign({ op: 'pkOpen', id: doc.id, canvas: isCanvas(), pages: isCanvas() ? [] : D.pageRects(doc), frame: stageFrame(), insets: insets(), zoom: v.zoom, tx: v.tx, ty: v.ty, rot: isCanvas() ? v.rot || 0 : 0, legacy }, look()))
+      .then((cur) => { if (Array.isArray(cur) && D.doc === doc) views.view({ zoom: cur[0], tx: cur[1], ty: cur[2], rot: cur[3] || 0 }); });
     syncTool();
     chromeSoon();
   }
@@ -11813,17 +11846,25 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
   const views = {
     view: (v) => {
       if (!PK.active || !D.doc) return;
-      Object.assign(D.doc.view, { zoom: v.zoom, tx: v.tx, ty: v.ty, rot: 0 });
+      Object.assign(D.doc.view, { zoom: v.zoom, tx: v.tx, ty: v.ty, rot: v.rot || 0 });
       A.emit('view');
       R.renderOverlay();
+    },
+    recognize: (d) => {
+      if (!PK.active || !D.doc.precision.recog) return;
+      const pts = d.pts, bb = A.G.bbox(pts), z = d.zoom || D.doc.view.zoom;
+      if (A.G.length(pts) * z < 70 || Math.hypot(bb[2] - bb[0], bb[3] - bb[1]) * z < 45) return; // handwriting-sized: leave it
+      const r = A.G.recognize(pts);
+      if (r) post({ op: 'pkReplaceLast', pts: r.pts, sharp: !!r.sharp });
     },
     needPage: (r) => queuePage(r.i, r.scale),
     needBg: (r) => { bgWant = r; if (!bgBusy) renderBg(); },
     strokes: (list) => mirror(list),
     changed: () => { if (PK.undoing) { PK.undoing = false; return; } (PK.order = PK.order || []).push('ink'); PK.redoOrder = []; A.emit('history'); },
   };
-  window.__axiomPK = (kind, data) => { const f = views[kind]; if (f) f(data); };
-  PK.setView = (v) => post({ op: 'pkView', zoom: v.zoom, tx: v.tx, ty: v.ty });
+  window.__axiomPK = (kind, data) => { if (PK.alt) return PK.alt(kind, data); const f = views[kind]; if (f) f(data); };
+  PK.post = post;
+  PK.setView = (v) => post({ op: 'pkView', zoom: v.zoom, tx: v.tx, ty: v.ty, rot: v.rot || 0 });
 
   /* ---------- page images (paper, templates, pictures, text; never ink) ---------- */
   const queue = new Map();
@@ -11836,11 +11877,14 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
     queue.delete(i);
     if (i < D.doc.pages.length) {
       const rc = D.pageRect(D.doc, i);
-      const c = R.renderRegion(D.doc, rc, scale, { bg: true, noStrokes: true });
+      const c = R.renderRegion(D.doc, rc, scale, { bg: true, noStrokes: true, onImage: imageLoaded });
       post({ op: 'pkPage', i, scale, data: c.toDataURL('image/jpeg', 0.9).split(',')[1] });
     }
     setTimeout(pump, 0);
   }
+  // a picture finished loading after its page was drawn: draw again (once per burst)
+  let imgT = 0;
+  const imageLoaded = () => { clearTimeout(imgT); imgT = setTimeout(() => { if (PK.active) post({ op: 'pkDirty', all: true }); }, 50); };
   /* canvases: one background image (paper, grid, artboards, pictures, text, special strokes) around the view */
   let bgWant = null, bgBusy = false;
   function renderBg() {
@@ -11849,7 +11893,7 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
     const r = bgWant; bgWant = null;
     setTimeout(() => {
       if (!PK.active) { bgBusy = false; return; }
-      const c = R.renderRegion(D.doc, [r.x, r.y, r.x + r.w, r.y + r.h], r.scale, { bg: true, grid: true, noStrokes: true, display: true, maxPx: 6000 });
+      const c = R.renderRegion(D.doc, [r.x, r.y, r.x + r.w, r.y + r.h], r.scale, { bg: true, grid: true, noStrokes: true, display: true, maxPx: 6000, onImage: imageLoaded });
       post({ op: 'pkBg', rect: [r.x, r.y, r.w, r.h], data: c.toDataURL('image/jpeg', 0.9).split(',')[1] }).then(() => { bgBusy = false; if (bgWant) renderBg(); });
     }, 0);
   }
@@ -11896,6 +11940,17 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
     A.emit('layers:thumbs');
   }
 
+  /* ---------- lecture replay ---------- */
+  let lastReplay = '';
+  PK.syncReplay = () => {
+    const rp = R.replay, rec = rp && (D.doc.recordings || []).find((r) => r.id === rp.rid);
+    const msg = rec ? { op: 'pkReplay', on: true, start: rec.created, end: rec.created + (rec.dur || 36000) * 1000 + 1500, t: rp.t >= 1e9 ? 1e7 : Math.round(rp.t * 10) / 10 } : { op: 'pkReplay', on: false };
+    const key = JSON.stringify(msg);
+    if (key === lastReplay) return;
+    lastReplay = key;
+    post(msg);
+  };
+
   /* ---------- tools ---------- */
   const INK = { pen: 'pen', fountain: 'fountain', brushpen: 'fountain', pencil: 'pencil', marker: 'marker', highlighter: 'marker', ballpoint: 'monoline', monoline: 'monoline' };
   function syncTool() {
@@ -11908,11 +11963,12 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
     else if ((c.kind === 'var' || c.kind === 'line') && !c.mask && slot.b !== 'tape') t = { tool: 'ink', ink: INK[slot.b] || 'pen', color: slot.color, alpha: slot.b === 'highlighter' ? Math.min(0.5, slot.opacity == null ? c.opacity : slot.opacity) : (slot.opacity == null ? 1 : slot.opacity), width: slot.size * (slot.b === 'highlighter' || slot.b === 'marker' ? 1 : 1.15) };
     else t = { tool: 'none' }; // text, laser, tape: the page handles the Pencil
     t.finger = S.fingerAction === 'draw';
+    post({ op: 'pkShapes', on: !!(D.doc && D.doc.precision && D.doc.precision.recog), rotate: !!D.doc && isCanvas() && S.allowRotate !== false && !S.rotLock });
     t.ruler = !!(D.doc && D.doc.precision && D.doc.precision.guide);
     post(Object.assign({ op: 'pkTool' }, t));
   }
   PK.syncTool = syncTool;
-  ['slot', 'slot:live', 'slot:size', 'slot:select', 'tool:select', 'precision'].forEach((ev) => A.on(ev, () => setTimeout(syncTool, 0)));
+  ['slot', 'slot:live', 'slot:size', 'slot:select', 'tool:select', 'precision', 'settings', 'view:lock'].forEach((ev) => A.on(ev, () => setTimeout(syncTool, 0)));
   /* the page ignores the Pencil while PencilKit draws, erases or lassos */
   PK.ownsPen = () => PK.active && !!B.slot() && ['ink', 'eraser', 'lasso'].includes(kindOf(B.slot()));
   const kindOf = (slot) => { const c = B.catalog[slot.b] || {}; if (slot.b === 'eraser' || slot.b === 'slice') return 'eraser'; if (slot.b === 'select') return 'lasso'; if ((c.kind === 'var' || c.kind === 'line') && !c.mask && slot.b !== 'tape') return 'ink'; return 'none'; };
@@ -11938,29 +11994,167 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
   let chromeKey = '', chromeT = 0;
   function chrome() {
     chromeT = 0;
-    if (!PK.active) return;
+    if (!PK.active && !PK.alt) return;
     const out = [];
     const add = (el) => {
       for (const r of el.getClientRects()) if (r.width > 1 && r.height > 1) out.push([Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)]);
     };
-    const cv = A.$('#canvas-view');
-    cv.querySelectorAll('.panel, button, input, select, textarea, [role="toolbar"], #studypanel:not([hidden]), .te-area, .te-bar').forEach((el) => {
-      if (el.closest('#stage') && !el.closest('.te-area, .te-bar')) return;
+    const cv = PK.alt ? A.$('#reader-view') : A.$('#canvas-view');
+    cv.querySelectorAll('.panel, button, input, select, textarea, [role="toolbar"], #studypanel:not([hidden]), .te-area, .te-bar, .rd-bar, aside:not([hidden])').forEach((el) => {
+      if (el.closest('#stage, .rd-pages') && !el.closest('.te-area, .te-bar')) return;
       if (el.hidden || el.closest('[hidden]') || getComputedStyle(el).pointerEvents === 'none' || getComputedStyle(el).visibility === 'hidden') return;
       add(el);
     });
-    document.querySelectorAll('.popover, .modal-back, .ex-view, .pc-back, .pl-week, #toasts > *').forEach(add);
+    document.querySelectorAll('.popover, .modal-back, .ex-view, .crop-ui, #toasts > *').forEach(add);
+    PK.webTargets = PK.alt ? [] : webTargets();
+    PK.webTargets.forEach((r) => out.push(r));
     const key = JSON.stringify(out);
     if (key === chromeKey) return;
     chromeKey = key;
     post({ op: 'pkChrome', rects: out });
   }
+  /* with the lasso, pictures, text boxes and the current selection belong to the page (select, move, resize, crop) */
+  function webTargets() {
+    if (!PK.active || !D.doc || !B.slot() || B.slot().b !== 'select') return [];
+    const out = [], o = A.$('#stage').getBoundingClientRect();
+    const scr = (bb, pad = 0) => {
+      const cs = [[bb[0], bb[1]], [bb[2], bb[1]], [bb[2], bb[3]], [bb[0], bb[3]]].map(([x, y]) => R.toScreen(x, y));
+      const xs = cs.map((p) => p[0]), ys = cs.map((p) => p[1]);
+      return [Math.round(o.left + Math.min(...xs) - pad), Math.round(o.top + Math.min(...ys) - pad), Math.round(Math.max(...xs) - Math.min(...xs) + pad * 2), Math.round(Math.max(...ys) - Math.min(...ys) + pad * 2)];
+    };
+    for (const l of D.doc.layers) {
+      if (l.pk || l.locked || !l.visible) continue;
+      for (const it of l.items) if (B.isBox(it)) out.push(scr(it.bb));
+    }
+    if (R.sel.size && A.SEL.box) out.push(scr(A.SEL.box, 34));
+    return out.filter((r) => r[2] > 0 && r[3] > 0 && r[0] < innerWidth && r[1] < innerHeight && r[0] + r[2] > 0 && r[1] + r[3] > 0);
+  }
+  PK.onWebTarget = (x, y) => (PK.webTargets || []).some((r) => x >= r[0] && y >= r[1] && x <= r[0] + r[2] && y <= r[1] + r[3]);
+  ['view', 'selection', 'selection:clear', 'slot', 'slot:select', 'tool:select'].forEach((ev) => A.on(ev, () => { if (PK.active) chromeSoon(); }));
   const chromeSoon = () => { if (!chromeT) chromeT = setTimeout(chrome, 60); };
   PK.chrome = chromeSoon;
-  new MutationObserver(() => { if (PK.active) chromeSoon(); }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'hidden', 'style'] });
+  new MutationObserver(() => { if (PK.active || PK.alt) chromeSoon(); }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'hidden', 'style'] });
   addEventListener('resize', () => { if (!PK.active) return; chromeSoon(); post({ op: 'pkFrame', frame: stageFrame(), insets: insets() }); });
   A.on('stage:resize', () => { if (PK.active) post({ op: 'pkFrame', frame: stageFrame(), insets: insets() }); });
-  setInterval(() => { if (PK.active) chrome(); }, 1000);
+  setInterval(() => { if (PK.active || PK.alt) chrome(); }, 1000);
+})();
+/* the rotation lock can change from the readout and settings: keep the native view's twist-to-rotate in step */
+(() => {
+  let last = null;
+  setInterval(() => {
+    const PK = A.PK, S = A.settings;
+    if (!PK || !PK.active || !A.D.doc) return;
+    const f = !A.D.isNotebook() && S.allowRotate !== false && !S.rotLock;
+    if (f !== last) { last = f; PK.syncTool(); }
+  }, 800);
+})();
+
+/* ---- crop.js ---- */
+/* Cropping pictures on the page (photos, PDF pages, Desmos graphs): the full picture is kept, the crop is a
+   rectangle in the picture's own units that can be changed or removed later. */
+'use strict';
+(() => {
+  const D = A.D, R = A.R, B = A.B, M = A.M, h = A.h;
+  const CR = (A.CROP = {});
+  const MIN = 8; // smallest crop, in picture units
+
+  /* the uncropped picture: its size and placement */
+  const original = (it) => {
+    const c = it.crop;
+    if (!c) return { iw: it.iw, ih: it.ih, m: it.m.slice(), rect: [0, 0, it.iw, it.ih] };
+    return { iw: c.iw0, ih: c.ih0, m: M.mul(it.m, [1, 0, 0, 1, -c.x, -c.y]), rect: [c.x, c.y, c.x + c.w, c.y + c.h] };
+  };
+  /* apply a crop rectangle [x0, y0, x1, y1] (picture units of the original); a full rectangle removes the crop */
+  const apply = (it, o, r) => {
+    const full = r[0] <= 0.5 && r[1] <= 0.5 && r[2] >= o.iw - 0.5 && r[3] >= o.ih - 0.5;
+    const next = Object.assign({}, it, { iw: r[2] - r[0], ih: r[3] - r[1], m: M.mul(o.m, [1, 0, 0, 1, r[0], r[1]]) });
+    if (full) { delete next.crop; next.iw = o.iw; next.ih = o.ih; next.m = o.m; }
+    else next.crop = { x: r[0], y: r[1], w: r[2] - r[0], h: r[3] - r[1], iw0: o.iw, ih0: o.ih };
+    next.bb = B.imageBB(next);
+    return next;
+  };
+  CR.canCrop = () => {
+    if (R.sel.size !== 1 || !D.doc) return null;
+    const id = [...R.sel][0];
+    for (const l of D.doc.layers) for (const it of l.items) if (it.id === id && it.t === 'i' && !l.locked) return it;
+    return null;
+  };
+
+  let ui = null;
+  CR.start = (item = CR.canCrop()) => {
+    if (!item || ui) return;
+    const o = original(item);
+    const T = M.mul(R.matrix(), o.m); // picture units -> stage pixels
+    if (Math.abs(T[1]) > 1e-3 * Math.abs(T[0]) || Math.abs(T[2]) > 1e-3 * Math.abs(T[3])) { A.toast('Straighten the picture (rotation 0°) to crop it.'); return; }
+    const stage = A.$('#stage').getBoundingClientRect();
+    const sx = T[0], sy = T[3], ox = T[4] + stage.left, oy = T[5] + stage.top;
+    const toScr = (x, y) => [ox + x * sx, oy + y * sy];
+    const r = o.rect.slice();
+    A.emit('selection:clear');
+    R.hideId = item.id; R.render();
+    const back = h('div', { class: 'crop-ui' });
+    const img = h('img', { class: 'crop-img', src: item.src, alt: '' });
+    const shade = h('div', { class: 'crop-shade' });
+    const box = h('div', { class: 'crop-box' });
+    const handles = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].map((k) => { const d = h('div', { class: 'crop-h h-' + k, dataset: { k } }); box.append(d); return d; });
+    const bar = h('div', { class: 'crop-bar panel' },
+      h('button', { class: 'btn ghost-btn', onclick: () => finish(false) }, 'Cancel'),
+      h('button', { class: 'btn ghost-btn', onclick: () => { r[0] = 0; r[1] = 0; r[2] = o.iw; r[3] = o.ih; draw(); } }, 'Reset'),
+      h('button', { class: 'btn primary', onclick: () => finish(true) }, 'Crop'));
+    back.append(img, shade, box, bar);
+    document.body.append(back);
+    ui = back;
+    const [ax, ay] = toScr(0, 0), [bx, by] = toScr(o.iw, o.ih);
+    Object.assign(img.style, { left: Math.min(ax, bx) + 'px', top: Math.min(ay, by) + 'px', width: Math.abs(bx - ax) + 'px', height: Math.abs(by - ay) + 'px', transform: `scale(${Math.sign(sx)}, ${Math.sign(sy)})` });
+    function draw() {
+      const [x0, y0] = toScr(r[0], r[1]), [x1, y1] = toScr(r[2], r[3]);
+      const L = Math.min(x0, x1), Tp = Math.min(y0, y1), W = Math.abs(x1 - x0), H = Math.abs(y1 - y0);
+      Object.assign(box.style, { left: L + 'px', top: Tp + 'px', width: W + 'px', height: H + 'px' });
+      shade.style.clipPath = `polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0, ${L}px ${Tp}px, ${L}px ${Tp + H}px, ${L + W}px ${Tp + H}px, ${L + W}px ${Tp}px, ${L}px ${Tp}px)`;
+      const bw = bar.offsetWidth || 260;
+      bar.style.left = A.clamp(L + W / 2 - bw / 2, 12, innerWidth - bw - 12) + 'px';
+      bar.style.top = (Tp + H + 64 < innerHeight ? Tp + H + 14 : Math.max(12, Tp - 58)) + 'px';
+    }
+    draw();
+    // drag a handle, or the box itself to move the crop
+    let drag = null;
+    const toPic = (px, py) => [(px - ox) / sx, (py - oy) / sy];
+    back.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.crop-bar')) return;
+      e.preventDefault();
+      const k = e.target.dataset.k || (e.target === box ? 'move' : null);
+      if (!k) return;
+      drag = { k, id: e.pointerId, start: toPic(e.clientX, e.clientY), r0: r.slice() };
+      back.setPointerCapture(e.pointerId);
+    });
+    back.addEventListener('pointermove', (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const [px, py] = toPic(e.clientX, e.clientY), dx = px - drag.start[0], dy = py - drag.start[1], q = drag.r0;
+      const k = drag.k;
+      if (k === 'move') {
+        const w = q[2] - q[0], hh = q[3] - q[1];
+        r[0] = A.clamp(q[0] + dx, 0, o.iw - w); r[1] = A.clamp(q[1] + dy, 0, o.ih - hh); r[2] = r[0] + w; r[3] = r[1] + hh;
+      } else {
+        if (k.includes('w')) r[0] = A.clamp(q[0] + dx, 0, r[2] - MIN);
+        if (k.includes('e')) r[2] = A.clamp(q[2] + dx, r[0] + MIN, o.iw);
+        if (k.includes('n')) r[1] = A.clamp(q[1] + dy, 0, r[3] - MIN);
+        if (k.includes('s')) r[3] = A.clamp(q[3] + dy, r[1] + MIN, o.ih);
+      }
+      draw();
+    });
+    const up = (e) => { if (drag && e.pointerId === drag.id) drag = null; };
+    back.addEventListener('pointerup', up); back.addEventListener('pointercancel', up);
+    function finish(ok) {
+      back.remove(); ui = null; R.hideId = null;
+      if (ok) {
+        const next = apply(item, o, r);
+        D.begin(); D.replace(new Map([[item.id, [next]]])); D.commit();
+        A.SEL.set(new Set([next.id]));
+      } else A.SEL.set(new Set([item.id]));
+      R.render(); A.emit('layers:thumbs');
+    }
+  };
+  CR.active = () => !!ui;
 })();
 
 /* ---- ui-gallery.js ---- */
