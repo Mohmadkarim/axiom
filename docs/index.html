@@ -1565,7 +1565,7 @@ h5, .g-sec-h h2, .sub, .nb-fly-h, .pp-h, .bk-up-h { font-size: 11px !important; 
 </div>
 <div id="toasts" aria-live="polite"></div>
 
-<script>window.AXIOM_BUILD = 'mvnfoztq';
+<script>window.AXIOM_BUILD = 'mvnp0mpv';
 /* ---- core.js ---- */
 /* Axiom core: namespace, math, color, events, DOM helpers */
 'use strict';
@@ -4474,6 +4474,7 @@ A.fmtDate = (t) => {
         // Concepts-style tap+hold: switch to lasso selection
         this.done = true;
         IN.liveDraw = null;
+        if (this.rec.id === 7777) IN.inkSuspend();
         action = new LassoAction(this.rec, this.lastS, { temp: true });
         action.owner = this.rec.id;
         R.renderOverlay();
@@ -4488,6 +4489,7 @@ A.fmtDate = (t) => {
       const r = G.recognize(this.pts);
       if (r) {
         this.shape = r;
+        if (this.rec.id === 7777) IN.inkSuspend();
         const [hx, hy] = R.toWorld(this.lastS.x, this.lastS.y);
         this.shapeHold = [hx, hy];
         if (r.kind === 'line' || r.kind === 'arc' || r.kind === 'polyline') this.shapePivot = [r.pts[0], r.pts[1]];
@@ -4642,13 +4644,14 @@ A.fmtDate = (t) => {
       D.commit();
       R.appendItem(item, layer);
       R.renderOverlayNow();
+      if (this.rec.id === 7777) IN.inkDone();
       if (D.doc.precision.measure && G.count(pts) >= 2 && !this.cat.mask) {
         IN.lastMeasure = { item, until: performance.now() + 2200 };
         setTimeout(() => R.renderOverlay(), 2300);
       }
       A.emit('layers:thumbs');
     }
-    cancel() { this.done = true; clearTimeout(this.holdTimer); IN.liveDraw = null; R.renderOverlay(); }
+    cancel() { this.done = true; clearTimeout(this.holdTimer); IN.liveDraw = null; if (this.rec.id === 7777) IN.inkSuspend(); R.renderOverlay(); }
   }
 
   /* ---- slice eraser / stroke eraser ---- */
@@ -5415,6 +5418,7 @@ A.fmtDate = (t) => {
     const withLists = (ev, list, pred) => { ev.getCoalescedEvents = () => list.map((s) => nativeEv(s, 'pointermove')); ev.getPredictedEvents = () => (pred || []).map((s) => nativeEv(s, 'pointermove')); return ev; };
     if (phase === 'b') {
       onDown(nativeEv(samples[0], 'pointerdown'));
+      if (IN.inkOn && !(action instanceof DrawAction)) IN.inkSuspend();
       if (samples.length > 1) onMove(withLists(nativeEv(last, 'pointermove'), samples.slice(1), []));
     } else if (phase === 'm') {
       onMove(withLists(nativeEv(last, 'pointermove'), samples, predicted));
@@ -5469,14 +5473,45 @@ A.fmtDate = (t) => {
     });
   };
 
+  /* ---------- native live ink: tell the iPad layer what the current pen looks like ---------- */
+  let inkKey = '', inkT = 0;
+  IN.inkOn = false;
+  const post = (msg) => { if (A.native) A.native.post(msg).catch(() => {}); };
+  IN.inkSuspend = () => post({ op: 'inkSuspend' });
+  IN.inkDone = () => requestAnimationFrame(() => requestAnimationFrame(() => post({ op: 'inkClear' })));
+  const displayColor = (c) => { const old = B.lift; B.lift = !B.dark && R.paperIsDark(); const v = B.col(c); B.lift = old; return v; };
+  const inkStyle = () => {
+    if (!A.native || !IN.nativePen || A.settings.nativeInk === false) return { enabled: false };
+    const rv = A.$('#reader-view');
+    if ((rv && !rv.hidden) || !D.doc || A.$('#canvas-view').hidden) return { enabled: false };
+    const slot = B.slot(), c = slot && B.catalog[slot.b];
+    if (!c || !(c.kind === 'var' || c.kind === 'line') || c.mask || c.soft || slot.b === 'tape' || GU.active()) return { enabled: false };
+    const z = D.doc.view.zoom, o = A.settings.penOffset || { x: 0, y: 0 };
+    return { enabled: true, color: displayColor(slot.color), alpha: slot.opacity == null ? c.opacity : slot.opacity, width: slot.size * z,
+      minMul: B.widthMul(slot.b, 0.15, 0, true), maxMul: B.widthMul(slot.b, 1, 0, true), cap: c.cap === 'butt' ? 'butt' : 'round', dx: o.x, dy: o.y };
+  };
+  IN.syncInk = () => {
+    if (inkT) return;
+    inkT = requestAnimationFrame(() => {
+      inkT = 0;
+      const st = inkStyle(), key = JSON.stringify(st);
+      IN.inkOn = !!st.enabled;
+      if (key === inkKey) return;
+      inkKey = key;
+      post(Object.assign({ op: 'inkStyle' }, st));
+    });
+  };
+  ['slot', 'slot:live', 'slot:size', 'slot:select', 'tool:select', 'view', 'theme', 'doc:open', 'open', 'doc:close', 'go:gallery', 'read', 'precision', 'stage:resize'].forEach((ev) => A.on(ev, IN.syncInk));
+  setInterval(IN.syncInk, 1500); // catches anything the events miss (cheap: only posts when the style changes)
+
   IN.cancelAll = () => { if (action && action.cancel) action.cancel(); action = null; pointers.clear(); };
 
   /* ================= overlay painter ================= */
   const paint = (ctx) => {
     const doc = D.doc;
     const accent = R.accent();
-    // live stroke
-    if (IN.liveDraw) {
+    // live stroke (the native ink layer draws Pencil strokes itself, right on the tip)
+    if (IN.liveDraw && !(IN.inkOn && IN.liveDraw.rec.id === 7777 && !IN.liveDraw.shape)) {
       const d = IN.liveDraw;
       const it = d.liveItem();
       if (it.pts.length) {
@@ -7762,7 +7797,7 @@ A.fmtDate = (t) => {
       tabs.forEach(([id, l, icon]) => nav.append(h('button', { class: id === cur ? 'on' : '', onclick: () => { cur = id; rebuild(); } }, A.iconEl(icon), l)));
       nav.append(h('div', { class: 'grow' }), h('div', { class: 'small muted set-ver num' }, `Axiom ${A.VERSION} · ${window.AXIOM_BUILD || 'dev'}`));
       content.innerHTML = '';
-      const add = (...x) => content.append(...x);
+      const add = (...x) => content.append(...x.filter(Boolean));
       if (cur === 'workspace') {
         add(h('h5', null, 'Appearance'),
           row('Theme', null, sel('theme', [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']], UI.applyTheme)),
@@ -7788,6 +7823,7 @@ A.fmtDate = (t) => {
       } else if (cur === 'interaction') {
         add(h('h5', null, 'Touch input'),
           row('Apple Pencil calibration', S.penOffset ? `Correcting ${S.penOffset.x} pt across, ${S.penOffset.y} pt down` : 'Tap five targets so ink sits exactly under the tip', h('button', { class: 'btn', onclick: () => A.IN.calibratePen() }, S.penOffset ? 'Recalibrate' : 'Calibrate')),
+          NATIVE ? row('Fast ink', 'Draw the stroke you are writing natively, right under the Pencil tip', toggleSw(S.nativeInk !== false, (v) => { set('nativeInk', v); A.IN.syncInk(); }, 's-ink')) : null,
           row('Finger action', 'What your finger does when you use an Apple Pencil', sel('fingerAction', [['none', 'Do nothing'], ['pan', 'Pan'], ['draw', 'Draw'], ['select', 'Select'], ['auto', 'Auto']])),
           row('Two fingers: canvas rotation', 'Twist to rotate canvases (notebooks never rotate)', toggleSw(S.allowRotate && !S.rotLock, (v) => { set('allowRotate', true); set('rotLock', !v); A.emit('view'); }, 's-rot')),
           row('Two fingers: canvas zoom', 'Turn off to lock the zoom level', toggleSw(!S.zoomLock, (v) => { set('zoomLock', !v); A.emit('view'); }, 's-zoom')),
