@@ -191,9 +191,33 @@
       return b64 ? 'data:image/png;base64,' + b64 : null;
     } catch (e) { A.toast('Couldn’t capture the graph'); return null; }
   };
+  /* Desmos' own title bar (graph name, Save) is not part of the graph: cut it off the top of the picture */
+  const trimHeader = (im) => {
+    const W = im.naturalWidth, H = im.naturalHeight;
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(im, 0, 0);
+    const px = ctx.getImageData(0, 0, W, H).data;
+    const at = (x, y) => { const i = (y * W + x) * 4; return [px[i], px[i + 1], px[i + 2]]; };
+    const ref = at(Math.round(W * 0.5), Math.round(H * 0.85)); // the graph paper
+    const close = (a) => Math.abs(a[0] - ref[0]) + Math.abs(a[1] - ref[1]) + Math.abs(a[2] - ref[2]) < 60;
+    let top = 0;
+    for (let y = 0; y < H * 0.25; y += 2) {
+      let n = 0, k = 0;
+      for (let x = Math.round(W * 0.3); x < W * 0.7; x += 6) { k++; if (close(at(x, y))) n++; }
+      if (n / k > 0.85) { top = y; break; }
+    }
+    if (top < 8) return { url: im.src, w: W, h: H };
+    const out = document.createElement('canvas'); out.width = W; out.height = H - top;
+    out.getContext('2d').drawImage(c, 0, -top);
+    return { url: out.toDataURL('image/png'), w: W, h: H - top };
+  };
   const insertGraph = async () => {
-    const url = await ST.graphSnapshot();
-    if (!url) return;
+    const raw = await ST.graphSnapshot();
+    if (!raw) return;
+    const im0 = new Image();
+    await new Promise((res) => { im0.onload = res; im0.onerror = res; im0.src = raw; });
+    const t = im0.naturalWidth ? trimHeader(im0) : { url: raw };
+    const url = t.url;
     const im = new Image();
     im.onload = () => {
       const w = im.naturalWidth / 2, hh = im.naturalHeight / 2; // the snapshot is at screen scale ×2

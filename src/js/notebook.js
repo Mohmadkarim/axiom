@@ -160,7 +160,7 @@
     const P = D.doc.precision;
     P.guide = !P.guide; P.guideType = 'line';
     D.changed('precision'); A.emit('precision'); R.render(); renderRail();
-    if (P.guide) A.toast('Ruler on: drag its handles to place it, then draw along it', 2200);
+    if (P.guide) A.toast(R.pk ? 'Ruler on: move and turn it with two fingers, then draw along its edge' : 'Ruler on: drag its handles to place it, then draw along it', 2400);
   }
   function closeFly() { if (els.fly) els.fly.hidden = true; }
   const PEN_ICONS = { pen: 'b-pen', fountain: 'b-brushpen', pencil: 'b-pencil', fineliner: 'b-fineliner', brushpen: 'b-brushpen', dotted: 'b-dotted' };

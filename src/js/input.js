@@ -852,7 +852,14 @@
       if (!this.held) {
         if (this.moved > 10 && Glide.release()) return;
         R.gesturing = false; R.render();
-        if (this.moved < 8) { if (!IN.toggleTapeAt(this.start.x, this.start.y)) A.emit('canvas:tap', this.start); }
+        if (this.moved < 8) {
+          // with the select tool, a finger tap on a picture or text box selects it (as the Pencil does)
+          if (B.slot().b === 'select') {
+            const w = R.toWorld(this.start.x, this.start.y), hit = IN.pickItem(w[0], w[1], 12 / D.doc.view.zoom);
+            if (hit) { SEL.set([hit.id]); R.render(); return; }
+          }
+          if (!IN.toggleTapeAt(this.start.x, this.start.y)) A.emit('canvas:tap', this.start);
+        }
         return;
       }
       if (this.lasso.moved >= 8 && this.lasso.poly.length >= 8) { this.lasso.up(e, rect); return; }

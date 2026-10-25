@@ -76,11 +76,19 @@
       if (r) post({ op: 'pkReplaceLast', pts: r.pts, sharp: !!r.sharp });
     },
     needPage: (r) => queuePage(r.i, r.scale),
-    needBg: (r) => { bgWant = r; if (!bgBusy) renderBg(); },
+    needTiles: (list) => { tileQ = Array.isArray(list) ? list : []; if (!tileBusy) renderTile(); },
     strokes: (list) => mirror(list),
     changed: () => { if (PK.undoing) { PK.undoing = false; return; } (PK.order = PK.order || []).push('ink'); PK.redoOrder = []; A.emit('history'); },
   };
-  window.__axiomPK = (kind, data) => { if (PK.alt) return PK.alt(kind, data); const f = views[kind]; if (f) f(data); };
+  /* a tap or a stroke on the native page: what a tap outside would do on the web (menus close, the selection
+     clears, a text box being typed in is finished) */
+  function touched() {
+    A.closePopovers();
+    if (A.TE && A.TE.active && A.TE.active()) A.TE.commit();
+    if (PK.active && R.sel && R.sel.size && !(A.CROP && A.CROP.active())) { A.emit('selection:clear'); R.render(); }
+    A.emit('pk:touch');
+  }
+  window.__axiomPK = (kind, data) => { if (kind === 'touch') return touched(data); if (PK.alt) return PK.alt(kind, data); const f = views[kind]; if (f) f(data); };
   PK.post = post;
   PK.setView = (v) => post({ op: 'pkView', zoom: v.zoom, tx: v.tx, ty: v.ty, rot: v.rot || 0 });
 
@@ -103,17 +111,15 @@
   // a picture finished loading after its page was drawn: draw again (once per burst)
   let imgT = 0;
   const imageLoaded = () => { clearTimeout(imgT); imgT = setTimeout(() => { if (PK.active) post({ op: 'pkDirty', all: true }); }, 50); };
-  /* canvases: one background image (paper, grid, artboards, pictures, text, special strokes) around the view */
-  let bgWant = null, bgBusy = false;
-  function renderBg() {
-    if (!PK.active || !bgWant) { bgBusy = false; return; }
-    bgBusy = true;
-    const r = bgWant; bgWant = null;
-    setTimeout(() => {
-      if (!PK.active) { bgBusy = false; return; }
-      const c = R.renderRegion(D.doc, [r.x, r.y, r.x + r.w, r.y + r.h], r.scale, { bg: true, grid: true, noStrokes: true, display: true, maxPx: 6000, onImage: imageLoaded });
-      post({ op: 'pkBg', rect: [r.x, r.y, r.w, r.h], data: c.toDataURL('image/jpeg', 0.9).split(',')[1] }).then(() => { bgBusy = false; if (bgWant) renderBg(); });
-    }, 0);
+  /* canvases: the background (paper, grid, artboards, pictures, text, special strokes) in tiles the native view asks
+     for, nearest first; a newer list replaces the older one */
+  let tileQ = [], tileBusy = false;
+  function renderTile() {
+    if (!PK.active || !tileQ.length) { tileBusy = false; return; }
+    tileBusy = true;
+    const t = tileQ.shift();
+    const c = R.renderRegion(D.doc, [t.x, t.y, t.x + t.w, t.y + t.h], t.s, { bg: true, grid: true, noStrokes: true, display: true, maxPx: 1100, onImage: imageLoaded });
+    post({ op: 'pkTile', k: t.k, l: t.l, rect: [t.x, t.y, t.w, t.h], data: c.toDataURL('image/jpeg', 0.88).split(',')[1] }).then(() => setTimeout(renderTile, 0));
   }
   A.on('doc:changed', (k) => {
     if (!PK.active || k === 'ink' || k === 'meta') return;
@@ -182,7 +188,7 @@
     else t = { tool: 'none' }; // text, laser, tape: the page handles the Pencil
     t.finger = S.fingerAction === 'draw';
     post({ op: 'pkShapes', on: !!(D.doc && D.doc.precision && D.doc.precision.recog), rotate: !!D.doc && isCanvas() && S.allowRotate !== false && !S.rotLock });
-    t.ruler = !!(D.doc && D.doc.precision && D.doc.precision.guide);
+    t.ruler = !!(D.doc && D.doc.precision && D.doc.precision.guide && (D.doc.precision.guideType || 'line') === 'line');
     post(Object.assign({ op: 'pkTool' }, t));
   }
   PK.syncTool = syncTool;

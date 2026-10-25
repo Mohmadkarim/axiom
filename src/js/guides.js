@@ -29,7 +29,7 @@
 
   GU.active = () => {
     const doc = D.doc;
-    if (!doc || !doc.precision.guide) return null;
+    if (!doc || !doc.precision.guide || R.pk) return null; // PencilKit shows Apple's own ruler instead
     const t = doc.precision.guideType;
     if (!doc.guides[t]) doc.guides[t] = GU.make(t);
     return Object.assign({ type: t }, { s: doc.guides[t] });

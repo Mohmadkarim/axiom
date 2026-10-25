@@ -21,21 +21,27 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
     private var mirrorWork: DispatchWorkItem?
     private var insets = UIEdgeInsets(top: 70, left: 16, bottom: 90, right: 66)
     private var minFit: CGFloat = 1
+    private var placeholder = UIColor.white   // a page before its picture arrives
     // infinite canvases: world (0,0) sits at `origin` in PencilKit's coordinates; one background image around the view
     private(set) var isCanvas = false
     private var origin = CGPoint.zero
     private static let canvasHalf: CGFloat = 25000
-    private let bgView = UIImageView()
-    private var bgRect = CGRect.null
-    private var bgDirty = true
+    // canvases: the background (paper, grid, artboards, pictures, text) in square tiles around the view
+    private var tiles: [String: (view: UIImageView, level: Int, rect: CGRect)] = [:]
+    private var staleTiles = Set<String>()
+    private var pendingTiles = Set<String>()
+    private var tileLevel = 0
+    private static let tilePx: CGFloat = 512
+    private var lastTileAsk: CFTimeInterval = 0
 
     /// Callbacks to the page code
     var onView: ((CGFloat, CGFloat, CGFloat, CGFloat) -> Void)? // zoom, tx, ty (stage coordinates), rotation
     var onNeedPage: ((Int, CGFloat) -> Void)?                   // page index, scale
-    var onNeedBg: ((CGRect, CGFloat) -> Void)?                  // world rect, scale (canvases)
+    var onNeedTiles: ((String) -> Void)?                        // canvases: background tiles wanted, as JSON
     var onStrokes: ((String) -> Void)?                          // mirrored strokes as JSON
     var onChanged: (() -> Void)?                                // a user edit (for the undo stack)
     var onRecognize: ((String) -> Void)?                        // a held stroke's points (world) for shape recognition
+    var onTouch: ((CGPoint?) -> Void)?                          // a tap (point in this view) or a stroke began (nil)
     var save: ((String, Data) -> Void)?
     var load: ((String) -> Data?)?
 
@@ -67,7 +73,14 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
         let dbl = UITapGestureRecognizer(target: self, action: #selector(doubleTap(_:)))
         dbl.numberOfTapsRequired = 2
         dbl.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.direct.rawValue)]
+        dbl.delegate = self
         canvas.addGestureRecognizer(dbl)
+        // a tap or a stroke on the page tells the page code (menus close, the selection clears)
+        let tap = UITapGestureRecognizer(target: self, action: #selector(tapped(_:)))
+        tap.cancelsTouchesInView = false
+        tap.delaysTouchesEnded = false
+        tap.delegate = self
+        addGestureRecognizer(tap)
     }
     required init?(coder: NSCoder) { fatalError() }
 
@@ -82,10 +95,10 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
         origin = isCanvas ? CGPoint(x: Self.canvasHalf, y: Self.canvasHalf) : .zero
         canvas.alwaysBounceVertical = !isCanvas
         canvas.showsVerticalScrollIndicator = !isCanvas
-        bgView.image = nil; bgRect = .null; bgDirty = true
-        if isCanvas { bgView.contentMode = .scaleToFill; pages.addSubview(bgView) } else { bgView.removeFromSuperview() }
+        clearTiles()
         superview?.backgroundColor = desk
         canvas.overrideUserInterfaceStyle = dark ? .dark : .light
+        placeholder = dark ? UIColor(white: 0.11, alpha: 1) : .white
         loading = true
         var drawing = PKDrawing()
         if let data = load?("ink_" + id), let d = try? PKDrawing(data: data) { drawing = d }
@@ -95,7 +108,6 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
         setPages(isCanvas ? [] : rects)
         isHidden = false
         setView(zoom: zoom, tx: tx, ty: ty, rot: startRot)
-        bgDirty = true
         requestVisible()
         if !legacy.isEmpty && load?("ink_" + id) == nil { scheduleSave() }
         scheduleMirror(0.05)
@@ -120,7 +132,7 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
 
     func setPages(_ rects: [CGRect]) {
         pageRects = rects
-        while pageViews.count < rects.count { let v = UIImageView(); v.contentMode = .scaleToFill; v.backgroundColor = .white; v.layer.shadowColor = UIColor.black.cgColor; v.layer.shadowOpacity = 0.18; v.layer.shadowRadius = 10; v.layer.shadowOffset = CGSize(width: 0, height: 4); pages.addSubview(v); pageViews.append(v); pageScale.append(0) }
+        while pageViews.count < rects.count { let v = UIImageView(); v.contentMode = .scaleToFill; v.backgroundColor = placeholder; v.layer.shadowColor = UIColor.black.cgColor; v.layer.shadowOpacity = 0.18; v.layer.shadowRadius = 10; v.layer.shadowOffset = CGSize(width: 0, height: 4); pages.addSubview(v); pageViews.append(v); pageScale.append(0) }
         while pageViews.count > rects.count { pageViews.removeLast().removeFromSuperview(); pageScale.removeLast() }
         let bb = rects.reduce(CGRect.null) { $0.union($1) }
         pages.bounds = isCanvas || bb.isNull ? CGRect(x: 0, y: 0, width: Self.canvasHalf * 2, height: Self.canvasHalf * 2) : CGRect(x: 0, y: 0, width: bb.maxX, height: bb.maxY)
@@ -139,16 +151,59 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
     }
 
     func markDirty(_ all: Bool, _ list: [Int]) {
-        if all { dirty = Set(0..<pageRects.count); bgDirty = true } else { list.forEach { dirty.insert($0) } }
+        if all { dirty = Set(0..<pageRects.count); staleTiles = Set(tiles.keys); pendingTiles = [] } else { list.forEach { dirty.insert($0) } }
         requestVisible()
     }
 
-    /// canvases: the background image for a world rect
-    func setBg(_ rect: CGRect, data: Data) {
-        guard isCanvas, let img = UIImage(data: data) else { return }
-        bgView.image = img
-        bgView.frame = rect.offsetBy(dx: origin.x, dy: origin.y)
-        bgRect = rect
+    /// canvases: one background tile arrived (world rect, drawn at 2^level pixels per unit)
+    func setTile(_ key: String, rect: CGRect, level: Int, data: Data) {
+        guard isCanvas, isOpen, let img = UIImage(data: data) else { return }
+        pendingTiles.remove(key)
+        staleTiles.remove(key)
+        let v: UIImageView
+        if let t = tiles[key] { v = t.view } else { v = UIImageView(); v.contentMode = .scaleToFill; pages.addSubview(v) }
+        v.image = img
+        v.frame = rect.offsetBy(dx: origin.x, dy: origin.y)
+        if level == tileLevel { pages.bringSubviewToFront(v) } else { pages.sendSubviewToBack(v) }
+        tiles[key] = (v, level, rect)
+        pruneTiles()
+    }
+
+    private func clearTiles() {
+        tiles.values.forEach { $0.view.removeFromSuperview() }
+        tiles = [:]; staleTiles = []; pendingTiles = []
+    }
+
+    /// the world rect on screen (rotated canvases: the square around it)
+    private func visibleWorld() -> CGRect {
+        let z = canvas.zoomScale
+        let vis = CGRect(x: canvas.contentOffset.x / z - origin.x, y: canvas.contentOffset.y / z - origin.y, width: canvas.bounds.width / z, height: canvas.bounds.height / z)
+        if rot == 0 { return vis }
+        let d = hypot(vis.width, vis.height)
+        return CGRect(x: vis.midX - d / 2, y: vis.midY - d / 2, width: d, height: d)
+    }
+
+    /// once the current sharpness covers the screen, drop tiles of other sharpness and far-away ones
+    private func pruneTiles() {
+        let vis = visibleWorld(), keep = vis.insetBy(dx: -vis.width * 1.5, dy: -vis.height * 1.5)
+        let covered = neededTiles(vis).allSatisfy { k, _ in tiles[k] != nil && !staleTiles.contains(k) }
+        for (k, t) in tiles where (covered && t.level != tileLevel) || !t.rect.intersects(keep) {
+            t.view.removeFromSuperview(); tiles[k] = nil; staleTiles.remove(k)
+        }
+        if tiles.count > 90 {
+            let c = CGPoint(x: vis.midX, y: vis.midY)
+            let far = tiles.sorted { hypot($0.value.rect.midX - c.x, $0.value.rect.midY - c.y) > hypot($1.value.rect.midX - c.x, $1.value.rect.midY - c.y) }
+            for (k, t) in far.prefix(tiles.count - 90) { t.view.removeFromSuperview(); tiles[k] = nil; staleTiles.remove(k) }
+        }
+    }
+
+    private func neededTiles(_ area: CGRect) -> [(String, CGRect)] {
+        let T = Self.tilePx / pow(2, CGFloat(tileLevel))
+        let x0 = Int(floor(area.minX / T)), x1 = Int(floor(area.maxX / T)), y0 = Int(floor(area.minY / T)), y1 = Int(floor(area.maxY / T))
+        guard x1 - x0 < 60, y1 - y0 < 60 else { return [] }
+        var out: [(String, CGRect)] = []
+        for iy in y0...y1 { for ix in x0...x1 { out.append(("\(tileLevel):\(ix):\(iy)", CGRect(x: CGFloat(ix) * T, y: CGFloat(iy) * T, width: T, height: T))) } }
+        return out
     }
 
     private var wantedScale: CGFloat { min(3, max(1, (canvas.zoomScale * UIScreen.main.scale * 2).rounded() / 2)) }
@@ -164,17 +219,23 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
         }
     }
 
-    private var bgScale: CGFloat = 0
     private func requestBg() {
-        let z = canvas.zoomScale
-        let vis = CGRect(x: canvas.contentOffset.x / z - origin.x, y: canvas.contentOffset.y / z - origin.y, width: canvas.bounds.width / z, height: canvas.bounds.height / z)
-        let want = min(2, z * UIScreen.main.scale)
-        // re-render when the view leaves the image, zoom changed the needed sharpness, or the content changed
-        if !bgDirty, !bgRect.isNull, rot == 0, bgRect.contains(vis), abs(bgScale - want) / max(want, 0.01) < 0.3 { return }
-        var r = vis.insetBy(dx: -vis.width * 0.35, dy: -vis.height * 0.35)
-        if rot != 0 { let d = hypot(vis.width, vis.height) * 1.2; r = CGRect(x: vis.midX - d / 2, y: vis.midY - d / 2, width: d, height: d) }
-        bgDirty = false; bgScale = want
-        onNeedBg?(r, want)
+        let want = min(2, canvas.zoomScale * UIScreen.main.scale)
+        tileLevel = max(-7, min(1, Int(ceil(log2(max(want, 0.008)) - 0.15))))
+        let vis = visibleWorld()
+        let c = CGPoint(x: vis.midX, y: vis.midY)
+        let wanted = neededTiles(vis.insetBy(dx: -vis.width * 0.5, dy: -vis.height * 0.5))
+            .filter { k, _ in tiles[k] == nil || staleTiles.contains(k) }
+            .sorted { hypot($0.1.midX - c.x, $0.1.midY - c.y) < hypot($1.1.midX - c.x, $1.1.midY - c.y) }
+        lastTileAsk = CACurrentMediaTime()
+        if wanted.isEmpty { pruneTiles() }
+        // the page keeps only the latest list (nearest first), so it never draws tiles the view has left
+        let keys = Set(wanted.map { $0.0 })
+        if keys == pendingTiles { return }
+        pendingTiles = keys
+        let s = pow(2, Double(tileLevel)), pad = 1 / s
+        let list: [[String: Any]] = wanted.map { k, r in ["k": k, "l": tileLevel, "x": Double(r.minX) - pad, "y": Double(r.minY) - pad, "w": Double(r.width) + 2 * pad, "h": Double(r.height) + 2 * pad, "s": s] }
+        if let json = try? JSONSerialization.data(withJSONObject: list), let str = String(data: json, encoding: .utf8) { onNeedTiles?(str) }
     }
 
     // MARK: - view
@@ -268,17 +329,25 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
         onView?(canvas.zoomScale, tx, ty, rot)
     }
 
+    /// finger double-tap: zoom in around the finger, or back out to the fitted page (canvases: 100% and 200%);
+    /// the scroll view's own zoom-to-rect keeps the place, instead of setting the scale and losing the position
     @objc private func doubleTap(_ g: UITapGestureRecognizer) {
-        let target = canvas.zoomScale > minFit * 1.05 ? minFit : minFit * 2
-        let p = g.location(in: canvas)
-        let z0 = canvas.zoomScale
-        let wx = p.x / z0, wy = p.y / z0
-        UIView.animate(withDuration: 0.25) {
-            self.canvas.zoomScale = target
-            self.layoutContent()
-            if target > self.minFit * 1.05 { self.canvas.contentOffset = CGPoint(x: wx * target - g.location(in: self).x, y: wy * target - g.location(in: self).y) }
-        }
+        guard isOpen, g.state == .ended else { return }
+        zoomToggle(at: g.location(in: canvas))
     }
+    func zoomToggle(at p: CGPoint) {
+        let z0 = canvas.zoomScale
+        let base: CGFloat = isCanvas ? 1 : minFit
+        let target = z0 > base * 1.05 ? base : base * 2
+        let w = canvas.bounds.width / target, hgt = canvas.bounds.height / target
+        var cx = p.x / z0, cy = p.y / z0
+        let bb = pageRects.reduce(CGRect.null) { $0.union($1) }
+        if !isCanvas && target <= base * 1.01 && !bb.isNull { cx = bb.midX; cy = max(cy, hgt / 2) }
+        canvas.zoom(to: CGRect(x: cx - w / 2, y: cy - hgt / 2, width: w, height: hgt), animated: true)
+    }
+
+    @objc private func tapped(_ g: UITapGestureRecognizer) { if isOpen, g.state == .ended { onTouch?(g.location(in: self)) } }
+    func canvasViewDidBeginUsingTool(_ canvasView: PKCanvasView) { if isOpen { onTouch?(nil) } }
 
     private func placePages() {
         let z = canvas.zoomScale
@@ -287,8 +356,8 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
         pages.frame.origin = CGPoint(x: -canvas.contentOffset.x, y: -canvas.contentOffset.y)
         CATransaction.commit()
     }
-    func scrollViewDidZoom(_ scrollView: UIScrollView) { layoutContent(); placePages(); report() }
-    func scrollViewDidScroll(_ scrollView: UIScrollView) { placePages(); report() }
+    func scrollViewDidZoom(_ scrollView: UIScrollView) { layoutContent(); placePages(); report(); if isCanvas, CACurrentMediaTime() - lastTileAsk > 0.2 { requestBg() } }
+    func scrollViewDidScroll(_ scrollView: UIScrollView) { placePages(); report(); if isCanvas, CACurrentMediaTime() - lastTileAsk > 0.12 { requestBg() } }
     func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) { requestVisible() }
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) { requestVisible() }
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) { if !decelerate { requestVisible() } }

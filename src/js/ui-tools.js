@@ -32,10 +32,10 @@
   /* Apple Pencil double-tap (native app) follows the system setting in Settings › Apple Pencil */
   const isEraser = (b) => b === 'slice' || b === 'eraser' || b === 'mask' || b === 'softmask';
   A.on('pencil:tap', (action) => {
-    if (!D.doc) return;
+    if (!D.doc) { if (A.RD && A.RD.pencilTap) A.RD.pencilTap(); return; }
     if (action && action.forced) action = action.forced;
     else if (S.pencilTap && S.pencilTap !== 'system') action = S.pencilTap;
-    if (action === 'undo') { D.undo(); return; }
+    if (action === 'undo') { if (!(A.PK && A.PK.active && A.PK.undo())) D.undo(); return; }
     if (action === 'toggleUI') { A.emit('cmd', 'toggleUI'); return; }
     const cur = S.activeSlot;
     if (action === 'switchEraser') {

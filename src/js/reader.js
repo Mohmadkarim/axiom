@@ -477,7 +477,7 @@
   const pkInsets = () => [76, 16, 70, 16];
   const pkTool = () => {
     if (!rpk.on) return;
-    const t = st.inkTool === 'eraser' ? { tool: 'eraser', mode: 'vector' } : { tool: 'ink', ink: 'pen', color: INK[st.inkColor] || INK.black, alpha: 1, width: st.inkWidth * PKW };
+    const t = st.inkTool === 'eraser' ? { tool: 'eraser', mode: 'vector' } : { tool: 'ink', ink: 'pen', color: INK[st.inkColor] || INK.black, alpha: 1, width: st.inkWidth * PKW * 1.6 };
     A.PK.post(Object.assign({ op: 'pkTool', finger: false }, t));
   };
   function enterPK() {
@@ -499,7 +499,7 @@
     const zoom = pageW / PKW, top = rpk.rects[Math.max(0, st.page - 1)] || rpk.rects[0];
     A.PK.alt = pkEvent;
     host.classList.add('pk'); document.documentElement.classList.add('pk-on');
-    A.PK.post({ op: 'pkOpen', id: 'rd_' + st.meta.id, pages: rpk.rects, frame: f, insets: ins, zoom, tx: (f[2] - PKW * zoom) / 2, ty: ins[0] - top[1] * zoom, legacy, dark: false, desk: getComputedStyle(document.body).backgroundColor.startsWith('rgb') ? rgbHex(getComputedStyle(st.main).backgroundColor) : '#1b1d22' })
+    A.PK.post({ op: 'pkOpen', id: 'rd_' + st.meta.id, pages: rpk.rects, frame: f, insets: ins, zoom, tx: (f[2] - PKW * zoom) / 2, ty: ins[0] - top[1] * zoom, legacy, dark: pkTheme() === 'night', desk: pkDesk() })
       .then((cur) => { if (Array.isArray(cur)) rpk.view = { zoom: cur[0], tx: cur[1], ty: cur[2] }; });
     pkTool();
     A.PK.chrome();
@@ -538,6 +538,36 @@
       saveAnn();
     }
   }
+  /* the page as it looks in Read mode: the reader's paper colour (sepia, night) and the highlights */
+  const HL = { yellow: 'rgba(255,210,0,.36)', green: 'rgba(70,205,110,.30)', blue: 'rgba(70,150,255,.28)', pink: 'rgba(255,90,160,.26)' };
+  const HLN = { yellow: 'rgba(255,214,10,.22)', green: 'rgba(80,220,130,.2)', blue: 'rgba(90,160,255,.22)', pink: 'rgba(255,100,170,.2)' };
+  const pkTheme = () => S.readerTheme || 'paper';
+  function pkLook(src, n) {
+    const theme = pkTheme(), hls = st.ann.highlights.filter((x) => x.page === n);
+    if (theme === 'paper' && !hls.length) return src;
+    const c = h('canvas'); c.width = src.width; c.height = src.height;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(src, 0, 0);
+    // the reader's paper filters, by hand (WebKit's canvas has no filter): night flips lightness and keeps colours
+    if (theme !== 'paper') {
+      const d = ctx.getImageData(0, 0, c.width, c.height), a = d.data, night = theme === 'night';
+      for (let k = 0; k < a.length; k += 4) {
+        const r = a[k], g = a[k + 1], b = a[k + 2];
+        if (night) { const L = 0.299 * r + 0.587 * g + 0.114 * b, dl = 26 + 0.84 * (255 - L) - L; a[k] = r + dl; a[k + 1] = g + dl; a[k + 2] = b + dl; }
+        else { const sr = 0.393 * r + 0.769 * g + 0.189 * b, sg = 0.349 * r + 0.686 * g + 0.168 * b, sb = 0.272 * r + 0.534 * g + 0.131 * b; a[k] = (0.62 * r + 0.38 * sr) * 0.97; a[k + 1] = (0.62 * g + 0.38 * sg) * 0.97; a[k + 2] = (0.62 * b + 0.38 * sb) * 0.97; }
+      }
+      ctx.putImageData(d, 0, 0);
+    }
+    ctx.globalCompositeOperation = theme === 'night' ? 'screen' : 'multiply';
+    hls.forEach((hl) => (hl.rects || [hl.rect]).forEach((r) => {
+      ctx.fillStyle = (theme === 'night' ? HLN : HL)[hl.color || 'yellow'] || HL.yellow;
+      ctx.fillRect(r[0] * c.width, r[1] * c.height, (r[2] - r[0]) * c.width, (r[3] - r[1]) * c.height);
+    }));
+    ctx.globalCompositeOperation = 'source-over';
+    return c;
+  }
+  const pkDesk = () => { const v = getComputedStyle(host).getPropertyValue('--rd-bg').trim(); return /^#[0-9a-f]{6}$/i.test(v) ? v : rgbHex(getComputedStyle(st.main).backgroundColor); };
+  RD.pkTheme = () => { if (rpk.on) { A.PK.post({ op: 'pkFrame', dark: pkTheme() === 'night', desk: pkDesk() }); A.PK.post({ op: 'pkDirty', all: true }); } };
   const pkQueue = new Map(); let pkBusy = false;
   function pkPage(i, scale) { pkQueue.set(i, scale); if (!pkBusy) pkPump(); }
   async function pkPump() {
@@ -552,7 +582,7 @@
       const c = h('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
       const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
       await page.render({ canvasContext: ctx, viewport: vp }).promise;
-      if (rpk.on) await A.PK.post({ op: 'pkPage', i, scale, data: c.toDataURL('image/jpeg', 0.9).split(',')[1] });
+      if (rpk.on) await A.PK.post({ op: 'pkPage', i, scale, data: pkLook(c, i + 1).toDataURL('image/jpeg', 0.9).split(',')[1] });
     } catch (e) { /* skip */ }
     pkPump();
   }
@@ -1125,6 +1155,8 @@
       if (!(A.PK && A.PK.available)) inkBar.append(opts);
     };
     drawInkBar();
+    // Apple Pencil double-tap while writing: pen ⇄ eraser
+    RD.pencilTap = () => { if (!st || st.tool !== 'write') return false; st.inkTool = st.inkTool === 'eraser' ? 'pen' : 'eraser'; drawInkBar(); A.toast(st.inkTool === 'eraser' ? 'Eraser' : 'Pen', 800); return true; };
     const moreBtn = { _open: null };
     moreBtn._open = ((e) => {
       const m = h('div', { class: 'menu' });
@@ -1136,7 +1168,7 @@
       if (!isEpub) m.append(h('div', { class: 'seg rd-fitseg' }, ...[['width', 'Fit width'], ['page', 'Fit page']].map(([v, l]) => h('button', { class: st.fit === v ? 'on' : '', onclick: () => { st.fit = v; S.readerFit = v; A.saveSettings(); st.zoom = 1; layout(); val.textContent = '100%'; [...m.querySelectorAll('.rd-fitseg button')].forEach((b) => b.classList.toggle('on', b.textContent === l)); } }, l))));
       m.append(h('div', { class: 'sub' }, 'Page'));
       const sw = h('div', { class: 'rd-swatches' });
-      [['paper', 'Paper'], ['sepia', 'Sepia'], ['night', 'Night']].forEach(([id, l]) => sw.append(h('button', { class: 'rd-swatch ' + id + ((S.readerTheme || 'paper') === id ? ' on' : ''), onclick: () => { S.readerTheme = id; A.saveSettings(); host.dataset.theme = id; applyEpubTheme(); sw.querySelectorAll('.rd-swatch').forEach((b) => b.classList.toggle('on', b.classList.contains(id))); } }, h('i', { html: A.icon('check') }), h('span', null, l))));
+      [['paper', 'Paper'], ['sepia', 'Sepia'], ['night', 'Night']].forEach(([id, l]) => sw.append(h('button', { class: 'rd-swatch ' + id + ((S.readerTheme || 'paper') === id ? ' on' : ''), onclick: () => { S.readerTheme = id; A.saveSettings(); host.dataset.theme = id; applyEpubTheme(); RD.pkTheme(); sw.querySelectorAll('.rd-swatch').forEach((b) => b.classList.toggle('on', b.classList.contains(id))); } }, h('i', { html: A.icon('check') }), h('span', null, l))));
       m.append(sw);
       if (false) m.append(h('hr'));
       if (!isEpub) {

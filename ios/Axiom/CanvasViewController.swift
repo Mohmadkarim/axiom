@@ -51,9 +51,6 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         webView.allowsLinkPreview = false
         if #available(iOS 16.4, *) { webView.isInspectable = true }
 
-        let pencil = UIPencilInteraction()
-        pencil.delegate = self
-        webView.addInteraction(pencil)
 
         let capture = PencilCaptureRecognizer()
         capture.onTouches = { [weak self] phase, coalesced, _ in self?.notebook?.trackPencil(phase, coalesced) }
@@ -67,9 +64,14 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         let nb = NotebookInkView(frame: .zero)
         nb.save = { [weak self] id, data in try? self?.store.writeFile(id: id, data: data) }
         nb.load = { [weak self] id in self.flatMap { try? Data(contentsOf: $0.store.fileURL(id)) } }
+        nb.onTouch = { [weak self, weak nb] p in
+            guard let self, let nb else { return }
+            if let p { self.runJS("window.__axiomPK && __axiomPK('touch', {x: \(p.x + nb.frame.minX), y: \(p.y + nb.frame.minY)})") }
+            else { self.runJS("window.__axiomPK && __axiomPK('touch', null)") }
+        }
         nb.onView = { [weak self] z, tx, ty, r in self?.runJS("window.__axiomPK && __axiomPK('view', {zoom: \(z), tx: \(tx), ty: \(ty), rot: \(r)})") }
         nb.onNeedPage = { [weak self] i, sc in self?.runJS("window.__axiomPK && __axiomPK('needPage', {i: \(i), scale: \(sc)})") }
-        nb.onNeedBg = { [weak self] r, sc in self?.runJS("window.__axiomPK && __axiomPK('needBg', {x: \(r.minX), y: \(r.minY), w: \(r.width), h: \(r.height), scale: \(sc)})") }
+        nb.onNeedTiles = { [weak self] json in self?.runJS("window.__axiomPK && __axiomPK('needTiles', \(json))") }
         nb.onStrokes = { [weak self] json in self?.runJS("window.__axiomPK && __axiomPK('strokes', \(json))") }
         nb.onRecognize = { [weak self] json in self?.runJS("window.__axiomPK && __axiomPK('recognize', \(json))") }
         nb.onChanged = { [weak self] in self?.runJS("window.__axiomPK && __axiomPK('changed', null)") }
@@ -79,6 +81,10 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         root.addSubview(nb)
         root.addSubview(webView)
         root.addGestureRecognizer(capture)
+        // Pencil double-tap/squeeze on the root view: it reaches the app whether the touch would go to the page or PencilKit
+        let pencil = UIPencilInteraction()
+        pencil.delegate = self
+        root.addInteraction(pencil)
         NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in self?.notebook?.flush() }
 
         view = root
@@ -218,9 +224,9 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         case "pkPage":
             if let b64 = body["data"] as? String, let data = Data(base64Encoded: b64) { notebook?.setPageImage(body["i"] as? Int ?? 0, data: data, scale: CGFloat(body["scale"] as? Double ?? 1)) }
             replyHandler(true, nil); return
-        case "pkBg":
+        case "pkTile":
             if let r = body["rect"] as? [Double], r.count == 4, let b64 = body["data"] as? String, let data = Data(base64Encoded: b64) {
-                notebook?.setBg(CGRect(x: r[0], y: r[1], width: r[2], height: r[3]), data: data)
+                notebook?.setTile(body["k"] as? String ?? "", rect: CGRect(x: r[0], y: r[1], width: r[2], height: r[3]), level: body["l"] as? Int ?? 0, data: data)
             }
             replyHandler(true, nil); return
         case "pkDirty":
@@ -265,6 +271,11 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
             d["drawEnabled"] = notebook?.canvas.drawingGestureRecognizer.isEnabled ?? false
             d["strokes"] = notebook?.canvas.drawing.strokes.count ?? 0
             replyHandler(d, nil); return
+        case "pkDoubleTap":
+            #if DEBUG
+            if let nb = notebook { nb.zoomToggle(at: nb.convert(CGPoint(x: body["x"] as? Double ?? 0, y: body["y"] as? Double ?? 0), to: nb.canvas)) }
+            #endif
+            replyHandler(true, nil); return
         case "pkUndo":
             notebook?.undo(); replyHandler(true, nil); return
         case "pkRedo":

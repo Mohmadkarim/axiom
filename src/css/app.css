@@ -1540,3 +1540,6 @@ html.pk-on #reader-view.pk, html.pk-on #reader-view.pk .rd-main { background: tr
 .crop-bar { position: absolute; display: flex; gap: 6px; padding: 6px; border-radius: var(--r-m, 12px); }
 .ex-home + .g-tools, .ex-home + div > .g-tools { margin-top: 22px; }
 .g-sec.ex-home { margin-bottom: 18px; }
+
+/* one floating thing at a time: a menu from the bars hides the selection's toolbar until it closes */
+body:has(> .popover:not(.sel-more)) #selpopup { visibility: hidden; }

@@ -263,7 +263,7 @@
     box.append(h('hr'));
     it('bookmark', 'Save as a visual', cmd('saveVisual'));
     it('selectall', 'Select all', cmd('selectAll'));
-    A.popover(box, anchor, { side: 'down' });
+    A.popover(box, anchor, { side: 'down', cls: 'sel-more' });
   }
   function renderSelPopup() {
     if (!selPop) return;
