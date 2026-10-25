@@ -199,6 +199,7 @@ struct LibraryView: View {
         if recentNotes.isEmpty && recentBooks.isEmpty {
             emptyState
         }
+        ExamCards()
         if !recentBooks.isEmpty {
             sectionHeader("Continue reading", action: recentBooks.count > 4 ? ("All books", { section = .books }) : nil)
             bookGrid(Array(recentBooks.prefix(4)))
@@ -224,6 +225,7 @@ struct LibraryView: View {
     @ViewBuilder private func courseContent(_ id: String?) -> some View {
         let books = filteredBooks(lib.books.filter { $0.subject == id })
         let notes = filteredNotes(lib.notes.filter { $0.subject == id })
+        if let id { ExamCards(course: id) }
         if books.isEmpty && notes.isEmpty {
             Text(id == nil ? "Everything has a course." : "Nothing in this course yet. Use New to add a notebook or a book.")
                 .font(Theme.ui(15)).foregroundStyle(Theme.muted).padding(.vertical, 40)

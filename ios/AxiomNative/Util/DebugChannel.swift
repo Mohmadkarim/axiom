@@ -21,6 +21,7 @@ final class DebugChannel {
             if a.first == "ask" { Tutor.shared.draft = a.dropFirst().joined(separator: " "); Tutor.shared.sendDraft(attachPage: true) }
             return ["open": Tutor.shared.isOpen, "key": Tutor.shared.key, "msgs": Tutor.shared.messages.count, "hasPage": Tutor.shared.pageProvider != nil] as [String: Any]
         }
+        handlers["graph"] = { _ in AppState.shared.graphOpen = true; return "ok" }
         handlers["books"] = { _ in Library.shared.books.map { ["id": $0.id, "name": $0.name, "type": $0.type] } }
     }
     private func poll() {

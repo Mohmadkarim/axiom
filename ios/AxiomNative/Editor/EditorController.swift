@@ -102,6 +102,86 @@ final class EditorController: UIViewController, PKCanvasViewDelegate, UIGestureR
         installDebug()
         #endif
         connectTutor()
+        AppState.shared.editor = self
+        model.recordings = doc.recordings
+        model.activeRec = doc.recordings.last?.str("id")
+        replayTimer = Timer.scheduledTimer(withTimeInterval: 0.12, repeats: true) { [weak self] _ in self?.updateReplay() }
+    }
+    private var replayTimer: Timer?
+
+    // MARK: - lecture recording and ink replay
+
+    func startRecording() {
+        let id = UID.make()
+        Task { @MainActor in
+            if let err = await LectureAudio.shared.record(id: id) { AppState.shared.say(err, 3); return }
+            let n = doc.recordings.count + 1
+            doc.recordings.append(["id": id, "name": "Recording \(n)", "created": Date().ms, "dur": 0])
+            model.recordings = doc.recordings
+            model.activeRec = id
+            dirty = true; scheduleSave()
+        }
+    }
+    func stopRecording() {
+        guard let id = LectureAudio.shared.recordingID else { return }
+        let d = LectureAudio.shared.stopRecording()
+        if let i = doc.recordings.firstIndex(where: { $0.str("id") == id }) { doc.recordings[i]["dur"] = (d * 10).rounded() / 10 }
+        model.recordings = doc.recordings
+        dirty = true; save()
+        AppState.shared.say("Recording saved", 1.2)
+    }
+    func renameRecording(_ id: String, _ name: String) {
+        if let i = doc.recordings.firstIndex(where: { $0.str("id") == id }) { doc.recordings[i]["name"] = name }
+        model.recordings = doc.recordings; dirty = true; scheduleSave()
+    }
+    func deleteRecording(_ id: String) {
+        LectureAudio.shared.delete(id)
+        doc.recordings.removeAll { $0.str("id") == id }
+        model.recordings = doc.recordings
+        if model.activeRec == id { model.activeRec = doc.recordings.last?.str("id") }
+        dirty = true; scheduleSave()
+    }
+    var activeRecording: JSON? { model.activeRec.flatMap { id in doc.recordings.first { $0.str("id") == id } } }
+
+    fileprivate(set) var replayOriginal: PKDrawing?
+    fileprivate(set) var replayKey = -1
+    private func updateReplay() {
+        let a = LectureAudio.shared
+        guard model.replayInk, let rec = activeRecording, let id = rec.str("id"), a.playingID == id, a.time > 0 || a.isPlaying else { endReplay(); return }
+        if replayOriginal == nil {
+            endSelection()
+            if textView != nil { endTextEdit() }
+            replayOriginal = surface.canvas.drawing
+            surface.canvas.drawingGestureRecognizer.isEnabled = false
+        }
+        guard let orig = replayOriginal else { return }
+        let start = Date(ms: rec.num("created") ?? 0), end = start.addingTimeInterval((rec.num("dur") ?? 36000) + 1.5), cut = start.addingTimeInterval(a.time)
+        var dimmed = 0
+        let strokes = orig.strokes.map { s -> PKStroke in
+            let d = s.path.creationDate
+            guard d >= start, d <= end, d > cut else { return s }
+            dimmed += 1
+            return PKStroke(ink: PKInk(s.ink.inkType, color: s.ink.color.withAlphaComponent(0.12)), path: s.path, transform: s.transform, mask: s.mask)
+        }
+        if dimmed == replayKey { return }
+        replayKey = dimmed
+        setDrawing(PKDrawing(strokes: strokes))
+    }
+    private func endReplay() {
+        guard let orig = replayOriginal else { return }
+        replayOriginal = nil; replayKey = -1
+        setDrawing(orig)
+        applyTool()
+    }
+    /// while a recording plays, tapping ink jumps to the moment it was written
+    private func seekToStroke(at w: CGPoint) -> Bool {
+        let a = LectureAudio.shared
+        guard let rec = activeRecording, a.playingID == rec.str("id"), let orig = replayOriginal ?? Optional(surface.canvas.drawing),
+              let i = Geometry.strokeAt(w, drawing: orig, origin: surface.origin, tolerance: 12 / surface.zoom) else { return false }
+        let t = orig.strokes[i].path.creationDate.timeIntervalSince(Date(ms: rec.num("created") ?? 0)) - 1.5
+        guard t > -1.5, t < (rec.num("dur") ?? 0) + 2 else { return false }
+        a.seek(max(0, t)); if !a.isPlaying { a.play(id: rec.str("id")!) }
+        return true
     }
 
     // MARK: - tutor
@@ -121,7 +201,7 @@ final class EditorController: UIViewController, PKCanvasViewDelegate, UIGestureR
             return Thumbnail.region(doc: self.doc, drawing: d, rect: self.surface.visibleWorld, pixelWidth: 1400, background: UIColor(css: self.doc.paperColor), grid: true).map { ($0, "the canvas \(self.doc.name)", nil) }
         }
     }
-    var fullDrawing: PKDrawing { selection.map { $0.drawingWith(origin: surface.origin) } ?? surface.canvas.drawing }
+    var fullDrawing: PKDrawing { replayOriginal ?? selection.map { $0.drawingWith(origin: surface.origin) } ?? surface.canvas.drawing }
 
     /// pages with writing, nearest to the current one first (up to 12)
     func writtenPageImages(limit: Int = 12) -> [UIImage] {
@@ -161,7 +241,12 @@ final class EditorController: UIViewController, PKCanvasViewDelegate, UIGestureR
             return ["zoom": c.zoomScale, "fit": self.surface.fit, "off": [c.contentOffset.x, c.contentOffset.y], "inset": [c.contentInset.left, c.contentInset.top],
                     "pages": self.doc.pages.count, "page": self.model.page, "strokes": c.drawing.strokes.count, "elements": self.doc.elements.count,
                     "undo": self.undo.canUndo, "redo": self.undo.canRedo, "sel": self.selection.map { ["strokes": $0.strokes.count, "elements": $0.elements.count, "moved": $0.moved] } ?? NSNull(),
-                    "style": c.overrideUserInterfaceStyle == .dark ? "dark" : "light", "tool": self.model.tool.kind.rawValue] as [String: Any]
+                    "style": c.overrideUserInterfaceStyle == .dark ? "dark" : "light", "tool": self.model.tool.kind.rawValue, "replaying": self.replayOriginal != nil, "dimmed": self.replayKey, "audioT": LectureAudio.shared.time, "playing": LectureAudio.shared.isPlaying] as [String: Any]
+        }
+        d.handlers["dates"] = { [weak self] _ in
+            guard let self, let rec = self.activeRecording else { return "no rec" }
+            let start = Date(ms: rec.num("created") ?? 0)
+            return (self.replayOriginal ?? self.surface.canvas.drawing).strokes.map { $0.path.creationDate.timeIntervalSince(start) }
         }
         d.handlers["tool"] = { [weak self] a in self?.model.select(Int(a.first ?? "0") ?? 0); self?.applyTool(); return self?.model.tool.kind.rawValue ?? "" }
         d.handlers["undo"] = { [weak self] _ in self?.performUndo(); return "ok" }
@@ -206,7 +291,13 @@ final class EditorController: UIViewController, PKCanvasViewDelegate, UIGestureR
     func setDrawingForTest(_ d: PKDrawing) { setDrawing(d) }
     func shapeLastStrokeForTest() { shapeLastStroke([]) }
     #endif
-    deinit { NotificationCenter.default.removeObserver(self) }
+    deinit { NotificationCenter.default.removeObserver(self); replayTimer?.invalidate() }
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        replayTimer?.invalidate(); replayTimer = nil
+        if LectureAudio.shared.recordingID != nil { stopRecording() }
+        LectureAudio.shared.stopPlayback()
+    }
 
     // PencilKit's own scroll delegate calls go to the surface; this controller is its PKCanvasViewDelegate.
     func scrollViewDidScroll(_ scrollView: UIScrollView) { surface.scrollViewDidScroll(scrollView) }
@@ -334,6 +425,7 @@ final class EditorController: UIViewController, PKCanvasViewDelegate, UIGestureR
         model.flyout = nil
         if textView != nil { endTextEdit(); return }
         let w = surface.toWorld(g.location(in: surface))
+        if seekToStroke(at: w) { return }
         if model.tool.kind == .text { textTap(at: w); return }
         if let e = elementAt(w) { beginSelection(strokes: [], elements: [e]); return }
         endSelection()
@@ -1146,12 +1238,14 @@ final class EditorController: UIViewController, PKCanvasViewDelegate, UIGestureR
         model.pageCount = doc.pages.count
     }
     func performUndo() {
+        endReplay()
         if textView != nil { endTextEdit() }
         endSelection()
         if undo.canUndo { undo.undo() }
         syncUndo()
     }
     func performRedo() {
+        endReplay()
         if textView != nil { endTextEdit() }
         endSelection()
         if undo.canRedo { undo.redo() }
@@ -1217,8 +1311,7 @@ final class EditorController: UIViewController, PKCanvasViewDelegate, UIGestureR
         save()
     }
     func save() {
-        let fullDrawing: PKDrawing
-        if let sel = selection { fullDrawing = sel.drawingWith(origin: surface.origin) } else { fullDrawing = surface.canvas.drawing }
+        let fullDrawing = self.fullDrawing
         if dirty { Store.shared.saveFile(doc.inkFileID, fullDrawing.dataRepresentation()) }
         guard dirty || viewOnly else { return }
         let json = doc.json(viewState: surface.viewState)

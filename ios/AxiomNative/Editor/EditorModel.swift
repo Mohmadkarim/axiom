@@ -83,6 +83,9 @@ final class EditorModel {
     var menuHasPaste = false
     var menuHasImage = false
     var cropping = false
+    var recordings: [JSON] = []
+    var activeRec: String?
+    var replayInk = true
 
     var tool: ToolSlot { slots.indices.contains(active) ? slots[active] : slots[0] }
 

@@ -140,6 +140,7 @@ final class NoteDocument {
     var pages: [PageInfo]
     var elements: [Element]
     var subject: String?
+    var recordings: [JSON]
     // canvas
     var paperColor: String
     var gridType: String
@@ -164,6 +165,7 @@ final class NoteDocument {
         pages = j.arr("pages").map(PageInfo.init)
         if isNotebook && pages.isEmpty { pages = [PageInfo()] }
         subject = j.str("subject")
+        recordings = j.arr("recordings")
         let paper = j.obj("paper") ?? [:]
         paperColor = paper.str("bg") ?? (isNotebook ? pageColor : "#15171c")
         let g = paper.obj("grid") ?? [:]
@@ -220,6 +222,7 @@ final class NoteDocument {
         j["name"] = name
         j["pkInk"] = true
         j["subject"] = subject ?? NSNull()
+        j["recordings"] = recordings
         var v: JSON = ["zoom": viewState.0, "tx": viewState.1, "ty": viewState.2, "rot": viewState.3]
         if isNotebook { v["top"] = viewState.2 }
         j["view"] = v

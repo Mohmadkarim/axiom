@@ -53,7 +53,7 @@ enum TutorMode: String, CaseIterable {
 @Observable
 final class Tutor {
     static let shared = Tutor()
-    var isOpen = false
+    var isOpen = false { didSet { if isOpen && AppState.shared.graphOpen { AppState.shared.graphOpen = false } } }
     var key = ""                      // note:<id> | book:<id>
     var title = ""
     var messages: [TutorMessage] = []

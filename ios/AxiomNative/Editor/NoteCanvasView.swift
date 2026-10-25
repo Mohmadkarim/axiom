@@ -73,8 +73,22 @@ final class NoteCanvasView: UIView, UIScrollViewDelegate {
     }
     required init?(coder: NSCoder) { fatalError() }
 
+    private var lastWidth: CGFloat = 0
     override func layoutSubviews() {
         super.layoutSubviews()
+        // a notebook shown at its fitted width refits when the space changes (the tutor or Desmos opens beside it)
+        if let doc, doc.isNotebook, restored, lastWidth > 0, abs(bounds.width - lastWidth) > 1 {
+            let wasFit = abs(canvas.zoomScale - fit) / max(fit, 0.01) < 0.03
+            let top = toWorld(CGPoint(x: bounds.midX, y: insets.top)).y
+            lastWidth = bounds.width
+            stage.bounds = bounds; stage.center = CGPoint(x: bounds.midX, y: bounds.midY); canvas.frame = stage.bounds; overlay.frame = bounds
+            layoutContent()
+            if wasFit { canvas.zoomScale = fit; layoutContent() }
+            canvas.contentOffset = CGPoint(x: -canvas.contentInset.left, y: top * canvas.zoomScale - insets.top)
+            place()
+            return
+        }
+        lastWidth = bounds.width
         stage.bounds = bounds
         stage.center = CGPoint(x: bounds.midX, y: bounds.midY)
         canvas.frame = stage.bounds

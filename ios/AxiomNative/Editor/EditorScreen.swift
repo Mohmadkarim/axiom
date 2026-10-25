@@ -87,16 +87,32 @@ struct EditorScreen: View {
     // MARK: bars
 
     @ViewBuilder private var overlays: some View {
+        GeometryReader { geo in bars(compact: geo.size.width < 640) }
+        rest
+    }
+    /// top and bottom bars; when the page is narrow (the tutor or Desmos beside it) they get smaller instead of spilling over
+    @ViewBuilder private func bars(compact: Bool) -> some View {
         VStack(spacing: 0) {
-            HStack(alignment: .top) {
-                titleBar
-                Spacer()
+            HStack(alignment: .top, spacing: 8) {
+                titleBar(compact: compact)
+                Spacer(minLength: 0)
                 actionBar
             }
             .padding(.horizontal, 14).padding(.top, 10)
             Spacer()
-            if model.isNotebook { HStack { pageCounter; Spacer() }.padding(.horizontal, 14).padding(.bottom, 14) }
+            HStack(alignment: .bottom, spacing: 12) {
+                if model.isNotebook && !(compact && !model.recordings.isEmpty) { pageCounter }
+                Spacer(minLength: 0)
+                if let c = session.controller {
+                    if LectureAudio.shared.recordingID != nil { RecordingPill(controller: c) }
+                    else if !model.recordings.isEmpty { AudioBar(controller: c, model: model, compact: compact) }
+                }
+                Spacer().frame(width: compact ? 0 : 60)
+            }
+            .padding(.horizontal, 14).padding(.bottom, 14)
         }
+    }
+    @ViewBuilder private var rest: some View {
         HStack {
             if model.showPages, let c = session.controller { PagesSidebar(controller: c, model: model).transition(.move(edge: .leading).combined(with: .opacity)) }
             Spacer()
@@ -109,7 +125,7 @@ struct EditorScreen: View {
         if let p = model.menuAt, let c = session.controller { PageMenu(at: p, controller: c, model: model, photo: { showPhotos = true }) }
     }
 
-    private var titleBar: some View {
+    private func titleBar(compact: Bool) -> some View {
         HStack(spacing: 4) {
             IconButton(symbol: "chevron.left", label: "Back to the library") { session.controller?.flush(); app.close() }
             Button { newName = model.title; renaming = true } label: {
@@ -117,8 +133,8 @@ struct EditorScreen: View {
                     Text(model.title).font(Theme.ui(15, .semibold)).foregroundStyle(Theme.fg).lineLimit(1)
                     Text(subtitle).font(Theme.ui(11)).foregroundStyle(Theme.muted).lineLimit(1)
                 }
-                .frame(maxWidth: 260, alignment: .leading)
-            }.buttonStyle(.plain).padding(.trailing, 12)
+                .frame(maxWidth: compact ? 92 : 260, alignment: .leading)
+            }.buttonStyle(.plain).padding(.trailing, compact ? 4 : 12)
         }
         .padding(4).floating()
     }
@@ -134,6 +150,9 @@ struct EditorScreen: View {
             IconButton(symbol: "arrow.uturn.backward", label: "Undo", tint: model.canUndo ? Theme.fg : Theme.faint) { session.controller?.performUndo() }.disabled(!model.canUndo)
             IconButton(symbol: "arrow.uturn.forward", label: "Redo", tint: model.canRedo ? Theme.fg : Theme.faint) { session.controller?.performRedo() }.disabled(!model.canRedo)
             Rectangle().fill(Theme.lineStrong).frame(width: 1, height: 22).padding(.horizontal, 4)
+            IconButton(symbol: LectureAudio.shared.recordingID != nil ? "stop.circle.fill" : "mic", label: "Record the lecture", tint: LectureAudio.shared.recordingID != nil ? .red : Theme.fg) {
+                if LectureAudio.shared.recordingID != nil { session.controller?.stopRecording() } else { session.controller?.startRecording() }
+            }
             Menu {
                 Section("Learn from this \(model.isNotebook ? "notebook" : "canvas")") {
                     Button("Chat with your notes", systemImage: "bubble.left.and.text.bubble.right") { session.controller?.learn("chat") }
@@ -177,6 +196,7 @@ struct EditorScreen: View {
         Button("Camera", systemImage: "camera") { showCamera = true }
         Button("From Files (picture or PDF)", systemImage: "folder") { importing = true }
         Button("Sticky note", systemImage: "note.text") { session.controller?.insertStickyNote() }
+        Button("Desmos graph", systemImage: "function") { withAnimation(.snappy(duration: 0.25)) { AppState.shared.graphOpen = true } }
         if model.isNotebook { Button("New page", systemImage: "doc.badge.plus") { if let c = session.controller { c.insertPage(at: model.page + 1); c.surface.scrollTo(page: model.page + 1) } } }
         Divider()
         Button("Laser pointer", systemImage: "cursorarrow.rays") { model.addOrSelect(.laser); session.controller?.applyTool() }

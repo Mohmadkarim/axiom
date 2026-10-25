@@ -210,3 +210,67 @@ enum Exporter {
         top.present(vc, animated: true)
     }
 }
+
+// MARK: - lecture audio
+
+struct RecordingPill: View {
+    let controller: EditorController
+    @Bindable var audio = LectureAudio.shared
+    var body: some View {
+        HStack(spacing: 10) {
+            Circle().fill(Color.red).frame(width: 10, height: 10).opacity(Int(audio.elapsed * 2) % 2 == 0 ? 1 : 0.35)
+            Text(LectureAudio.clock(audio.elapsed)).font(Theme.num(14, .semibold)).foregroundStyle(.white)
+            Button { controller.stopRecording() } label: { Label("Stop", systemImage: "stop.fill").font(Theme.ui(13, .semibold)).foregroundStyle(.white).padding(.horizontal, 10).frame(height: 30).background(.white.opacity(0.18), in: Capsule()) }.buttonStyle(.plain)
+        }
+        .padding(.horizontal, 14).frame(height: 44).background(Color(red: 0.85, green: 0.2, blue: 0.2), in: Capsule())
+        .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
+    }
+}
+
+struct AudioBar: View {
+    let controller: EditorController
+    @Bindable var model: EditorModel
+    var compact = false
+    @Bindable var audio = LectureAudio.shared
+    @State private var renaming = false
+    @State private var newName = ""
+    var rec: JSON? { controller.activeRecording }
+    var body: some View {
+        if let rec, let id = rec.str("id") {
+            let dur = max(audio.playingID == id ? audio.duration : 0, rec.num("dur") ?? 0)
+            HStack(spacing: 10) {
+                Button { audio.toggle(id: id) } label: { Image(systemName: audio.isPlaying && audio.playingID == id ? "pause.fill" : "play.fill").font(.system(size: 16)).frame(width: 34, height: 34) }.buttonStyle(.plain)
+                Slider(value: Binding(get: { audio.playingID == id ? audio.time : 0 }, set: { t in if audio.playingID != id { audio.play(id: id, at: t); audio.pause() } else { audio.seek(t) } }), in: 0...max(1, dur))
+                    .frame(width: compact ? 110 : 220)
+                if !compact { Text("\(LectureAudio.clock(audio.playingID == id ? audio.time : 0)) / \(LectureAudio.clock(dur))").font(Theme.num(12)).foregroundStyle(Theme.muted) }
+                Menu {
+                    ForEach([0.75, 1, 1.25, 1.5, 2] as [Float], id: \.self) { r in Button { audio.setRate(r) } label: { if audio.rate == r { Label("\(r.formatted())×", systemImage: "checkmark") } else { Text("\(r.formatted())×") } } }
+                } label: { Text("\(audio.rate.formatted())×").font(Theme.num(12, .semibold)).padding(.horizontal, 8).frame(height: 28).background(Theme.panel2, in: Capsule()) }
+                Menu {
+                    Section("Recordings") {
+                        ForEach(model.recordings.reversed(), id: \.self.description) { r in
+                            Button { model.activeRec = r.str("id"); audio.stopPlayback() } label: {
+                                Label("\(r.str("name") ?? "Recording") · \(LectureAudio.clock(r.num("dur") ?? 0))", systemImage: model.activeRec == r.str("id") ? "checkmark" : "waveform")
+                            }
+                        }
+                    }
+                    Toggle("Replay ink with the audio", isOn: $model.replayInk)
+                    Button("Back 10 seconds", systemImage: "gobackward.10") { audio.seek(audio.time - 10) }
+                    Button("Rename this recording", systemImage: "pencil") { newName = rec.str("name") ?? ""; renaming = true }
+                    Button("New recording", systemImage: "mic") { audio.stopPlayback(); controller.startRecording() }
+                    Divider()
+                    Button("Delete this recording", systemImage: "trash", role: .destructive) { controller.deleteRecording(id) }
+                } label: {
+                    if compact { Image(systemName: "waveform").font(.system(size: 15, weight: .medium)).frame(width: 30, height: 30) }
+                    else { Text(rec.str("name") ?? "Recording").font(Theme.ui(13, .medium)).lineLimit(1).frame(maxWidth: 120) }
+                }
+            }
+            .padding(.horizontal, 12).padding(.vertical, 6).floating(16)
+            .alert("Rename recording", isPresented: $renaming) {
+                TextField("Name", text: $newName)
+                Button("Cancel", role: .cancel) {}
+                Button("Rename") { controller.renameRecording(id, newName) }
+            }
+        }
+    }
+}

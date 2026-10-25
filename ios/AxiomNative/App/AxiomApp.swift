@@ -41,6 +41,8 @@ final class AppState {
     static let shared = AppState()
     var route: Route?
     var toast: String?
+    var graphOpen = false { didSet { if graphOpen { Tutor.shared.isOpen = false } } }
+    weak var editor: EditorController?
     private var toastWork: DispatchWorkItem?
 
     var colorScheme: ColorScheme? {
@@ -56,6 +58,7 @@ final class AppState {
     }
     func close() {
         NotificationCenter.default.post(name: .axiomFlush, object: nil)
+        graphOpen = false
         withAnimation(.snappy(duration: 0.24)) { route = nil }
         Library.shared.set("session", nil)
     }
@@ -76,7 +79,8 @@ struct RootView: View {
             if let r = app.route {
                 // the tutor docks beside the page; the page narrows instead of being covered
                 GeometryReader { geo in
-                    let tw: CGFloat = Tutor.shared.isOpen ? min(420, max(340, geo.size.width * 0.42)) : 0
+                    let side = Tutor.shared.isOpen || app.graphOpen
+                    let tw: CGFloat = side ? min(420, max(340, geo.size.width * 0.42)) : 0
                     HStack(spacing: 0) {
                         Group {
                             switch r {
@@ -86,7 +90,8 @@ struct RootView: View {
                         }
                         .frame(width: geo.size.width - tw)
                         .clipped()
-                        if Tutor.shared.isOpen { TutorPanel(width: tw).transition(.move(edge: .trailing)) }
+                        if app.graphOpen { GraphPanel(width: tw).transition(.move(edge: .trailing)) }
+                        else if Tutor.shared.isOpen { TutorPanel(width: tw).transition(.move(edge: .trailing)) }
                     }
                 }
                 .ignoresSafeArea()
