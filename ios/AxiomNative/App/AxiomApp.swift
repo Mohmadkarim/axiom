@@ -41,7 +41,9 @@ final class AppState {
     static let shared = AppState()
     var route: Route?
     var toast: String?
-    var graphOpen = false { didSet { if graphOpen { Tutor.shared.isOpen = false } } }
+    var graphOpen = false { didSet { if graphOpen { Tutor.shared.isOpen = false; besideOpen = false } } }
+    var besideOpen = false { didSet { if besideOpen { Tutor.shared.isOpen = false; graphOpen = false } } }
+    var besideBook: String?
     weak var editor: EditorController?
     private var toastWork: DispatchWorkItem?
 
@@ -59,6 +61,7 @@ final class AppState {
     func close() {
         NotificationCenter.default.post(name: .axiomFlush, object: nil)
         graphOpen = false
+        besideOpen = false
         withAnimation(.snappy(duration: 0.24)) { route = nil }
         Library.shared.set("session", nil)
     }
@@ -79,18 +82,21 @@ struct RootView: View {
             if let r = app.route {
                 // the tutor docks beside the page; the page narrows instead of being covered
                 GeometryReader { geo in
-                    let side = Tutor.shared.isOpen || app.graphOpen
+                    let side = Tutor.shared.isOpen || app.graphOpen || app.besideOpen
                     let tw: CGFloat = side ? min(420, max(340, geo.size.width * 0.42)) : 0
                     HStack(spacing: 0) {
                         Group {
                             switch r {
                             case .note(let id): EditorScreen(docID: id).id(id)
-                            case .book(let id, let page): ReaderScreen(bookID: id, startPage: page).id(id)
+                            case .book(let id, let page):
+                                if let b = Library.shared.books.first(where: { $0.id == id }), b.type == "epub" { EpubReaderScreen(book: b).id(id) }
+                                else { ReaderScreen(bookID: id, startPage: page).id(id) }
                             }
                         }
                         .frame(width: geo.size.width - tw)
                         .clipped()
-                        if app.graphOpen { GraphPanel(width: tw).transition(.move(edge: .trailing)) }
+                        if app.besideOpen { BookPanel(width: tw).transition(.move(edge: .trailing)) }
+                        else if app.graphOpen { GraphPanel(width: tw).transition(.move(edge: .trailing)) }
                         else if Tutor.shared.isOpen { TutorPanel(width: tw).transition(.move(edge: .trailing)) }
                     }
                 }

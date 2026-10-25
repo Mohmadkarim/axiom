@@ -235,8 +235,10 @@ struct DisplayMenu: View {
                 Button {
                     model.showDisplay = false
                     let id = Library.shared.newNotebook(name: "Solving · " + cleanTitle(b.name), template: .grid, subject: b.subject)
-                    app.say("A notebook for solving was created", 2)
+                    controller?.flush()
                     app.open(.note(id))
+                    AppState.shared.besideBook = b.id
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { withAnimation(.snappy(duration: 0.25)) { AppState.shared.besideOpen = true } }
                 } label: {
                     Label("Solve in a notebook", systemImage: "book.closed").font(Theme.ui(14, .semibold)).frame(maxWidth: .infinity).frame(height: 42)
                         .foregroundStyle(Theme.accent).background(Theme.accentSoft, in: RoundedRectangle(cornerRadius: 12))

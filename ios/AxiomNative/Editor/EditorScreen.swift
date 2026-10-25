@@ -200,6 +200,7 @@ struct EditorScreen: View {
         Button("From Files (picture or PDF)", systemImage: "folder") { importing = true }
         Button("Sticky note", systemImage: "note.text") { session.controller?.insertStickyNote() }
         Button("Desmos graph", systemImage: "function") { withAnimation(.snappy(duration: 0.25)) { AppState.shared.graphOpen = true } }
+        Button("Book beside…", systemImage: "book") { withAnimation(.snappy(duration: 0.25)) { AppState.shared.besideOpen = true } }
         if model.isNotebook { Button("New page", systemImage: "doc.badge.plus") { if let c = session.controller { c.insertPage(at: model.page + 1); c.surface.scrollTo(page: model.page + 1) } } }
         Divider()
         Button("Laser pointer", systemImage: "cursorarrow.rays") { model.addOrSelect(.laser); session.controller?.applyTool() }

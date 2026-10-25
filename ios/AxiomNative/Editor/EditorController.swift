@@ -303,6 +303,10 @@ final class EditorController: UIViewController, PKCanvasViewDelegate, UIGestureR
             guard list.indices.contains(i) else { return "no such version" }
             self.restoreVersion(list[i]); return ["strokes": self.surface.canvas.drawing.strokes.count, "elements": self.doc.elements.count, "pages": self.doc.pages.count]
         }
+        d.handlers["delel"] = { [weak self] a in
+            guard let self, let i = Int(a.first ?? ""), self.doc.elements.indices.contains(i) else { return "?" }
+            let e = self.doc.elements[i]; self.beginSelection(strokes: [], elements: [e]); self.deleteSelection(); return self.doc.elements.count
+        }
         d.handlers["tool"] = { [weak self] a in self?.model.select(Int(a.first ?? "0") ?? 0); self?.applyTool(); return self?.model.tool.kind.rawValue ?? "" }
         d.handlers["undo"] = { [weak self] _ in self?.performUndo(); return "ok" }
         d.handlers["redo"] = { [weak self] _ in self?.performRedo(); return "ok" }
