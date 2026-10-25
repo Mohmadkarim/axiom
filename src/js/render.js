@@ -29,7 +29,9 @@
   };
   R.resize = () => {
     A.dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const r = R.main.parentElement.getBoundingClientRect();
+    // layout size, not getBoundingClientRect: the view's open animation scales it for a moment, and a canvas sized
+    // then stays slightly stretched (drawings drift from PencilKit's ink by a few points)
+    const el = R.main.parentElement, r = { width: el.offsetWidth || el.getBoundingClientRect().width, height: el.offsetHeight || el.getBoundingClientRect().height };
     const changed = Math.abs((R.w || 0) - r.width) > 1 || Math.abs((R.h || 0) - r.height) > 1;
     R.w = Math.max(1, r.width); R.h = Math.max(1, r.height);
     if (changed) setTimeout(() => A.emit('stage:resize'), 0);
@@ -398,7 +400,7 @@
     ctx.clearRect(0, 0, o.w, o.h);
     const nbk = D.isNotebook(doc);
     if (o.bg && !nbk) { ctx.fillStyle = o.bg; ctx.fillRect(0, 0, o.w, o.h); }
-    drawPaper(ctx, o);
+    if (!o.noPaper) drawPaper(ctx, o);
     if (o.grid && !nbk) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); R.drawGrid(ctx, o.m, o.w, o.h, o.bg ? Object.assign({}, doc.paper, { bg: o.bg }) : doc.paper, { dpr: o.dpr, axes: false }); ctx.restore(); }
     const vbb = R.worldBB(o.m, o.w, o.h);
     const sel = o.sel && o.sel.size ? o.sel : null;
@@ -423,6 +425,7 @@
         if (o.onlyIds && !o.onlyIds.has(it.id)) continue;
         if (o.hideId && it.id === o.hideId) continue;
         if (o.noStrokes && it.pk) continue; // PencilKit draws this ink itself
+        if (o.skip && o.skip.has(it.id)) continue;
         if (sel && sel.has(it.id)) { selected.push(it); continue; }
         if (!G.bbHit(it.bb, vbb)) continue;
         const f = B.isBox(it) ? 1 : fade; // dim ink only; pages and images stay as they are
@@ -460,7 +463,12 @@
   };
   R.renderNow = (force = false) => {
     if (!D.doc || !R.main) return;
-    if (R.pk) { R.mctx.setTransform(1, 0, 0, 1, 0, 0); R.mctx.clearRect(0, 0, R.main.width, R.main.height); R.renderOverlay(); return; }
+    if (R.pk) {
+      // PencilKit and the page images show everything else; the page draws only what is selected (it moves with the finger)
+      R.mctx.setTransform(1, 0, 0, 1, 0, 0); R.mctx.clearRect(0, 0, R.main.width, R.main.height);
+      if (R.sel.size) R.drawScene(R.mctx, { m: R.dmatrix(D.doc.view), w: R.main.width, h: R.main.height, doc: D.doc, bg: null, noPaper: true, onlyIds: R.sel, sel: R.sel, selPreview: R.selPreview, scratch: R.scratch, sctx: R.sctx, onImage: R.render, dpr: A.dpr, dark: R.darkActive(), inkAdapt: true });
+      R.renderOverlay(); return;
+    }
     const t0 = performance.now();
     const m = R.dmatrix(D.doc.view);
     const W = R.main.width, H = R.main.height;
@@ -538,7 +546,7 @@
   };
 
   /* ---------- offscreen rendering for export / thumbnails ---------- */
-  R.renderRegion = (doc, bb, scale, { bg = true, grid = false, onlyIds = null, maxPx = 8192, noStrokes = false, display = false, onImage = null } = {}) => {
+  R.renderRegion = (doc, bb, scale, { bg = true, grid = false, onlyIds = null, maxPx = 8192, noStrokes = false, display = false, onImage = null, skip = null } = {}) => {
     const bw = Math.max(1, bb[2] - bb[0]), bh = Math.max(1, bb[3] - bb[1]);
     let s = scale;
     const lim = Math.min(maxPx, 16384);
@@ -551,7 +559,7 @@
     const m = [s, 0, 0, s, -bb[0] * s, -bb[1] * s];
     R.drawScene(c.getContext('2d'), {
       m, w: W, h: H, doc, bg: bg && !D.isNotebook(doc) ? (display ? R.displayBg(doc) : doc.paper.bg) : null, pageBg: bg && D.isNotebook(doc), grid, scratch: sc, sctx: sc.getContext('2d'), dpr: Math.max(1, s), onlyIds, noArtboards: !display, noStrokes, hideId: noStrokes ? R.hideId : null,
-      dark: display && R.darkActive(doc), inkAdapt: display, onImage,
+      dark: display && R.darkActive(doc), inkAdapt: display, onImage, skip,
     });
     return c;
   };

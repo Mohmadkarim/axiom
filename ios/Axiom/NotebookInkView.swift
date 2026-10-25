@@ -81,6 +81,21 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
         tap.delaysTouchesEnded = false
         tap.delegate = self
         addGestureRecognizer(tap)
+        // two-finger tap: undo, three-finger tap: redo (as on the page)
+        for n in [2, 3] {
+            let t = UITapGestureRecognizer(target: self, action: #selector(fingersTapped(_:)))
+            t.numberOfTouchesRequired = n
+            t.cancelsTouchesInView = false
+            t.delegate = self
+            addGestureRecognizer(t)
+        }
+        let hold = UILongPressGestureRecognizer(target: self, action: #selector(held(_:)))
+        hold.minimumPressDuration = 0.45
+        hold.allowableMovement = 12
+        hold.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.direct.rawValue)]
+        hold.delegate = self
+        addGestureRecognizer(hold)
+        tap.require(toFail: hold)   // a held finger is not a tap (it would clear what the hold selected)
     }
     required init?(coder: NSCoder) { fatalError() }
 
@@ -108,6 +123,7 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
         setPages(isCanvas ? [] : rects)
         isHidden = false
         setView(zoom: zoom, tx: tx, ty: ty, rot: startRot)
+        holdOpenView(zoom, tx, ty, startRot)
         requestVisible()
         if !legacy.isEmpty && load?("ink_" + id) == nil { scheduleSave() }
         scheduleMirror(0.05)
@@ -117,7 +133,8 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
         guard let id = docId else { return }
         saveWork?.cancel(); mirrorWork?.cancel()
         replay(on: false, start: Date(), end: Date(), t: 0)
-        save?("ink_" + id, canvas.drawing.dataRepresentation())
+        save?("ink_" + id, savedDrawing.dataRepresentation())
+        hiddenOriginals = [:]
         docId = nil
         isHidden = true
         canvas.drawing = PKDrawing()
@@ -308,12 +325,32 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
         report()
     }
 
+    /// the place a document opened at is kept through the first layout passes (frame and size changes, page
+    /// pictures arriving) until the user scrolls, zooms or writes, so a book never jumps back to its first page
+    private var heldView: (CGFloat, CGFloat, CGFloat, CGFloat)?
+    private var heldUntil: CFTimeInterval = 0
+    private func holdOpenView(_ z: CGFloat, _ tx: CGFloat, _ ty: CGFloat, _ r: CGFloat) {
+        heldView = (z, tx, ty, r); heldUntil = CACurrentMediaTime() + 2
+        for d in [0.05, 0.2, 0.5, 1.0, 1.8] { DispatchQueue.main.asyncAfter(deadline: .now() + d) { [weak self] in self?.reapplyHeld() } }
+    }
+    private func reapplyHeld() {
+        guard let h = heldView, isOpen else { return }
+        if CACurrentMediaTime() > heldUntil || canvas.isTracking || canvas.isDragging || canvas.isZooming || canvas.isDecelerating { heldView = nil; return }
+        let (tx, ty) = rotatedT()
+        if abs(canvas.zoomScale - h.0) > 0.002 * h.0 || abs(tx - h.1) > 1.5 || abs(ty - h.2) > 1.5 { setView(zoom: h.0, tx: h.1, ty: h.2, rot: h.3); requestVisible() }
+    }
+    func releaseHeld() { heldView = nil }
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { heldView = nil }
+    func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) { heldView = nil }
+
     func setInsets(_ i: UIEdgeInsets) { insets = i; layoutContent(); report() }
 
     func debugInfo() -> [String: Any] {
         let last = canvas.drawing.strokes.last
         let p = last.map { $0.path[0].location.applying($0.transform) } ?? .zero
-        return ["zoom": canvas.zoomScale, "off": [canvas.contentOffset.x, canvas.contentOffset.y], "inset": [canvas.adjustedContentInset.left, canvas.adjustedContentInset.top], "frame": [frame.minX, frame.minY, canvas.frame.minX, canvas.frame.minY], "first": [p.x, p.y], "bounds": [canvas.bounds.minX, canvas.bounds.minY]]
+        let alphas = canvas.drawing.strokes.suffix(6).map { Double($0.ink.color.cgColor.alpha) }
+        let rb = canvas.drawing.strokes.suffix(6).map { s -> [Double] in let b = s.renderBounds; return [Double(b.minX - origin.x), Double(b.minY - origin.y), Double(b.width), Double(b.height)] }
+        return ["hiddenN": hiddenOriginals.count, "alphas": alphas, "rb": rb, "count": canvas.drawing.strokes.count, "zoom": canvas.zoomScale, "off": [canvas.contentOffset.x, canvas.contentOffset.y], "inset": [canvas.adjustedContentInset.left, canvas.adjustedContentInset.top], "frame": [frame.minX, frame.minY, canvas.frame.minX, canvas.frame.minY], "first": [p.x, p.y], "bounds": [canvas.bounds.minX, canvas.bounds.minY]]
     }
     private func rotatedT() -> (CGFloat, CGFloat) {
         let z = canvas.zoomScale
@@ -336,6 +373,7 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
         zoomToggle(at: g.location(in: canvas))
     }
     func zoomToggle(at p: CGPoint) {
+        heldView = nil
         let z0 = canvas.zoomScale
         let base: CGFloat = isCanvas ? 1 : minFit
         let target = z0 > base * 1.05 ? base : base * 2
@@ -346,8 +384,11 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
         canvas.zoom(to: CGRect(x: cx - w / 2, y: cy - hgt / 2, width: w, height: hgt), animated: true)
     }
 
-    @objc private func tapped(_ g: UITapGestureRecognizer) { if isOpen, g.state == .ended { onTouch?(g.location(in: self)) } }
-    func canvasViewDidBeginUsingTool(_ canvasView: PKCanvasView) { if isOpen { onTouch?(nil) } }
+    var onFingers: ((Int) -> Void)?
+    @objc private func fingersTapped(_ g: UITapGestureRecognizer) { if isOpen, g.state == .ended { onFingers?(g.numberOfTouchesRequired) } }
+    @objc private func tapped(_ g: UITapGestureRecognizer) { if isOpen, g.state == .ended { dismissLassoMenu(); onTouch?(g.location(in: self)) } }
+    func canvasViewDidBeginUsingTool(_ canvasView: PKCanvasView) { heldView = nil; if isOpen { onTouch?(nil) } }
+    func canvasViewDidEndUsingTool(_ canvasView: PKCanvasView) { if !hiddenOriginals.isEmpty { hideStrokes([]) } }
 
     private func placePages() {
         let z = canvas.zoomScale
@@ -362,12 +403,22 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) { requestVisible() }
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) { if !decelerate { requestVisible() } }
 
-    override func layoutSubviews() { super.layoutSubviews(); applyRotation(); layoutContent() }
+    override func layoutSubviews() { super.layoutSubviews(); applyRotation(); layoutContent(); reapplyHeld() }
 
     // MARK: - tools
 
+    /// PencilKit's own press-and-hold (its "Select All / Insert Space" menu) gives way to the page's long-press
+    private func quietPencilKitHolds() {
+        func walk(_ v: UIView) {
+            for g in v.gestureRecognizers ?? [] where g is UILongPressGestureRecognizer && g !== canvas.drawingGestureRecognizer { g.isEnabled = false }
+            v.subviews.forEach(walk)
+        }
+        walk(canvas)
+    }
+
     func setTool(_ t: [String: Any]) {
         let kind = t["tool"] as? String ?? "none"
+        quietPencilKitHolds()
         canvas.drawingGestureRecognizer.isEnabled = kind != "none"
         canvas.drawingPolicy = (t["finger"] as? Bool ?? false) ? .anyInput : .pencilOnly
         canvas.isRulerActive = t["ruler"] as? Bool ?? false
@@ -410,7 +461,7 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
     // MARK: - pages moved, removed or duplicated: their ink follows
 
     func move(_ moves: [(CGRect, CGPoint)]) {
-        var strokes = canvas.drawing.strokes
+        var strokes = savedDrawing.strokes
         for i in strokes.indices {
             let b = strokes[i].renderBounds, c = CGPoint(x: b.midX, y: b.midY)
             if let m = moves.first(where: { $0.0.contains(c) }) {
@@ -421,9 +472,9 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
     }
 
     func copy(from r: CGRect, to p: CGPoint) {
-        var strokes = canvas.drawing.strokes
+        var strokes = savedDrawing.strokes
         let t = CGAffineTransform(translationX: p.x - r.minX, y: p.y - r.minY)
-        for s in canvas.drawing.strokes {
+        for s in savedDrawing.strokes {
             let b = s.renderBounds
             if r.contains(CGPoint(x: b.midX, y: b.midY)) { var c = s; c.transform = c.transform.concatenating(t); strokes.append(c) }
         }
@@ -431,6 +482,7 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
     }
 
     private func replace(_ strokes: [PKStroke]) {
+        hiddenOriginals = [:]
         loading = true
         canvas.drawing = PKDrawing(strokes: strokes)
         loading = false
@@ -531,7 +583,121 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
         replayKey = dimmed
         loading = true; canvas.drawing = PKDrawing(strokes: strokes); loading = false
     }
-    private var savedDrawing: PKDrawing { replayOriginal ?? canvas.drawing }
+    /// the real drawing: replay dimming and strokes hidden for a selection put back
+    private var savedDrawing: PKDrawing {
+        let base = replayOriginal ?? canvas.drawing
+        guard !hiddenOriginals.isEmpty else { return base }
+        var s = base.strokes
+        for (i, o) in hiddenOriginals where i < s.count { s[i] = o }
+        return PKDrawing(strokes: s)
+    }
+
+    // MARK: - selection: the page selects ink by its index (the mirror carries it), shows it while selected,
+    // and sends back moves, deletions, copies and colour changes
+
+    private var hiddenOriginals: [Int: PKStroke] = [:]
+
+    /// strokes the page is drawing itself (selected): invisible here until the selection ends
+    func hideStrokes(_ idx: [Int]) {
+        guard replayOriginal == nil else { return }
+        var s = savedDrawing.strokes
+        // PencilKit only redraws strokes it sees as new: every stroke shown or hidden here is a fresh copy
+        for i in hiddenOriginals.keys where i < s.count { s[i] = Self.fresh(s[i]) }
+        hiddenOriginals = [:]
+        for i in idx where i >= 0 && i < s.count {
+            hiddenOriginals[i] = s[i]
+            s[i] = Self.fresh(s[i], ink: PKInk(s[i].ink.inkType, color: s[i].ink.color.withAlphaComponent(0)))
+        }
+        setSilently(PKDrawing(strokes: s))
+    }
+
+    static func fresh(_ s: PKStroke, ink: PKInk? = nil, transform: CGAffineTransform? = nil) -> PKStroke {
+        PKStroke(ink: ink ?? s.ink, path: s.path, transform: transform ?? s.transform, mask: s.mask)
+    }
+    private func setSilently(_ d: PKDrawing) {
+        loading = true
+        canvas.undoManager?.disableUndoRegistration()
+        canvas.drawing = d
+        canvas.undoManager?.enableUndoRegistration()
+        loading = false
+    }
+
+    /// one undoable step made through the page
+    private func commitEdit(_ d: PKDrawing) {
+        let before = savedDrawing
+        hiddenOriginals = [:]
+        setSilently(d)
+        registerUndo(before)
+        onChanged?(); scheduleSave(); scheduleMirror(0.03)
+    }
+    private func registerUndo(_ prev: PKDrawing) {
+        canvas.undoManager?.registerUndo(withTarget: self) { me in
+            let cur = me.savedDrawing
+            me.hiddenOriginals = [:]
+            me.setSilently(prev)
+            me.registerUndo(cur)
+            me.scheduleSave(); me.scheduleMirror(0.03)
+        }
+    }
+
+    private func worldToDrawing(_ m: [Double]) -> CGAffineTransform {
+        guard m.count == 6 else { return .identity }
+        let t = CGAffineTransform(a: m[0], b: m[1], c: m[2], d: m[3], tx: m[4], ty: m[5])
+        return CGAffineTransform(translationX: -origin.x, y: -origin.y).concatenating(t).concatenating(CGAffineTransform(translationX: origin.x, y: origin.y))
+    }
+
+    /// move/scale/rotate (`m`, world matrix), recolour, copy (with `copyM`) or delete strokes; returns the indices of new copies
+    func editStrokes(move: [Int], m: [Double], color: String?, copy: [Int], copyM: [Double], delete del: [Int], add: [[String: Any]]) -> [Int] {
+        var s = savedDrawing.strokes
+        for i in hiddenOriginals.keys where i < s.count { s[i] = Self.fresh(s[i]) }
+        let t = worldToDrawing(m), ct = worldToDrawing(copyM)
+        for i in move where i >= 0 && i < s.count { s[i] = Self.fresh(s[i], transform: s[i].transform.concatenating(t)) }
+        if let color {
+            let c = CanvasViewController.color(color)
+            for i in move where i >= 0 && i < s.count { s[i] = Self.fresh(s[i], ink: PKInk(s[i].ink.inkType, color: c.withAlphaComponent(s[i].ink.color.cgColor.alpha))) }
+        }
+        var created: [Int] = []
+        for i in copy where i >= 0 && i < s.count { s.append(Self.fresh(s[i], transform: s[i].transform.concatenating(ct))); created.append(s.count - 1) }
+        for d in add { if let st = Self.stroke(d, offset: origin) { s.append(st); created.append(s.count - 1) } }
+        let gone = Set(del.filter { $0 >= 0 && $0 < s.count })
+        if !gone.isEmpty {
+            // indices of the new strokes shift down past the deleted ones
+            created = created.map { c in c - gone.filter { $0 < c }.count }
+            s = s.enumerated().filter { !gone.contains($0.offset) }.map { $0.element }
+        }
+        commitEdit(PKDrawing(strokes: s))
+        return created
+    }
+
+    /// true while Apple's lasso has ink selected (its own menu then belongs to that selection)
+    private var lassoHasSelection: Bool { canvas.canPerformAction(#selector(UIResponderStandardEditActions.delete(_:)), withSender: nil) }
+    /// a plain tap with the lasso brings up "Select All / Insert Space": not wanted, the page has its own long-press menu
+    private func dismissLassoMenu(anyTool: Bool = false) {
+        guard anyTool || canvas.tool is PKLassoTool, !lassoHasSelection else { return }
+        func walk(_ v: UIView) {
+            for i in v.interactions { if let e = i as? UIEditMenuInteraction { e.dismissMenu() } }
+            v.subviews.forEach(walk)
+        }
+        for d in [0.0, 0.12, 0.3, 0.55] { DispatchQueue.main.asyncAfter(deadline: .now() + d) { [weak self] in if let self { walk(self.canvas) } } }
+    }
+
+    // finger held still: the page selects what is under it, or lassos as the finger moves on
+    var onHold: ((String, CGPoint) -> Void)?                    // phase (b, m, e, c), point in this view
+    @objc private func held(_ g: UILongPressGestureRecognizer) {
+        guard isOpen else { return }
+        let p = g.location(in: self)
+        switch g.state {
+        case .began:
+            canvas.isScrollEnabled = false   // the finger now lassos instead of scrolling
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            dismissLassoMenu(anyTool: true)   // PencilKit's own "Select All / Insert Space": the page's menu or selection instead
+            onHold?("b", p)
+        case .changed: onHold?("m", p)
+        case .ended: canvas.isScrollEnabled = true; dismissLassoMenu(anyTool: true); onHold?("e", p)
+        case .cancelled, .failed: canvas.isScrollEnabled = true; onHold?("c", p)
+        default: break
+        }
+    }
 
     // MARK: - undo
 
@@ -563,12 +729,12 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
 
     /// The page code keeps a copy of the ink (as its own strokes) for page pictures, the tutor and export.
     private func sendMirror() {
-        let strokes = canvas.drawing.strokes
+        let strokes = savedDrawing.strokes
         let o = origin
         DispatchQueue.global(qos: .utility).async { [weak self] in
             var out: [[String: Any]] = []
             out.reserveCapacity(strokes.count)
-            for s in strokes {
+            for (idx, s) in strokes.enumerated() {
                 var pts: [Double] = []
                 var wMax: CGFloat = 0.1
                 let samples = Array(s.path.interpolatedPoints(by: .distance(2.5)))
@@ -585,7 +751,7 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
                 out.append([
                     "b": Self.brushName(s.ink.inkType),
                     "c": String(format: "#%02x%02x%02x", Int(r * 255), Int(g * 255), Int(b * 255)),
-                    "o": Double(a), "w": Double(wMax), "pts": pts,
+                    "o": Double(a), "w": Double(wMax), "pts": pts, "i": idx,
                 ])
             }
             let json = (try? JSONSerialization.data(withJSONObject: out)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"

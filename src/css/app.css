@@ -78,7 +78,7 @@ input, select, textarea { font: inherit; color: inherit; -webkit-user-select: te
   width: var(--tap); height: var(--tap); border-radius: 12px; display: inline-flex; align-items: center; justify-content: center;
   color: var(--fg); position: relative; flex: none;
 }
-.ibtn:hover { background: var(--accent-soft); }
+@media (hover: hover) { .ibtn:hover { background: var(--accent-soft); } }
 .ibtn.on { color: var(--accent); background: var(--accent-soft); }
 .ibtn:disabled { opacity: 0.35; pointer-events: none; }
 .field {
@@ -1521,7 +1521,7 @@ h5, .g-sec-h h2, .sub, .nb-fly-h, .pp-h, .bk-up-h { font-size: 11px !important; 
 
 /* ===== notebooks on PencilKit: the page is transparent over the pages; the native view shows through ===== */
 html.pk-on, html.pk-on body, html.pk-on #app, html.pk-on #canvas-view, html.pk-on #stage { background: transparent !important; }
-#canvas-view.pk #main { visibility: hidden; }
+#canvas-view.pk #main { background: transparent !important; }
 html.pk-on #reader-view.pk, html.pk-on #reader-view.pk .rd-main { background: transparent !important; }
 #reader-view.pk .rd-pages { visibility: hidden; }
 
@@ -1543,3 +1543,9 @@ html.pk-on #reader-view.pk, html.pk-on #reader-view.pk .rd-main { background: tr
 
 /* one floating thing at a time: a menu from the bars hides the selection's toolbar until it closes */
 body:has(> .popover:not(.sel-more)) #selpopup { visibility: hidden; }
+
+/* over PencilKit the web view is see-through, so frosted glass has nothing to blur: bars and menus go solid */
+html.pk-on .panel, html.pk-on #nb-ui .panel, html.pk-on .rd-group.panel, html.pk-on .rd-bottom.panel, html.pk-on #selpopup, html.pk-on #selmenu, html.pk-on .te-bar, html.pk-on .popover { background: var(--panel-solid) !important; -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* active buttons in the bars: separate rounded chips, never touching */
+.nb-tr, .rd-top .rd-group { gap: 3px; }
+.nb-tr .ibtn, .rd-top .ibtn { border-radius: 12px; }

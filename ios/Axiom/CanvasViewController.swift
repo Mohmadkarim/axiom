@@ -69,6 +69,11 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
             if let p { self.runJS("window.__axiomPK && __axiomPK('touch', {x: \(p.x + nb.frame.minX), y: \(p.y + nb.frame.minY)})") }
             else { self.runJS("window.__axiomPK && __axiomPK('touch', null)") }
         }
+        nb.onHold = { [weak self, weak nb] phase, p in
+            guard let self, let nb else { return }
+            self.runJS("window.__axiomPK && __axiomPK('hold', {phase: '\(phase)', x: \(p.x + nb.frame.minX), y: \(p.y + nb.frame.minY)})")
+        }
+        nb.onFingers = { [weak self] n in self?.runJS("window.__axiomPK && __axiomPK('fingers', \(n))") }
         nb.onView = { [weak self] z, tx, ty, r in self?.runJS("window.__axiomPK && __axiomPK('view', {zoom: \(z), tx: \(tx), ty: \(ty), rot: \(r)})") }
         nb.onNeedPage = { [weak self] i, sc in self?.runJS("window.__axiomPK && __axiomPK('needPage', {i: \(i), scale: \(sc)})") }
         nb.onNeedTiles = { [weak self] json in self?.runJS("window.__axiomPK && __axiomPK('needTiles', \(json))") }
@@ -85,6 +90,10 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         let pencil = UIPencilInteraction()
         pencil.delegate = self
         root.addInteraction(pencil)
+        // PencilKit's canvas may take Pencil taps for itself: listen there too (one tap acts once)
+        let pencil2 = UIPencilInteraction()
+        pencil2.delegate = self
+        nb.canvas.addInteraction(pencil2)
         NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in self?.notebook?.flush() }
 
         view = root
@@ -153,14 +162,17 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         }
     }
 
-    func pencilInteractionDidTap(_ interaction: UIPencilInteraction) {
+    private var lastPencilTap: CFTimeInterval = 0
+    private func pencilTapped() {
+        let now = CACurrentMediaTime()
+        if now - lastPencilTap < 0.25 { return }
+        lastPencilTap = now
         runJS("window.A && A.emit('pencil:tap', '\(tapActionName())')")
     }
+    func pencilInteractionDidTap(_ interaction: UIPencilInteraction) { pencilTapped() }
 
     @available(iOS 17.5, *)
-    func pencilInteraction(_ interaction: UIPencilInteraction, didReceiveTap tap: UIPencilInteraction.Tap) {
-        runJS("window.A && A.emit('pencil:tap', '\(tapActionName())')")
-    }
+    func pencilInteraction(_ interaction: UIPencilInteraction, didReceiveTap tap: UIPencilInteraction.Tap) { pencilTapped() }
 
     @available(iOS 17.5, *)
     func pencilInteraction(_ interaction: UIPencilInteraction, didReceiveSqueeze squeeze: UIPencilInteraction.Squeeze) {
@@ -237,6 +249,7 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
             if notebook?.isOpen == true { passthroughWeb?.passthrough = (body["tool"] as? String ?? "none") != "none" }
             replyHandler(true, nil); return
         case "pkView":
+            notebook?.releaseHeld()
             notebook?.setView(zoom: CGFloat(body["zoom"] as? Double ?? 1), tx: CGFloat(body["tx"] as? Double ?? 0), ty: CGFloat(body["ty"] as? Double ?? 0), rot: CGFloat(body["rot"] as? Double ?? 0)); replyHandler(true, nil); return
         case "pkChrome":
             passthroughWeb?.chrome = (body["rects"] as? [[Double]] ?? []).map { CGRect(x: $0[0], y: $0[1], width: $0[2], height: $0[3]) }
@@ -276,6 +289,13 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
             if let nb = notebook { nb.zoomToggle(at: nb.convert(CGPoint(x: body["x"] as? Double ?? 0, y: body["y"] as? Double ?? 0), to: nb.canvas)) }
             #endif
             replyHandler(true, nil); return
+        case "pkSelHide":
+            notebook?.hideStrokes(body["indices"] as? [Int] ?? []); replyHandler(true, nil); return
+        case "pkSelEdit":
+            let made = notebook?.editStrokes(move: body["move"] as? [Int] ?? [], m: body["m"] as? [Double] ?? [], color: body["color"] as? String,
+                                             copy: body["copy"] as? [Int] ?? [], copyM: body["copyM"] as? [Double] ?? [], delete: body["delete"] as? [Int] ?? [],
+                                             add: body["add"] as? [[String: Any]] ?? []) ?? []
+            replyHandler(made, nil); return
         case "pkUndo":
             notebook?.undo(); replyHandler(true, nil); return
         case "pkRedo":

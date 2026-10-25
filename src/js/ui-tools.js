@@ -35,7 +35,7 @@
     if (!D.doc) { if (A.RD && A.RD.pencilTap) A.RD.pencilTap(); return; }
     if (action && action.forced) action = action.forced;
     else if (S.pencilTap && S.pencilTap !== 'system') action = S.pencilTap;
-    if (action === 'undo') { if (!(A.PK && A.PK.active && A.PK.undo())) D.undo(); return; }
+    if (action === 'undo') { A.emit('cmd', 'undo'); return; }
     if (action === 'toggleUI') { A.emit('cmd', 'toggleUI'); return; }
     const cur = S.activeSlot;
     if (action === 'switchEraser') {
@@ -57,7 +57,7 @@
   /* Apple Pencil Pro squeeze: brush menu where the Pencil is hovering */
   A.on('pencil:squeeze', (pt) => {
     if (!D.doc) return;
-    if (S.pencilSqueeze === 'undo') { D.undo(); return; }
+    if (S.pencilSqueeze === 'undo') { A.emit('cmd', 'undo'); return; }
     if (S.pencilSqueeze === 'eraser') { A.emit('pencil:tap', { forced: 'switchEraser' }); return; }
     if (S.pencilSqueeze === 'palette') { const c = host && host.querySelector('.colorbtn, .wcenter'); if (c) UI.openColor(c); return; }
     UI.openBrushMenu(pt ? { x: pt.x, y: pt.y } : slotEl(S.activeSlot), S.activeSlot);
@@ -230,8 +230,8 @@
       bar.append(strip);
     }
     bar.append(h('div', { class: 'tb-div' }));
-    const ub = h('button', { class: 'ibtn', id: 'btn-undo', title: 'Undo (two-finger tap)', 'aria-label': 'Undo', html: A.icon('undo'), onclick: () => D.undo() });
-    const rb = h('button', { class: 'ibtn', id: 'btn-redo', title: 'Redo (three-finger tap)', 'aria-label': 'Redo', html: A.icon('redo'), onclick: () => D.redo() });
+    const ub = h('button', { class: 'ibtn', id: 'btn-undo', title: 'Undo (two-finger tap)', 'aria-label': 'Undo', html: A.icon('undo'), onclick: () => A.emit('cmd', 'undo') });
+    const rb = h('button', { class: 'ibtn', id: 'btn-redo', title: 'Redo (three-finger tap)', 'aria-label': 'Redo', html: A.icon('redo'), onclick: () => A.emit('cmd', 'redo') });
     bar.append(ub, rb);
     return bar;
   }
@@ -361,7 +361,7 @@
     }));
     const center = wrap.querySelector('.wcenter');
     center.addEventListener('click', () => { if (!wrap._moved) UI.openColor(center); });
-    wrap.querySelectorAll('g.ur').forEach((g) => g.addEventListener('click', () => (g.dataset.u === 'undo' ? D.undo() : D.redo())));
+    wrap.querySelectorAll('g.ur').forEach((g) => g.addEventListener('click', () => A.emit('cmd', g.dataset.u === 'undo' ? 'undo' : 'redo')));
     // move by dragging slot ring / center
     wrap.addEventListener('pointerdown', (e) => {
       const t = e.target;
@@ -416,6 +416,7 @@
   }
   function syncHistory() {
     const u = A.$('#btn-undo'), r = A.$('#btn-redo');
+    if (A.PK && A.PK.active) { if (u) u.disabled = !A.PK.order.length; if (r) r.disabled = !A.PK.redoOrder.length; return; }
     if (u) u.disabled = !D.history.undo.length && !D.history.pending;
     if (r) r.disabled = !D.history.redo.length;
   }

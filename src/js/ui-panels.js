@@ -322,7 +322,7 @@
     redo() { if (A.PK && A.PK.active) A.PK.redo(); else D.redo(); },
     selectAll() {
       const ids = [];
-      for (const l of D.doc.layers) if (l.visible && !l.locked && (!A.IN.selLayerOnly || l.id === D.doc.activeLayerId)) for (const it of l.items) if (B.isBox(it) || !B.catalog[it.b].mask) ids.push(it.id);
+      for (const l of D.doc.layers) if (l.visible && (!l.locked || (l.pk && R.pk)) && (!A.IN.selLayerOnly || l.id === D.doc.activeLayerId)) for (const it of l.items) if (B.isBox(it) || !B.catalog[it.b].mask) ids.push(it.id);
       A.SEL.set(ids);
     },
     copy() { if (!R.sel.size) return; writeClip(selItems()); A.toast(`Copied ${R.sel.size}`); },
@@ -402,7 +402,7 @@
     }
     D.commit(); R.render();
   }
-  A.on('cmd', (c) => { if (cmds[c]) cmds[c](); });
+  A.on('cmd', (c) => { if (A.PK && A.PK.cmd && A.PK.cmd(c, cmds)) return; if (cmds[c]) cmds[c](); });
 
   /* long-press menu (finger held still, then lifted) */
   A.on('canvas:menu', ({ x, y }) => {

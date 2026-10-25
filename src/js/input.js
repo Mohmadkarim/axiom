@@ -105,12 +105,13 @@
     const out = (list.length ? list : [e]).filter((ev) => f(ev.timeStamp || 0, ev.clientX, ev.clientY)).map((ev) => sampleOf(ev, rect));
     return out.length ? out : [sampleOf(e, rect)];
   };
-  const targetLayers = (activeOnly) => D.doc.layers.filter((l) => l.visible && !l.locked && (!activeOnly || l.id === D.doc.activeLayerId));
+  // PencilKit's ink (a locked copy) can be selected: its edits go back to PencilKit
+  const targetLayers = (activeOnly) => D.doc.layers.filter((l) => l.visible && (!l.locked || (l.pk && R.pk)) && (!activeOnly || l.pk || l.id === D.doc.activeLayerId));
   const pickItem = (wx, wy, tolW) => {
     const L = D.doc.layers;
     for (let li = L.length - 1; li >= 0; li--) {
       const l = L[li];
-      if (!l.visible || l.locked || (IN.selLayerOnly && l.id !== D.doc.activeLayerId)) continue;
+      if (!l.visible || (l.locked && !(l.pk && R.pk)) || (IN.selLayerOnly && l.id !== D.doc.activeLayerId)) continue;
       for (let i = l.items.length - 1; i >= 0; i--) {
         const it = l.items[i];
         if (B.isBox(it) ? B.imageHit(it, wx, wy) : (!B.catalog[it.b].mask && G.strokeHitCircle(it, wx, wy, tolW))) return it;
@@ -499,6 +500,14 @@
     }
     cancel() { IN.lasso = null; R.renderOverlay(); }
   }
+
+  /* a lasso driven by the native view (finger held, then moved): screen points relative to the stage */
+  IN.extLasso = {
+    begin(x, y) { this.a = new LassoAction({ id: -1, type: 'touch', x, y }, { x, y }, { forceLasso: true }); },
+    move(x, y) { if (!this.a) return; const a = this.a; a.moved = Math.max(a.moved, hyp(x - a.start.x, y - a.start.y)); a.poly.push(...R.toWorld(x, y)); a.cur = { x, y }; R.renderOverlay(); },
+    end() { const a = this.a; this.a = null; if (!a) return 0; if (a.moved < 12) { a.cancel(); return 0; } a.up(); return 1; },
+    cancel() { if (this.a) this.a.cancel(); this.a = null; },
+  };
 
   /* ---- transforming the selection ---- */
   class SelTransformAction {
@@ -959,6 +968,8 @@
       if (fm === 'none') return null;
       if (fm === 'select') tool = 'select';
     }
+    // PencilKit draws and erases: the page only took this touch for its selection, and it missed it
+    if (R.pk && A.PK && A.PK.ownsPen() && tool !== 'select') { SEL.clear(); return null; }
     if (tool !== 'select' && R.sel.size) SEL.clear();
     if (tool === 'select') return new LassoAction(rec, s);
     if (tool === 'slice' || tool === 'eraser') return new EraseAction(rec, s, tool);
@@ -1224,8 +1235,8 @@
     if (!D.doc || !A.$('#canvas-view') || A.$('#canvas-view').hidden || typing()) return;
     const mod = e.metaKey || e.ctrlKey;
     const k = e.key.toLowerCase();
-    if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? D.redo() : D.undo(); return; }
-    if (mod && k === 'y') { e.preventDefault(); D.redo(); return; }
+    if (mod && k === 'z') { e.preventDefault(); A.emit('cmd', e.shiftKey ? 'redo' : 'undo'); return; }
+    if (mod && k === 'y') { e.preventDefault(); A.emit('cmd', 'redo'); return; }
     if (mod && k === 'a') { e.preventDefault(); A.emit('cmd', 'selectAll'); return; }
     if (mod && k === 'c') { e.preventDefault(); A.emit('cmd', 'copy'); return; }
     if (mod && k === 'x') { e.preventDefault(); A.emit('cmd', 'cut'); return; }

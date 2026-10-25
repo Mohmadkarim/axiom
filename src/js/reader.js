@@ -500,7 +500,13 @@
     A.PK.alt = pkEvent;
     host.classList.add('pk'); document.documentElement.classList.add('pk-on');
     A.PK.post({ op: 'pkOpen', id: 'rd_' + st.meta.id, pages: rpk.rects, frame: f, insets: ins, zoom, tx: (f[2] - PKW * zoom) / 2, ty: ins[0] - top[1] * zoom, legacy, dark: pkTheme() === 'night', desk: pkDesk() })
-      .then((cur) => { if (Array.isArray(cur)) rpk.view = { zoom: cur[0], tx: cur[1], ty: cur[2] }; });
+      .then((cur) => {
+        if (!Array.isArray(cur)) return;
+        rpk.view = { zoom: cur[0], tx: cur[1], ty: cur[2] };
+        // the native view must open where the book was being read
+        const ty0 = ins[0] - top[1] * zoom;
+        if (Math.abs(cur[2] - ty0) > 4) A.PK.post({ op: 'pkView', zoom, tx: (f[2] - PKW * zoom) / 2, ty: ty0 });
+      });
     pkTool();
     A.PK.chrome();
   }
@@ -698,6 +704,10 @@
 
   /* ---------- selection actions ---------- */
   function clearActions() { const a = host && host.querySelector('.rd-actions'); if (a) a.remove(); }
+  /* the ask box closes on a tap anywhere else (also on PencilKit pages in Write mode) */
+  const dropActions = () => { const a = host && host.querySelector('.rd-actions'); if (!a) return; a.remove(); if (st && st.focus) { const n = st.focus.page; st.focus = null; drawOverlays(n); } };
+  document.addEventListener('pointerdown', (e) => { if (host && host.querySelector('.rd-actions') && !e.target.closest('.rd-actions')) setTimeout(() => { if (!document.activeElement || !document.activeElement.closest('.rd-actions')) dropActions(); }, 0); }, true);
+  A.on('pk:touch', dropActions);
   function showActions(n, r) {
     clearActions();
     const p = st.pages[n - 1], pr = p.el.getBoundingClientRect(), hr = host.getBoundingClientRect();
