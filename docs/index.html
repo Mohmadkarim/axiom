@@ -1569,7 +1569,7 @@ html.pk-on, html.pk-on body, html.pk-on #app, html.pk-on #canvas-view, html.pk-o
 </div>
 <div id="toasts" aria-live="polite"></div>
 
-<script>window.AXIOM_BUILD = 'mvnq4fx6';
+<script>window.AXIOM_BUILD = 'mvnqfdxm';
 /* ---- core.js ---- */
 /* Axiom core: namespace, math, color, events, DOM helpers */
 'use strict';
@@ -3896,7 +3896,7 @@ A.fmtDate = (t) => {
       for (const it of l.items) {
         if (o.onlyIds && !o.onlyIds.has(it.id)) continue;
         if (o.hideId && it.id === o.hideId) continue;
-        if (o.noStrokes && it.t === 's') continue;
+        if (o.noStrokes && it.pk) continue; // PencilKit draws this ink itself
         if (sel && sel.has(it.id)) { selected.push(it); continue; }
         if (!G.bbHit(it.bb, vbb)) continue;
         const f = B.isBox(it) ? 1 : fade; // dim ink only; pages and images stay as they are
@@ -4012,7 +4012,7 @@ A.fmtDate = (t) => {
   };
 
   /* ---------- offscreen rendering for export / thumbnails ---------- */
-  R.renderRegion = (doc, bb, scale, { bg = true, grid = false, onlyIds = null, maxPx = 8192, noStrokes = false } = {}) => {
+  R.renderRegion = (doc, bb, scale, { bg = true, grid = false, onlyIds = null, maxPx = 8192, noStrokes = false, display = false } = {}) => {
     const bw = Math.max(1, bb[2] - bb[0]), bh = Math.max(1, bb[3] - bb[1]);
     let s = scale;
     const lim = Math.min(maxPx, 16384);
@@ -4024,7 +4024,8 @@ A.fmtDate = (t) => {
     const sc = document.createElement('canvas'); sc.width = W; sc.height = H;
     const m = [s, 0, 0, s, -bb[0] * s, -bb[1] * s];
     R.drawScene(c.getContext('2d'), {
-      m, w: W, h: H, doc, bg: bg && !D.isNotebook(doc) ? doc.paper.bg : null, pageBg: bg && D.isNotebook(doc), grid, scratch: sc, sctx: sc.getContext('2d'), dpr: Math.max(1, s), onlyIds, noArtboards: true, noStrokes, hideId: noStrokes ? R.hideId : null,
+      m, w: W, h: H, doc, bg: bg && !D.isNotebook(doc) ? (display ? R.displayBg(doc) : doc.paper.bg) : null, pageBg: bg && D.isNotebook(doc), grid, scratch: sc, sctx: sc.getContext('2d'), dpr: Math.max(1, s), onlyIds, noArtboards: !display, noStrokes, hideId: noStrokes ? R.hideId : null,
+      dark: display && R.darkActive(doc), inkAdapt: display,
     });
     return c;
   };
@@ -11756,15 +11757,17 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
   PK.available = NATIVE;
   PK.active = false;
   const post = (m) => (A.native ? A.native.post(m).catch(() => {}) : Promise.resolve());
-  PK.wanted = (doc) => NATIVE && S.pencilKit !== false && D.isNotebook(doc);
+  PK.wanted = (doc) => NATIVE && S.pencilKit !== false && !!doc;
+  const isCanvas = () => !D.isNotebook(D.doc);
 
-  const stageFrame = () => { const r = A.$('#stage').getBoundingClientRect(); return [r.left, r.top, r.width, r.height]; };
+  // layout position (not getBoundingClientRect: the view's open animation scales it for a moment)
+  const stageFrame = () => { const el = A.$('#stage'); let x = 0, y = 0; for (let e = el; e; e = e.offsetParent) { x += e.offsetLeft; y += e.offsetTop; } return [x, y, el.offsetWidth, el.offsetHeight]; };
   const insets = () => [R.notebookTop || 70, 16, 90, 66];
-  const look = () => ({ dark: R.paperIsDark(), desk: R.deskColor(R.isDarkTheme()) });
+  const look = () => (isCanvas() ? { dark: R.darkActive() || R.paperIsDark(), desk: R.displayBg() } : { dark: R.paperIsDark(), desk: R.deskColor(R.isDarkTheme()) });
 
   /* ---------- open / close ---------- */
   let layout = new Map(); // page id -> rect last sent to the native view
-  const snapLayout = () => new Map(D.doc.pages.map((p, i) => [p.id, D.pageRect(D.doc, i)]));
+  const snapLayout = () => (isCanvas() ? new Map() : new Map(D.doc.pages.map((p, i) => [p.id, D.pageRect(D.doc, i)])));
   function enter() {
     const doc = D.doc;
     // strokes written before PencilKit move into the PencilKit drawing once (a backup copy is kept in the file store)
@@ -11788,7 +11791,8 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
     A.$('#canvas-view').classList.add('pk'); document.documentElement.classList.add('pk-on');
     layout = snapLayout();
     const v = doc.view;
-    post(Object.assign({ op: 'pkOpen', id: doc.id, pages: D.pageRects(doc), frame: stageFrame(), insets: insets(), zoom: v.zoom, tx: v.tx, ty: v.ty, legacy }, look()))
+    if (isCanvas() && v.rot) { const [cx, cy] = R.toWorld(R.w / 2, R.h / 2); v.rot = 0; v.tx = R.w / 2 - cx * v.zoom; v.ty = R.h / 2 - cy * v.zoom; } // PencilKit canvases don't rotate
+    post(Object.assign({ op: 'pkOpen', id: doc.id, canvas: isCanvas(), pages: isCanvas() ? [] : D.pageRects(doc), frame: stageFrame(), insets: insets(), zoom: v.zoom, tx: v.tx, ty: v.ty, legacy }, look()))
       .then((cur) => { if (Array.isArray(cur) && D.doc === doc) views.view({ zoom: cur[0], tx: cur[1], ty: cur[2] }); });
     syncTool();
     chromeSoon();
@@ -11814,6 +11818,7 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
       R.renderOverlay();
     },
     needPage: (r) => queuePage(r.i, r.scale),
+    needBg: (r) => { bgWant = r; if (!bgBusy) renderBg(); },
     strokes: (list) => mirror(list),
     changed: () => { if (PK.undoing) { PK.undoing = false; return; } (PK.order = PK.order || []).push('ink'); PK.redoOrder = []; A.emit('history'); },
   };
@@ -11835,6 +11840,18 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
       post({ op: 'pkPage', i, scale, data: c.toDataURL('image/jpeg', 0.9).split(',')[1] });
     }
     setTimeout(pump, 0);
+  }
+  /* canvases: one background image (paper, grid, artboards, pictures, text, special strokes) around the view */
+  let bgWant = null, bgBusy = false;
+  function renderBg() {
+    if (!PK.active || !bgWant) { bgBusy = false; return; }
+    bgBusy = true;
+    const r = bgWant; bgWant = null;
+    setTimeout(() => {
+      if (!PK.active) { bgBusy = false; return; }
+      const c = R.renderRegion(D.doc, [r.x, r.y, r.x + r.w, r.y + r.h], r.scale, { bg: true, grid: true, noStrokes: true, display: true, maxPx: 6000 });
+      post({ op: 'pkBg', rect: [r.x, r.y, r.w, r.h], data: c.toDataURL('image/jpeg', 0.9).split(',')[1] }).then(() => { bgBusy = false; if (bgWant) renderBg(); });
+    }, 0);
   }
   A.on('doc:changed', (k) => {
     if (!PK.active || k === 'ink' || k === 'meta') return;
