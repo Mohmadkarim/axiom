@@ -43,9 +43,8 @@
     A.$('#canvas-view').classList.add('pk'); document.documentElement.classList.add('pk-on');
     layout = snapLayout();
     const v = doc.view;
-    if (isCanvas() && v.rot) { const [cx, cy] = R.toWorld(R.w / 2, R.h / 2); v.rot = 0; v.tx = R.w / 2 - cx * v.zoom; v.ty = R.h / 2 - cy * v.zoom; } // PencilKit canvases don't rotate
-    post(Object.assign({ op: 'pkOpen', id: doc.id, canvas: isCanvas(), pages: isCanvas() ? [] : D.pageRects(doc), frame: stageFrame(), insets: insets(), zoom: v.zoom, tx: v.tx, ty: v.ty, legacy }, look()))
-      .then((cur) => { if (Array.isArray(cur) && D.doc === doc) views.view({ zoom: cur[0], tx: cur[1], ty: cur[2] }); });
+    post(Object.assign({ op: 'pkOpen', id: doc.id, canvas: isCanvas(), pages: isCanvas() ? [] : D.pageRects(doc), frame: stageFrame(), insets: insets(), zoom: v.zoom, tx: v.tx, ty: v.ty, rot: isCanvas() ? v.rot || 0 : 0, legacy }, look()))
+      .then((cur) => { if (Array.isArray(cur) && D.doc === doc) views.view({ zoom: cur[0], tx: cur[1], ty: cur[2], rot: cur[3] || 0 }); });
     syncTool();
     chromeSoon();
   }
@@ -65,17 +64,25 @@
   const views = {
     view: (v) => {
       if (!PK.active || !D.doc) return;
-      Object.assign(D.doc.view, { zoom: v.zoom, tx: v.tx, ty: v.ty, rot: 0 });
+      Object.assign(D.doc.view, { zoom: v.zoom, tx: v.tx, ty: v.ty, rot: v.rot || 0 });
       A.emit('view');
       R.renderOverlay();
+    },
+    recognize: (d) => {
+      if (!PK.active || !D.doc.precision.recog) return;
+      const pts = d.pts, bb = A.G.bbox(pts), z = d.zoom || D.doc.view.zoom;
+      if (A.G.length(pts) * z < 70 || Math.hypot(bb[2] - bb[0], bb[3] - bb[1]) * z < 45) return; // handwriting-sized: leave it
+      const r = A.G.recognize(pts);
+      if (r) post({ op: 'pkReplaceLast', pts: r.pts, sharp: !!r.sharp });
     },
     needPage: (r) => queuePage(r.i, r.scale),
     needBg: (r) => { bgWant = r; if (!bgBusy) renderBg(); },
     strokes: (list) => mirror(list),
     changed: () => { if (PK.undoing) { PK.undoing = false; return; } (PK.order = PK.order || []).push('ink'); PK.redoOrder = []; A.emit('history'); },
   };
-  window.__axiomPK = (kind, data) => { const f = views[kind]; if (f) f(data); };
-  PK.setView = (v) => post({ op: 'pkView', zoom: v.zoom, tx: v.tx, ty: v.ty });
+  window.__axiomPK = (kind, data) => { if (PK.alt) return PK.alt(kind, data); const f = views[kind]; if (f) f(data); };
+  PK.post = post;
+  PK.setView = (v) => post({ op: 'pkView', zoom: v.zoom, tx: v.tx, ty: v.ty, rot: v.rot || 0 });
 
   /* ---------- page images (paper, templates, pictures, text; never ink) ---------- */
   const queue = new Map();
@@ -88,11 +95,14 @@
     queue.delete(i);
     if (i < D.doc.pages.length) {
       const rc = D.pageRect(D.doc, i);
-      const c = R.renderRegion(D.doc, rc, scale, { bg: true, noStrokes: true });
+      const c = R.renderRegion(D.doc, rc, scale, { bg: true, noStrokes: true, onImage: imageLoaded });
       post({ op: 'pkPage', i, scale, data: c.toDataURL('image/jpeg', 0.9).split(',')[1] });
     }
     setTimeout(pump, 0);
   }
+  // a picture finished loading after its page was drawn: draw again (once per burst)
+  let imgT = 0;
+  const imageLoaded = () => { clearTimeout(imgT); imgT = setTimeout(() => { if (PK.active) post({ op: 'pkDirty', all: true }); }, 50); };
   /* canvases: one background image (paper, grid, artboards, pictures, text, special strokes) around the view */
   let bgWant = null, bgBusy = false;
   function renderBg() {
@@ -101,7 +111,7 @@
     const r = bgWant; bgWant = null;
     setTimeout(() => {
       if (!PK.active) { bgBusy = false; return; }
-      const c = R.renderRegion(D.doc, [r.x, r.y, r.x + r.w, r.y + r.h], r.scale, { bg: true, grid: true, noStrokes: true, display: true, maxPx: 6000 });
+      const c = R.renderRegion(D.doc, [r.x, r.y, r.x + r.w, r.y + r.h], r.scale, { bg: true, grid: true, noStrokes: true, display: true, maxPx: 6000, onImage: imageLoaded });
       post({ op: 'pkBg', rect: [r.x, r.y, r.w, r.h], data: c.toDataURL('image/jpeg', 0.9).split(',')[1] }).then(() => { bgBusy = false; if (bgWant) renderBg(); });
     }, 0);
   }
@@ -148,6 +158,17 @@
     A.emit('layers:thumbs');
   }
 
+  /* ---------- lecture replay ---------- */
+  let lastReplay = '';
+  PK.syncReplay = () => {
+    const rp = R.replay, rec = rp && (D.doc.recordings || []).find((r) => r.id === rp.rid);
+    const msg = rec ? { op: 'pkReplay', on: true, start: rec.created, end: rec.created + (rec.dur || 36000) * 1000 + 1500, t: rp.t >= 1e9 ? 1e7 : Math.round(rp.t * 10) / 10 } : { op: 'pkReplay', on: false };
+    const key = JSON.stringify(msg);
+    if (key === lastReplay) return;
+    lastReplay = key;
+    post(msg);
+  };
+
   /* ---------- tools ---------- */
   const INK = { pen: 'pen', fountain: 'fountain', brushpen: 'fountain', pencil: 'pencil', marker: 'marker', highlighter: 'marker', ballpoint: 'monoline', monoline: 'monoline' };
   function syncTool() {
@@ -160,11 +181,12 @@
     else if ((c.kind === 'var' || c.kind === 'line') && !c.mask && slot.b !== 'tape') t = { tool: 'ink', ink: INK[slot.b] || 'pen', color: slot.color, alpha: slot.b === 'highlighter' ? Math.min(0.5, slot.opacity == null ? c.opacity : slot.opacity) : (slot.opacity == null ? 1 : slot.opacity), width: slot.size * (slot.b === 'highlighter' || slot.b === 'marker' ? 1 : 1.15) };
     else t = { tool: 'none' }; // text, laser, tape: the page handles the Pencil
     t.finger = S.fingerAction === 'draw';
+    post({ op: 'pkShapes', on: !!(D.doc && D.doc.precision && D.doc.precision.recog), rotate: !!D.doc && isCanvas() && S.allowRotate !== false && !S.rotLock });
     t.ruler = !!(D.doc && D.doc.precision && D.doc.precision.guide);
     post(Object.assign({ op: 'pkTool' }, t));
   }
   PK.syncTool = syncTool;
-  ['slot', 'slot:live', 'slot:size', 'slot:select', 'tool:select', 'precision'].forEach((ev) => A.on(ev, () => setTimeout(syncTool, 0)));
+  ['slot', 'slot:live', 'slot:size', 'slot:select', 'tool:select', 'precision', 'settings', 'view:lock'].forEach((ev) => A.on(ev, () => setTimeout(syncTool, 0)));
   /* the page ignores the Pencil while PencilKit draws, erases or lassos */
   PK.ownsPen = () => PK.active && !!B.slot() && ['ink', 'eraser', 'lasso'].includes(kindOf(B.slot()));
   const kindOf = (slot) => { const c = B.catalog[slot.b] || {}; if (slot.b === 'eraser' || slot.b === 'slice') return 'eraser'; if (slot.b === 'select') return 'lasso'; if ((c.kind === 'var' || c.kind === 'line') && !c.mask && slot.b !== 'tape') return 'ink'; return 'none'; };
@@ -190,27 +212,57 @@
   let chromeKey = '', chromeT = 0;
   function chrome() {
     chromeT = 0;
-    if (!PK.active) return;
+    if (!PK.active && !PK.alt) return;
     const out = [];
     const add = (el) => {
       for (const r of el.getClientRects()) if (r.width > 1 && r.height > 1) out.push([Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)]);
     };
-    const cv = A.$('#canvas-view');
-    cv.querySelectorAll('.panel, button, input, select, textarea, [role="toolbar"], #studypanel:not([hidden]), .te-area, .te-bar').forEach((el) => {
-      if (el.closest('#stage') && !el.closest('.te-area, .te-bar')) return;
+    const cv = PK.alt ? A.$('#reader-view') : A.$('#canvas-view');
+    cv.querySelectorAll('.panel, button, input, select, textarea, [role="toolbar"], #studypanel:not([hidden]), .te-area, .te-bar, .rd-bar, aside:not([hidden])').forEach((el) => {
+      if (el.closest('#stage, .rd-pages') && !el.closest('.te-area, .te-bar')) return;
       if (el.hidden || el.closest('[hidden]') || getComputedStyle(el).pointerEvents === 'none' || getComputedStyle(el).visibility === 'hidden') return;
       add(el);
     });
-    document.querySelectorAll('.popover, .modal-back, .ex-view, .pc-back, .pl-week, #toasts > *').forEach(add);
+    document.querySelectorAll('.popover, .modal-back, .ex-view, .crop-ui, #toasts > *').forEach(add);
+    PK.webTargets = PK.alt ? [] : webTargets();
+    PK.webTargets.forEach((r) => out.push(r));
     const key = JSON.stringify(out);
     if (key === chromeKey) return;
     chromeKey = key;
     post({ op: 'pkChrome', rects: out });
   }
+  /* with the lasso, pictures, text boxes and the current selection belong to the page (select, move, resize, crop) */
+  function webTargets() {
+    if (!PK.active || !D.doc || !B.slot() || B.slot().b !== 'select') return [];
+    const out = [], o = A.$('#stage').getBoundingClientRect();
+    const scr = (bb, pad = 0) => {
+      const cs = [[bb[0], bb[1]], [bb[2], bb[1]], [bb[2], bb[3]], [bb[0], bb[3]]].map(([x, y]) => R.toScreen(x, y));
+      const xs = cs.map((p) => p[0]), ys = cs.map((p) => p[1]);
+      return [Math.round(o.left + Math.min(...xs) - pad), Math.round(o.top + Math.min(...ys) - pad), Math.round(Math.max(...xs) - Math.min(...xs) + pad * 2), Math.round(Math.max(...ys) - Math.min(...ys) + pad * 2)];
+    };
+    for (const l of D.doc.layers) {
+      if (l.pk || l.locked || !l.visible) continue;
+      for (const it of l.items) if (B.isBox(it)) out.push(scr(it.bb));
+    }
+    if (R.sel.size && A.SEL.box) out.push(scr(A.SEL.box, 34));
+    return out.filter((r) => r[2] > 0 && r[3] > 0 && r[0] < innerWidth && r[1] < innerHeight && r[0] + r[2] > 0 && r[1] + r[3] > 0);
+  }
+  PK.onWebTarget = (x, y) => (PK.webTargets || []).some((r) => x >= r[0] && y >= r[1] && x <= r[0] + r[2] && y <= r[1] + r[3]);
+  ['view', 'selection', 'selection:clear', 'slot', 'slot:select', 'tool:select'].forEach((ev) => A.on(ev, () => { if (PK.active) chromeSoon(); }));
   const chromeSoon = () => { if (!chromeT) chromeT = setTimeout(chrome, 60); };
   PK.chrome = chromeSoon;
-  new MutationObserver(() => { if (PK.active) chromeSoon(); }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'hidden', 'style'] });
+  new MutationObserver(() => { if (PK.active || PK.alt) chromeSoon(); }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'hidden', 'style'] });
   addEventListener('resize', () => { if (!PK.active) return; chromeSoon(); post({ op: 'pkFrame', frame: stageFrame(), insets: insets() }); });
   A.on('stage:resize', () => { if (PK.active) post({ op: 'pkFrame', frame: stageFrame(), insets: insets() }); });
-  setInterval(() => { if (PK.active) chrome(); }, 1000);
+  setInterval(() => { if (PK.active || PK.alt) chrome(); }, 1000);
+})();
+/* the rotation lock can change from the readout and settings: keep the native view's twist-to-rotate in step */
+(() => {
+  let last = null;
+  setInterval(() => {
+    const PK = A.PK, S = A.settings;
+    if (!PK || !PK.active || !A.D.doc) return;
+    const f = !A.D.isNotebook() && S.allowRotate !== false && !S.rotLock;
+    if (f !== last) { last = f; PK.syncTool(); }
+  }, 800);
 })();

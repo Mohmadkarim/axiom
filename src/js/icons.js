@@ -89,6 +89,7 @@
     flag: '<path d="M5.5 21V4"/><path d="M5.5 4.5h11l-2 4 2 4h-11"/>',
     target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".9" fill="currentColor"/>',
     doc: '<path d="M6.5 3.5h7l4 4v12a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1Z"/><path d="M13.5 3.5v4h4M9 12h6M9 15.5h6"/>',
+    crop: '<path d="M6.5 2.5v13.5a1.5 1.5 0 0 0 1.5 1.5h13.5"/><path d="M2.5 6.5h13.5a1.5 1.5 0 0 1 1.5 1.5v13.5"/>',
     chevup: '<path d="m6 15 6-6 6 6"/>',
     graph: '<path d="M4 3.5v16.5h16.5"/><path d="M7 16.5c1.8-5.5 3.6-7.6 5.6-4.9 2 2.7 3.9 1.1 6.1-6.1"/>',
     send: '<path d="M12 19V5"/><path d="m6 11 6-6 6 6"/>',

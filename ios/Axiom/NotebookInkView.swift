@@ -5,8 +5,11 @@ import WebKit
 /// A notebook drawn with Apple's PencilKit: the pages (paper, templates, pictures and text, rendered by the page
 /// code as images) sit under a PKCanvasView that owns the ink, the Pencil and finger scrolling/zooming.
 /// The web interface floats above with transparent holes over the pages.
-final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate {
+final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate, UIGestureRecognizerDelegate {
     let canvas = PKCanvasView()
+    private let stage = UIView()                 // pages + ink; rotated as one on canvases
+    private(set) var rot: CGFloat = 0
+    var rotateEnabled = false
     private let pages = UIView()                 // page images, scaled with the zoom
     private var pageViews: [UIImageView] = []
     private var pageRects: [CGRect] = []
@@ -27,11 +30,12 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
     private var bgDirty = true
 
     /// Callbacks to the page code
-    var onView: ((CGFloat, CGFloat, CGFloat) -> Void)?          // zoom, tx, ty (stage coordinates)
+    var onView: ((CGFloat, CGFloat, CGFloat, CGFloat) -> Void)? // zoom, tx, ty (stage coordinates), rotation
     var onNeedPage: ((Int, CGFloat) -> Void)?                   // page index, scale
     var onNeedBg: ((CGRect, CGFloat) -> Void)?                  // world rect, scale (canvases)
     var onStrokes: ((String) -> Void)?                          // mirrored strokes as JSON
     var onChanged: (() -> Void)?                                // a user edit (for the undo stack)
+    var onRecognize: ((String) -> Void)?                        // a held stroke's points (world) for shape recognition
     var save: ((String, Data) -> Void)?
     var load: ((String) -> Data?)?
 
@@ -52,10 +56,14 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
         canvas.alwaysBounceVertical = true
         pages.layer.anchorPoint = .zero
         // the paper sits behind PencilKit (a sibling, moved with every scroll and zoom), never inside its view
-        addSubview(pages)
+        addSubview(stage)
+        stage.addSubview(pages)
         canvas.frame = bounds
         canvas.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        addSubview(canvas)
+        stage.addSubview(canvas)
+        let rg = UIRotationGestureRecognizer(target: self, action: #selector(rotated(_:)))
+        rg.delegate = self
+        addGestureRecognizer(rg)
         let dbl = UITapGestureRecognizer(target: self, action: #selector(doubleTap(_:)))
         dbl.numberOfTapsRequired = 2
         dbl.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.direct.rawValue)]
@@ -65,11 +73,12 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
 
     // MARK: - open / close
 
-    func open(id: String, rects: [CGRect], zoom: CGFloat, tx: CGFloat, ty: CGFloat, legacy: [[String: Any]], dark: Bool, desk: UIColor, insets: UIEdgeInsets, canvas isCanvas: Bool = false) {
+    func open(id: String, rects: [CGRect], zoom: CGFloat, tx: CGFloat, ty: CGFloat, legacy: [[String: Any]], dark: Bool, desk: UIColor, insets: UIEdgeInsets, canvas isCanvas: Bool = false, rot startRot: CGFloat = 0) {
         close()
         docId = id
         self.insets = insets
         self.isCanvas = isCanvas
+        rot = 0
         origin = isCanvas ? CGPoint(x: Self.canvasHalf, y: Self.canvasHalf) : .zero
         canvas.alwaysBounceVertical = !isCanvas
         canvas.showsVerticalScrollIndicator = !isCanvas
@@ -85,7 +94,7 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
         loading = false
         setPages(isCanvas ? [] : rects)
         isHidden = false
-        setView(zoom: zoom, tx: tx, ty: ty)
+        setView(zoom: zoom, tx: tx, ty: ty, rot: startRot)
         bgDirty = true
         requestVisible()
         if !legacy.isEmpty && load?("ink_" + id) == nil { scheduleSave() }
@@ -95,6 +104,7 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
     func close() {
         guard let id = docId else { return }
         saveWork?.cancel(); mirrorWork?.cancel()
+        replay(on: false, start: Date(), end: Date(), t: 0)
         save?("ink_" + id, canvas.drawing.dataRepresentation())
         docId = nil
         isHidden = true
@@ -104,7 +114,7 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
     }
     var isOpen: Bool { docId != nil }
 
-    func flush() { if let id = docId { save?("ink_" + id, canvas.drawing.dataRepresentation()) } }
+    func flush() { if let id = docId { save?("ink_" + id, savedDrawing.dataRepresentation()) } }
 
     // MARK: - pages
 
@@ -160,8 +170,9 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
         let vis = CGRect(x: canvas.contentOffset.x / z - origin.x, y: canvas.contentOffset.y / z - origin.y, width: canvas.bounds.width / z, height: canvas.bounds.height / z)
         let want = min(2, z * UIScreen.main.scale)
         // re-render when the view leaves the image, zoom changed the needed sharpness, or the content changed
-        if !bgDirty, !bgRect.isNull, bgRect.contains(vis), abs(bgScale - want) / max(want, 0.01) < 0.3 { return }
-        let r = vis.insetBy(dx: -vis.width * 0.35, dy: -vis.height * 0.35)
+        if !bgDirty, !bgRect.isNull, rot == 0, bgRect.contains(vis), abs(bgScale - want) / max(want, 0.01) < 0.3 { return }
+        var r = vis.insetBy(dx: -vis.width * 0.35, dy: -vis.height * 0.35)
+        if rot != 0 { let d = hypot(vis.width, vis.height) * 1.2; r = CGRect(x: vis.midX - d / 2, y: vis.midY - d / 2, width: d, height: d) }
         bgDirty = false; bgScale = want
         onNeedBg?(r, want)
     }
@@ -192,11 +203,47 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
         canvas.maximumZoomScale = max(4, minFit * 6)
     }
 
-    func setView(zoom: CGFloat, tx: CGFloat, ty: CGFloat) {
+    func setView(zoom: CGFloat, tx: CGFloat, ty: CGFloat, rot newRot: CGFloat = 0) {
+        rot = isCanvas ? newRot : 0
+        applyRotation()
         canvas.zoomScale = zoom
         layoutContent()
         let z = canvas.zoomScale
-        canvas.contentOffset = CGPoint(x: origin.x * z - tx, y: origin.y * z - ty)
+        // the page's (tx, ty) are after rotation about the view centre; undo that to get the scroll position
+        let c = CGPoint(x: bounds.midX, y: bounds.midY), co = cos(rot), si = sin(rot)
+        let ux = c.x + co * (tx - c.x) + si * (ty - c.y), uy = c.y - si * (tx - c.x) + co * (ty - c.y)
+        canvas.contentOffset = CGPoint(x: origin.x * z - ux, y: origin.y * z - uy)
+        report()
+    }
+
+    private func applyRotation() {
+        stage.bounds = bounds
+        stage.center = CGPoint(x: bounds.midX, y: bounds.midY)
+        stage.transform = CGAffineTransform(rotationAngle: rot)
+    }
+
+    func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
+    override func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
+        if g is UIRotationGestureRecognizer { return isOpen && isCanvas && rotateEnabled }
+        return super.gestureRecognizerShouldBegin(g)
+    }
+    private var rot0: CGFloat = 0
+    @objc private func rotated(_ g: UIRotationGestureRecognizer) {
+        switch g.state {
+        case .began: rot0 = rot
+        case .changed:
+            var r = rot0 + g.rotation
+            let q = (r / (.pi / 2)).rounded() * (.pi / 2)
+            if abs(r - q) < 3 * .pi / 180 { r = q } // snap to straight angles
+            setRotationKeepingCentre(r)
+        case .ended, .cancelled: requestVisible()
+        default: break
+        }
+    }
+    /// rotate about the middle of the screen without moving what is there
+    private func setRotationKeepingCentre(_ r: CGFloat) {
+        rot = r
+        applyRotation()
         report()
     }
 
@@ -207,12 +254,18 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
         let p = last.map { $0.path[0].location.applying($0.transform) } ?? .zero
         return ["zoom": canvas.zoomScale, "off": [canvas.contentOffset.x, canvas.contentOffset.y], "inset": [canvas.adjustedContentInset.left, canvas.adjustedContentInset.top], "frame": [frame.minX, frame.minY, canvas.frame.minX, canvas.frame.minY], "first": [p.x, p.y], "bounds": [canvas.bounds.minX, canvas.bounds.minY]]
     }
-    func currentView() -> [Double] { let z = canvas.zoomScale; return [Double(z), Double(origin.x * z - canvas.contentOffset.x), Double(origin.y * z - canvas.contentOffset.y)] }
+    private func rotatedT() -> (CGFloat, CGFloat) {
+        let z = canvas.zoomScale
+        let ux = origin.x * z - canvas.contentOffset.x, uy = origin.y * z - canvas.contentOffset.y
+        let c = CGPoint(x: bounds.midX, y: bounds.midY), co = cos(rot), si = sin(rot)
+        return (c.x + co * (ux - c.x) - si * (uy - c.y), c.y + si * (ux - c.x) + co * (uy - c.y))
+    }
+    func currentView() -> [Double] { let (tx, ty) = rotatedT(); return [Double(canvas.zoomScale), Double(tx), Double(ty), Double(rot)] }
 
     private func report() {
         placePages()
-        let z = canvas.zoomScale
-        onView?(z, origin.x * z - canvas.contentOffset.x, origin.y * z - canvas.contentOffset.y)
+        let (tx, ty) = rotatedT()
+        onView?(canvas.zoomScale, tx, ty, rot)
     }
 
     @objc private func doubleTap(_ g: UITapGestureRecognizer) {
@@ -240,7 +293,7 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) { requestVisible() }
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) { if !decelerate { requestVisible() } }
 
-    override func layoutSubviews() { super.layoutSubviews(); layoutContent() }
+    override func layoutSubviews() { super.layoutSubviews(); applyRotation(); layoutContent() }
 
     // MARK: - tools
 
@@ -319,6 +372,97 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate 
         canvas.overrideUserInterfaceStyle = dark ? .dark : .light
         superview?.backgroundColor = desk
     }
+
+    // MARK: - draw and hold: the page recognises the shape, the stroke is replaced by the clean one
+
+    private var lastMovePt = CGPoint.zero
+    private var lastMoveT: TimeInterval = 0
+    private var pendingShape = false
+    var shapesEnabled = false
+
+    func trackPencil(_ phase: String, _ touches: [UITouch]) {
+        guard isOpen, shapesEnabled, canvas.tool is PKInkingTool, let first = touches.first else { return }
+        switch phase {
+        case "b":
+            lastMovePt = first.location(in: canvas); lastMoveT = first.timestamp; pendingShape = false
+        case "m":
+            for t in touches { let p = t.location(in: canvas); if hypot(p.x - lastMovePt.x, p.y - lastMovePt.y) > 3 { lastMovePt = p; lastMoveT = t.timestamp } }
+        case "e":
+            let end = touches.last!.timestamp
+            if end - lastMoveT > 0.55 { pendingShape = true; DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in self?.recognizeLast() } }
+        default: pendingShape = false
+        }
+    }
+
+    private func recognizeLast() {
+        guard pendingShape, let s = canvas.drawing.strokes.last, Date().timeIntervalSince(s.path.creationDate) < 30 else { return }
+        pendingShape = false
+        var pts: [Double] = []
+        for p in s.path.interpolatedPoints(by: .distance(2)) {
+            let q = p.location.applying(s.transform)
+            pts.append(Double(q.x - origin.x)); pts.append(Double(q.y - origin.y)); pts.append(0.64)
+        }
+        let z = Double(canvas.zoomScale)
+        if let json = try? JSONSerialization.data(withJSONObject: ["pts": pts, "zoom": z]), let str = String(data: json, encoding: .utf8) { onRecognize?(str) }
+    }
+
+    /// replace the last stroke with a clean shape (world points; sharp corners kept by repeating them)
+    func replaceLast(_ world: [Double], sharp: Bool) {
+        var strokes = canvas.drawing.strokes
+        guard let last = strokes.popLast(), world.count >= 6 else { return }
+        let sizes = last.path.map { $0.size.width }
+        let size = sizes.isEmpty ? 3 : sizes.reduce(0, +) / CGFloat(sizes.count)
+        var corners: [CGPoint] = []
+        var i = 0
+        while i + 1 < world.count { corners.append(CGPoint(x: world[i] + origin.x, y: world[i + 1] + origin.y)); i += 3 }
+        var ctrl: [CGPoint] = []
+        for (k, c) in corners.enumerated() {
+            if k > 0 {
+                let a = corners[k - 1], d = hypot(c.x - a.x, c.y - a.y), n = max(1, Int(d / 4))
+                for j in 1..<n { let t = CGFloat(j) / CGFloat(n); ctrl.append(CGPoint(x: a.x + (c.x - a.x) * t, y: a.y + (c.y - a.y) * t)) }
+            }
+            if sharp { ctrl.append(c); ctrl.append(c) }
+            ctrl.append(c)
+        }
+        let pts = ctrl.enumerated().map { PKStrokePoint(location: $1, timeOffset: TimeInterval($0) * 0.004, size: CGSize(width: size, height: size), opacity: 1, force: 0.6, azimuth: 0, altitude: .pi / 2) }
+        strokes.append(PKStroke(ink: last.ink, path: PKStrokePath(controlPoints: pts, creationDate: last.path.creationDate)))
+        canvas.drawing = PKDrawing(strokes: strokes)  // a user-visible edit: undo brings the freehand stroke back
+    }
+
+    // MARK: - lecture replay: ink written later in the recording fades until the audio reaches it
+
+    private var replayOriginal: PKDrawing?
+    private var replayDrawEnabled = true
+    private var replayKey = -1
+    func replay(on: Bool, start: Date, end: Date, t: TimeInterval) {
+        if !on {
+            guard let orig = replayOriginal else { return }
+            loading = true; canvas.drawing = orig; loading = false
+            replayOriginal = nil; replayKey = -1
+            canvas.drawingGestureRecognizer.isEnabled = replayDrawEnabled
+            return
+        }
+        if replayOriginal == nil {
+            replayOriginal = canvas.drawing
+            replayDrawEnabled = canvas.drawingGestureRecognizer.isEnabled
+            canvas.drawingGestureRecognizer.isEnabled = false
+        }
+        guard let orig = replayOriginal else { return }
+        let cut = start.addingTimeInterval(t)
+        var dimmed = 0
+        let strokes = orig.strokes.map { s -> PKStroke in
+            let d = s.path.creationDate
+            guard d >= start, d <= end, d > cut else { return s }
+            dimmed += 1
+            var c = s
+            c.ink = PKInk(s.ink.inkType, color: s.ink.color.withAlphaComponent(0.12))
+            return c
+        }
+        if dimmed == replayKey { return }
+        replayKey = dimmed
+        loading = true; canvas.drawing = PKDrawing(strokes: strokes); loading = false
+    }
+    private var savedDrawing: PKDrawing { replayOriginal ?? canvas.drawing }
 
     // MARK: - undo
 

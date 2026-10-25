@@ -277,9 +277,11 @@
         ib('copy', 'Copy', () => A.emit('cmd', 'copy')),
         ib('trash', 'Delete', () => A.emit('cmd', 'delete')),
         ib('spark', 'Ask the tutor about this', () => A.emit('cmd', 'askTutor')),
+        (() => { const b = ib('crop', 'Crop picture', () => A.CROP.start()); b.classList.add('sp-crop'); return b; })(),
         h('div', { class: 'sb-sep' }),
         ib('more', 'More', (b) => selMore(b)));
     }
+    selPop.querySelector('.sp-crop').hidden = !A.CROP.canCrop();
     const ys = c.map((p) => p[1]), xs = c.map((p) => p[0]);
     const r = selPop.getBoundingClientRect();
     const stage = A.$('#stage').getBoundingClientRect();
@@ -794,8 +796,6 @@
         }
       } else if (cur === 'interaction') {
         add(h('h5', null, 'Touch input'),
-          row('Apple Pencil calibration', S.penOffset ? `Correcting ${S.penOffset.x} pt across, ${S.penOffset.y} pt down` : 'Tap five targets so ink sits exactly under the tip', h('button', { class: 'btn', onclick: () => A.IN.calibratePen() }, S.penOffset ? 'Recalibrate' : 'Calibrate')),
-          NATIVE ? row('Fast ink', 'Draw the stroke you are writing natively, right under the Pencil tip', toggleSw(S.nativeInk !== false, (v) => { set('nativeInk', v); A.IN.syncInk(); }, 's-ink')) : null,
           row('Finger action', 'What your finger does when you use an Apple Pencil', sel('fingerAction', [['none', 'Do nothing'], ['pan', 'Pan'], ['draw', 'Draw'], ['select', 'Select'], ['auto', 'Auto']])),
           row('Two fingers: canvas rotation', 'Twist to rotate canvases (notebooks never rotate)', toggleSw(S.allowRotate && !S.rotLock, (v) => { set('allowRotate', true); set('rotLock', !v); A.emit('view'); }, 's-rot')),
           row('Two fingers: canvas zoom', 'Turn off to lock the zoom level', toggleSw(!S.zoomLock, (v) => { set('zoomLock', !v); A.emit('view'); }, 's-zoom')),

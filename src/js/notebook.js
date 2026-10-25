@@ -477,7 +477,7 @@
     renderRec(); renderRail(); AUD.renderBar();
     A.toast(`Saved ${r.name} (${fmtT(dur)}). Play it from the bar at the bottom.`, 2400);
   };
-  AUD.stopAll = () => { if (AUD.recording) AUD.stop(); AUD.pause(); AUD.playing = null; R.replay = null; };
+  AUD.stopAll = () => { if (AUD.recording) AUD.stop(); AUD.pause(); AUD.playing = null; R.replay = null; if (A.PK && A.PK.active) A.PK.syncReplay(); };
   /* strokes written while recording (or while playing back) are time-stamped to that recording */
   A.IN.stamp = () => {
     if (!on()) return null;
@@ -499,6 +499,7 @@
     if (d && AUD.playing) AUD.playing.dur = d;
     R.replay = AUD.playing && AUD.replay ? { rid: AUD.playing.id, t: playing || t > 0 ? t : 1e9 } : null;
     R.render();
+    if (A.PK && A.PK.active) A.PK.syncReplay();
     AUD.renderBar(true);
   };
   window.__axiomAudio = (st) => { if (st && !st.rec) onTick(st.t, st.playing, st.d); };
@@ -585,7 +586,7 @@
         it('trash', 'Delete this recording', async () => {
           const r = AUD.playing;
           if (!(await A.dialog({ title: `Delete “${r.name}”?`, body: 'The audio is removed. Your writing stays.', okText: 'Delete', danger: true }))) return;
-          AUD.pause(); AUD.playing = null; R.replay = null;
+          AUD.pause(); AUD.playing = null; R.replay = null; if (A.PK && A.PK.active) A.PK.syncReplay();
           D.doc.recordings = D.doc.recordings.filter((x) => x.id !== r.id);
           D.changed('meta');
           try { if (NATIVE_AUDIO) await A.native.post({ op: 'audioDelete', id: r.id }); else await A.store.deleteFile('rec_' + r.id); } catch (e) { /* ignore */ }

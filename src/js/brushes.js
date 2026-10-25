@@ -273,7 +273,11 @@
     ctx.save();
     ctx.globalAlpha = (item.o ?? 1) * alphaMul;
     ctx.transform(...item.m);
-    ctx.drawImage(im, 0, 0, item.iw, item.ih);
+    const c = item.crop;
+    if (c) {
+      const kx = im.naturalWidth / c.iw0, ky = im.naturalHeight / c.ih0;
+      ctx.drawImage(im, c.x * kx, c.y * ky, c.w * kx, c.h * ky, 0, 0, item.iw, item.ih);
+    } else ctx.drawImage(im, 0, 0, item.iw, item.ih);
     ctx.restore();
   };
   B.imageCorners = (item) => {
@@ -303,7 +307,10 @@
       return `<g transform="matrix(${item.m.map((v) => +v.toFixed(4)).join(' ')})" opacity="${item.o ?? 1}">${rect}<text font-family="${fam}" font-size="${item.fs}" font-weight="${item.bold ? 700 : 400}" fill="${item.bg ? '#2a2620' : item.c}" xml:space="preserve">${spans}</text></g>`;
     }
     if (item.t === 'i') {
-      return `<image href="${esc(item.src)}" width="${item.iw}" height="${item.ih}" transform="matrix(${item.m.map((v) => +v.toFixed(4)).join(' ')})" opacity="${item.o ?? 1}"/>`;
+      const tf = `transform="matrix(${item.m.map((v) => +v.toFixed(4)).join(' ')})" opacity="${item.o ?? 1}"`;
+      const c = item.crop;
+      if (c) return `<g ${tf}><svg width="${item.iw}" height="${item.ih}" viewBox="${c.x} ${c.y} ${c.w} ${c.h}" preserveAspectRatio="none"><image href="${esc(item.src)}" width="${c.iw0}" height="${c.ih0}"/></svg></g>`;
+      return `<image href="${esc(item.src)}" width="${item.iw}" height="${item.ih}" ${tf}/>`;
     }
     const c = B.catalog[item.b] || B.catalog.pen;
     const sink = G.svgSink();

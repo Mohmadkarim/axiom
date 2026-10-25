@@ -469,7 +469,96 @@
     drawStroke(ctx, s, p.ink.width, p.ink.height); drawTail(ctx, s, p.ink.width, p.ink.height);
     if (p.live) { const lc = p.live.getContext('2d'); lc.clearRect(0, 0, p.live.width, p.live.height); }
   };
+  /* ---------- Write mode on Apple's PencilKit (iPad app): the pages show natively under Apple's ink ---------- */
+  const PKW = 1000, PKGAP = 24;
+  const rpk = { on: false, rects: [], view: null };
+  const pkRects = () => { let y = 0; return st.pages.map((p) => { const r = [0, y, PKW, y + PKW * p.aspect]; y = r[3] + PKGAP; return r; }); };
+  const mainFrame = () => { const el = st.main; let x = 0, y = 0; for (let e = el; e; e = e.offsetParent) { x += e.offsetLeft; y += e.offsetTop; } return [x, y, el.offsetWidth, el.offsetHeight]; };
+  const pkInsets = () => [76, 16, 70, 16];
+  const pkTool = () => {
+    if (!rpk.on) return;
+    const t = st.inkTool === 'eraser' ? { tool: 'eraser', mode: 'vector' } : { tool: 'ink', ink: 'pen', color: INK[st.inkColor] || INK.black, alpha: 1, width: st.inkWidth * PKW };
+    A.PK.post(Object.assign({ op: 'pkTool', finger: false }, t));
+  };
+  function enterPK() {
+    if (rpk.on || !st || st.kind !== 'pdf' || !A.PK || !A.PK.available || S.pencilKit === false || !st.pages.length) return;
+    rpk.on = true;
+    rpk.rects = pkRects();
+    const legacy = [];
+    Object.entries(st.ann.ink || {}).forEach(([n, list]) => {
+      const r = rpk.rects[+n - 1]; if (!r) return;
+      const H = r[3] - r[1];
+      (list || []).forEach((sk) => {
+        const pts = [];
+        for (let i = 0; i < sk.pts.length; i += 3) pts.push(sk.pts[i] * PKW, r[1] + sk.pts[i + 1] * H, (0.35 + 0.65 * sk.pts[i + 2]) * 0.64);
+        legacy.push({ b: 'pen', c: sk.c, w: sk.w * PKW, o: sk.o || 1, pts });
+      });
+    });
+    const f = mainFrame(), ins = pkInsets();
+    const pageW = Math.min(Math.max(240, f[2] - 64), 980) * st.zoom;
+    const zoom = pageW / PKW, top = rpk.rects[Math.max(0, st.page - 1)] || rpk.rects[0];
+    A.PK.alt = pkEvent;
+    host.classList.add('pk'); document.documentElement.classList.add('pk-on');
+    A.PK.post({ op: 'pkOpen', id: 'rd_' + st.meta.id, pages: rpk.rects, frame: f, insets: ins, zoom, tx: (f[2] - PKW * zoom) / 2, ty: ins[0] - top[1] * zoom, legacy, dark: false, desk: getComputedStyle(document.body).backgroundColor.startsWith('rgb') ? rgbHex(getComputedStyle(st.main).backgroundColor) : '#1b1d22' })
+      .then((cur) => { if (Array.isArray(cur)) rpk.view = { zoom: cur[0], tx: cur[1], ty: cur[2] }; });
+    pkTool();
+    A.PK.chrome();
+  }
+  const rgbHex = (c) => { const m = String(c).match(/\d+/g); if (!m || m.length < 3 || (m[3] !== undefined && +m[3] === 0)) return '#1b1d22'; return '#' + m.slice(0, 3).map((v) => (+v).toString(16).padStart(2, '0')).join(''); };
+  function leavePK() {
+    if (!rpk.on) return;
+    rpk.on = false;
+    A.PK.alt = null;
+    A.PK.post({ op: 'pkClose' });
+    host.classList.remove('pk'); document.documentElement.classList.remove('pk-on');
+    // come back to the page that was on screen
+    if (rpk.view && st) {
+      const y = (pkInsets()[0] - rpk.view.ty) / rpk.view.zoom;
+      let n = 1; rpk.rects.forEach((r, i) => { if (r[1] <= y + 1) n = i + 1; });
+      requestAnimationFrame(() => { st && st.pages.forEach((p) => drawInkPage(p)); goto(n, 0, false); });
+    }
+  }
+  RD.pkActive = () => rpk.on;
+  function pkEvent(kind, data) {
+    if (!rpk.on || !st) return;
+    if (kind === 'view') rpk.view = data;
+    else if (kind === 'needPage') pkPage(data.i, data.scale);
+    else if (kind === 'strokes') {
+      const ink = {};
+      (data || []).forEach((sk) => {
+        let ys = 0, n = 0; for (let i = 1; i < sk.pts.length; i += 3) { ys += sk.pts[i]; n++; }
+        const cy = ys / Math.max(1, n);
+        let pi = rpk.rects.findIndex((r) => cy >= r[1] - PKGAP / 2 && cy <= r[3] + PKGAP / 2);
+        if (pi < 0) pi = cy < 0 ? 0 : rpk.rects.length - 1;
+        const r = rpk.rects[pi], H = r[3] - r[1], pts = [];
+        for (let i = 0; i < sk.pts.length; i += 3) pts.push(sk.pts[i] / PKW, (sk.pts[i + 1] - r[1]) / H, A.clamp((sk.pts[i + 2] - 0.35) / 0.65, 0.05, 1));
+        (ink[pi + 1] = ink[pi + 1] || []).push({ id: A.uid(), c: sk.c, w: sk.w / PKW, o: sk.o, pts });
+      });
+      st.ann.ink = ink;
+      saveAnn();
+    }
+  }
+  const pkQueue = new Map(); let pkBusy = false;
+  function pkPage(i, scale) { pkQueue.set(i, scale); if (!pkBusy) pkPump(); }
+  async function pkPump() {
+    if (!rpk.on || !pkQueue.size) { pkBusy = false; return; }
+    pkBusy = true;
+    const [i, scale] = pkQueue.entries().next().value; pkQueue.delete(i);
+    try {
+      const page = await st.pdf.getPage(i + 1);
+      const vp1 = page.getViewport({ scale: 1 });
+      const sc = Math.min(scale * PKW / vp1.width, 4096 / vp1.width, Math.sqrt(10e6 / (vp1.width * vp1.height)));
+      const vp = page.getViewport({ scale: sc });
+      const c = h('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+      const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      if (rpk.on) await A.PK.post({ op: 'pkPage', i, scale, data: c.toDataURL('image/jpeg', 0.9).split(',')[1] });
+    } catch (e) { /* skip */ }
+    pkPump();
+  }
+
   RD.inkUndo = () => {
+    if (rpk.on) { A.PK.post({ op: 'pkUndo' }); return; }
     const last = st.inkHist.pop();
     if (!last) return A.toast('Nothing to undo');
     const arr = inkOf(last.page);
@@ -888,7 +977,7 @@
     host.classList.remove('chrome-hidden');
     S.readerTutor = open; A.saveSettings();
     if (open && !t.querySelector('.tutor')) { t.querySelector('.rd-tutor-body').innerHTML = ''; A.AI.mount(t.querySelector('.rd-tutor-body'), readerCtx); }
-    requestAnimationFrame(() => layout());
+    requestAnimationFrame(() => { layout(); if (rpk.on) A.PK.post({ op: 'pkFrame', frame: mainFrame(), insets: pkInsets() }); });
   }
   function toggleRail(open = st.rail.hidden) {
     st.rail.hidden = !open;
@@ -1017,10 +1106,11 @@
     const subj = meta.subject && A.SU.get(meta.subject);
     const toolSeg = h('div', { class: 'seg rd-tools' });
     const inkBar = h('div', { class: 'rd-group panel rd-inkbar', hidden: true });
-    const setTool = (t) => { st.tool = t; [...toolSeg.children].forEach((b) => b.classList.toggle('on', b.dataset.t === t)); host.dataset.tool = t; inkBar.hidden = t !== 'write'; clearActions(); };
+    const setTool = (t) => { st.tool = t; [...toolSeg.children].forEach((b) => b.classList.toggle('on', b.dataset.t === t)); host.dataset.tool = t; inkBar.hidden = t !== 'write'; clearActions(); if (t === 'write') enterPK(); else leavePK(); };
     [['read', 'Read', 'book', 'Read: circle any passage with the Pencil to ask about it'], ['highlight', 'Highlight', 'b-highlighter', 'Highlight passages with the Pencil'], ['write', 'Write', 'b-pen', 'Write on the page with the Pencil']].forEach(([t, l, ic, tip]) => { const b = h('button', { dataset: { t }, title: tip }); b.innerHTML = A.icon(ic); b.append(l); b.addEventListener('click', () => setTool(t)); toolSeg.append(b); });
     const drawInkBar = () => {
       inkBar.innerHTML = '';
+      pkTool();
       Object.entries(INK).forEach(([k, c]) => inkBar.append(h('button', { class: 'rd-ink-c' + (st.inkTool === 'pen' && st.inkColor === k ? ' on' : ''), style: { background: c }, 'aria-label': k + ' pen', onclick: () => { st.inkTool = 'pen'; st.inkColor = k; drawInkBar(); } })));
       inkBar.append(h('div', { class: 'sb-sep' }));
       [[0.0018, 'Fine'], [0.0026, 'Medium'], [0.0042, 'Bold']].forEach(([w, l]) => inkBar.append(h('button', { class: 'rd-ink-w' + (Math.abs(st.inkWidth - w) < 1e-6 ? ' on' : ''), title: l, 'aria-label': l + ' line', onclick: () => { st.inkWidth = w; st.inkTool = 'pen'; drawInkBar(); } }, h('i', { style: { height: Math.round(w * 900) + 'px' } }))));
@@ -1030,10 +1120,9 @@
       const opts = ib('more', 'Pen options', () => {
         const m = h('div', { class: 'menu' });
         m.append(h('button', { class: S.readerSmooth ? 'on' : '', onclick: () => { A.closePopovers(); S.readerSmooth = !S.readerSmooth; A.saveSettings(); A.toast(S.readerSmooth ? 'New strokes are smoothed' : 'Strokes stay exactly as written', 1600); } }, A.iconEl(S.readerSmooth ? 'check' : 'minus'), 'Smooth strokes'));
-        m.append(h('button', { onclick: () => { A.closePopovers(); A.IN.calibratePen(); } }, A.iconEl('target'), 'Calibrate Apple Pencil…'));
         A.popover(m, opts, { side: 'down' });
       });
-      inkBar.append(opts);
+      if (!(A.PK && A.PK.available)) inkBar.append(opts);
     };
     drawInkBar();
     const moreBtn = { _open: null };
@@ -1196,6 +1285,7 @@
   }
   RD.close = (silent) => {
     if (!st) return;
+    leavePK();
     try { st.io && st.io.disconnect(); } catch (e) { /* ignore */ }
     try { if (st.rendition) st.rendition.destroy(); } catch (e) { /* ignore */ }
     if (st.book) { const bk = st.book; Promise.resolve(bk.ready).catch(() => {}).then(() => { try { bk.destroy(); } catch (e) { /* ignore */ } }); }
@@ -1209,7 +1299,7 @@
   RD.isOpen = () => !!st;
   RD.mount = (el) => {
     host = el;
-    addEventListener('resize', () => { if (st) { applyWidth(); layout(); } });
+    addEventListener('resize', () => { if (st) { applyWidth(); layout(); if (rpk.on) A.PK.post({ op: 'pkFrame', frame: mainFrame(), insets: pkInsets() }); } });
     addEventListener('keydown', (e) => {
       if (!st || /INPUT|TEXTAREA/.test((document.activeElement || {}).tagName || '')) return;
       if (e.key === 'ArrowRight' || e.key === 'PageDown') { goto(st.page + 1); e.preventDefault(); }

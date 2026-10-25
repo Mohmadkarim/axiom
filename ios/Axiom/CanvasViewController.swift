@@ -10,7 +10,6 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
     #if DEBUG
     private var debugBridge: DebugBridge?
     #endif
-    private var inkView: LiveInkView?
     private var notebook: NotebookInkView?
     private var passthroughWeb: PassthroughWebView? { webView as? PassthroughWebView }
     private lazy var audio: AudioBridge = {
@@ -57,20 +56,7 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         webView.addInteraction(pencil)
 
         let capture = PencilCaptureRecognizer()
-        // native live ink: drawn straight from the Pencil so it sits on the tip
-        let ink = LiveInkView(frame: .zero)
-        ink.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        webView.addSubview(ink)
-        inkView = ink
-        capture.onTouches = { [weak self] phase, coalesced, predicted in
-            guard let self, let ink = self.inkView else { return }
-            switch phase {
-            case "b": ink.began(coalesced, in: self.webView)
-            case "m": ink.moved(coalesced, predicted: predicted, in: self.webView)
-            case "e": ink.ended(coalesced, in: self.webView)
-            default: ink.cancelled()
-            }
-        }
+        capture.onTouches = { [weak self] phase, coalesced, _ in self?.notebook?.trackPencil(phase, coalesced) }
         capture.onSamples = { [weak self] phase, samples, predicted in
             self?.runJS("window.__axiomPen && __axiomPen('\(phase)', \(samples), \(predicted))")
         }
@@ -81,10 +67,11 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         let nb = NotebookInkView(frame: .zero)
         nb.save = { [weak self] id, data in try? self?.store.writeFile(id: id, data: data) }
         nb.load = { [weak self] id in self.flatMap { try? Data(contentsOf: $0.store.fileURL(id)) } }
-        nb.onView = { [weak self] z, tx, ty in self?.runJS("window.__axiomPK && __axiomPK('view', {zoom: \(z), tx: \(tx), ty: \(ty)})") }
+        nb.onView = { [weak self] z, tx, ty, r in self?.runJS("window.__axiomPK && __axiomPK('view', {zoom: \(z), tx: \(tx), ty: \(ty), rot: \(r)})") }
         nb.onNeedPage = { [weak self] i, sc in self?.runJS("window.__axiomPK && __axiomPK('needPage', {i: \(i), scale: \(sc)})") }
         nb.onNeedBg = { [weak self] r, sc in self?.runJS("window.__axiomPK && __axiomPK('needBg', {x: \(r.minX), y: \(r.minY), w: \(r.width), h: \(r.height), scale: \(sc)})") }
         nb.onStrokes = { [weak self] json in self?.runJS("window.__axiomPK && __axiomPK('strokes', \(json))") }
+        nb.onRecognize = { [weak self] json in self?.runJS("window.__axiomPK && __axiomPK('recognize', \(json))") }
         nb.onChanged = { [weak self] in self?.runJS("window.__axiomPK && __axiomPK('changed', null)") }
         notebook = nb
         webView.frame = root.bounds
@@ -206,22 +193,6 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
             UIApplication.shared.isIdleTimerDisabled = body["on"] as? Bool ?? false
             replyHandler(true, nil)
             return
-        case "inkStyle":
-            if let ink = inkView {
-                var st = LiveInkView.Style()
-                st.enabled = body["enabled"] as? Bool ?? false
-                st.color = Self.color(body["color"] as? String ?? "#000000")
-                st.alpha = CGFloat(body["alpha"] as? Double ?? 1)
-                st.width = CGFloat(body["width"] as? Double ?? 2)
-                st.minMul = CGFloat(body["minMul"] as? Double ?? 0.6)
-                st.maxMul = CGFloat(body["maxMul"] as? Double ?? 1.2)
-                st.dx = CGFloat(body["dx"] as? Double ?? 0)
-                st.dy = CGFloat(body["dy"] as? Double ?? 0)
-                st.cap = (body["cap"] as? String) == "butt" ? .butt : .round
-                ink.style = st
-                if !st.enabled { ink.clearIfIdle() }
-            }
-            replyHandler(true, nil); return
         case "pkOpen":
             guard let nb = notebook else { replyHandler(false, nil); return }
             let rects = (body["pages"] as? [[Double]] ?? []).map { CGRect(x: $0[0], y: $0[1], width: $0[2] - $0[0], height: $0[3] - $0[1]) }
@@ -230,7 +201,7 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
             let ins = body["insets"] as? [Double] ?? [70, 16, 90, 66]
             nb.open(id: body["id"] as? String ?? "doc", rects: rects, zoom: CGFloat(body["zoom"] as? Double ?? 1), tx: CGFloat(body["tx"] as? Double ?? 0), ty: CGFloat(body["ty"] as? Double ?? 0),
                     legacy: body["legacy"] as? [[String: Any]] ?? [], dark: body["dark"] as? Bool ?? false, desk: Self.color(body["desk"] as? String ?? "#111317"),
-                    insets: UIEdgeInsets(top: ins[0], left: ins[1], bottom: ins[2], right: ins[3]), canvas: body["canvas"] as? Bool ?? false)
+                    insets: UIEdgeInsets(top: ins[0], left: ins[1], bottom: ins[2], right: ins[3]), canvas: body["canvas"] as? Bool ?? false, rot: CGFloat(body["rot"] as? Double ?? 0))
             passthroughWeb?.passthrough = true
             replyHandler(nb.currentView(), nil); return
         case "pkClose":
@@ -260,7 +231,7 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
             if notebook?.isOpen == true { passthroughWeb?.passthrough = (body["tool"] as? String ?? "none") != "none" }
             replyHandler(true, nil); return
         case "pkView":
-            notebook?.setView(zoom: CGFloat(body["zoom"] as? Double ?? 1), tx: CGFloat(body["tx"] as? Double ?? 0), ty: CGFloat(body["ty"] as? Double ?? 0)); replyHandler(true, nil); return
+            notebook?.setView(zoom: CGFloat(body["zoom"] as? Double ?? 1), tx: CGFloat(body["tx"] as? Double ?? 0), ty: CGFloat(body["ty"] as? Double ?? 0), rot: CGFloat(body["rot"] as? Double ?? 0)); replyHandler(true, nil); return
         case "pkChrome":
             passthroughWeb?.chrome = (body["rects"] as? [[Double]] ?? []).map { CGRect(x: $0[0], y: $0[1], width: $0[2], height: $0[3]) }
             replyHandler(true, nil); return
@@ -275,16 +246,29 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
                 notebook?.copy(from: CGRect(x: f[0], y: f[1], width: f[2] - f[0], height: f[3] - f[1]), to: CGPoint(x: t[0], y: t[1]))
             }
             replyHandler(true, nil); return
+        case "pkReplay":
+            let ms = { (k: String) in Date(timeIntervalSince1970: (body[k] as? Double ?? 0) / 1000) }
+            notebook?.replay(on: body["on"] as? Bool ?? false, start: ms("start"), end: ms("end"), t: body["t"] as? Double ?? 0)
+            replyHandler(true, nil); return
+        case "pkReplaceLast":
+            notebook?.replaceLast(body["pts"] as? [Double] ?? [], sharp: body["sharp"] as? Bool ?? false); replyHandler(true, nil); return
+        case "pkShapes":
+            notebook?.shapesEnabled = body["on"] as? Bool ?? false
+            notebook?.rotateEnabled = body["rotate"] as? Bool ?? false
+            replyHandler(true, nil); return
         case "pkDebug":
-            replyHandler(notebook?.debugInfo() ?? [:], nil); return
+            var d = notebook?.debugInfo() ?? [:]
+            d["passthrough"] = passthroughWeb?.passthrough ?? false
+            d["chrome"] = passthroughWeb?.chrome.count ?? 0
+            d["hidden"] = notebook?.isHidden ?? true
+            d["policy"] = notebook?.canvas.drawingPolicy == .anyInput ? "any" : "pencil"
+            d["drawEnabled"] = notebook?.canvas.drawingGestureRecognizer.isEnabled ?? false
+            d["strokes"] = notebook?.canvas.drawing.strokes.count ?? 0
+            replyHandler(d, nil); return
         case "pkUndo":
             notebook?.undo(); replyHandler(true, nil); return
         case "pkRedo":
             notebook?.redo(); replyHandler(true, nil); return
-        case "inkClear":
-            inkView?.clearIfIdle(); replyHandler(true, nil); return
-        case "inkSuspend":
-            inkView?.suspend(); replyHandler(true, nil); return
         case "snapshot":
             // a picture of part of the page, including embedded sites (Desmos) that the page itself cannot read
             let cfg = WKSnapshotConfiguration()
