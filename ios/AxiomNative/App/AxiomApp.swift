@@ -83,7 +83,13 @@ struct RootView: View {
                 .transition(.opacity.combined(with: .scale(scale: 0.985)))
                 .zIndex(1)
             }
-            if let t = app.toast {
+            if Tutor.shared.isOpen {
+                HStack(spacing: 0) { Spacer(); TutorPanel() }
+                    .ignoresSafeArea(edges: .vertical)
+                    .transition(.move(edge: .trailing))
+                    .zIndex(1.5)
+            }
+                        if let t = app.toast {
                 VStack {
                     Spacer()
                     Text(t).font(Theme.ui(14, .medium)).padding(.horizontal, 16).padding(.vertical, 10).floating(14).padding(.bottom, 40)
