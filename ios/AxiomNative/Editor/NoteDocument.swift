@@ -141,6 +141,7 @@ final class NoteDocument {
     var elements: [Element]
     var subject: String?
     var recordings: [JSON]
+    var artboards: [JSON]
     // canvas
     var paperColor: String
     var gridType: String
@@ -148,6 +149,7 @@ final class NoteDocument {
     var gridDivisions: Int
     var view: (zoom: CGFloat, tx: CGFloat, ty: CGFloat, rot: CGFloat)
     var viewTop: CGFloat?            // notebooks: world y at the top of the screen (saved by this version)
+    var fitZoom: CGFloat?            // notebooks: zoom relative to the fitted page width
     /// strokes written before PencilKit, to convert once
     private(set) var legacyStrokes: [JSON] = []
 
@@ -166,6 +168,7 @@ final class NoteDocument {
         if isNotebook && pages.isEmpty { pages = [PageInfo()] }
         subject = j.str("subject")
         recordings = j.arr("recordings")
+        artboards = j.arr("artboards")
         let paper = j.obj("paper") ?? [:]
         paperColor = paper.str("bg") ?? (isNotebook ? pageColor : "#15171c")
         let g = paper.obj("grid") ?? [:]
@@ -176,6 +179,7 @@ final class NoteDocument {
         let v = j.obj("view") ?? [:]
         view = (CGFloat(v.num("zoom") ?? 1), CGFloat(v.num("tx") ?? 0), CGFloat(v.num("ty") ?? 0), CGFloat(v.num("rot") ?? 0))
         viewTop = v.num("top").map { CGFloat($0) }
+        fitZoom = v.num("fz").map { CGFloat($0) }
         var els: [Element] = []
         let converted = j.bool("pkInk")
         for l in j.arr("layers") {
@@ -217,6 +221,7 @@ final class NoteDocument {
 
     // MARK: saving
 
+    var savedFit: CGFloat = 1
     func json(viewState: (CGFloat, CGFloat, CGFloat, CGFloat)) -> JSON {
         var j = raw
         j["name"] = name
@@ -224,7 +229,7 @@ final class NoteDocument {
         j["subject"] = subject ?? NSNull()
         j["recordings"] = recordings
         var v: JSON = ["zoom": viewState.0, "tx": viewState.1, "ty": viewState.2, "rot": viewState.3]
-        if isNotebook { v["top"] = viewState.2 }
+        if isNotebook { v["top"] = viewState.2; v["fz"] = viewState.0 / max(0.01, savedFit) }
         j["view"] = v
         if isNotebook {
             var page = j.obj("page") ?? [:]
@@ -265,7 +270,8 @@ enum InkConvert {
         default: return .pen
         }
     }
-    static func stroke(from d: JSON, offset: CGPoint = .zero) -> PKStroke? {
+    /// - mirrored: the copy of PencilKit ink kept by the earlier app (w = the stroke's widest point, m = size / w)
+    static func stroke(from d: JSON, offset: CGPoint = .zero, mirrored: Bool = false) -> PKStroke? {
         var pts = d.nums("pts")
         guard pts.count >= 3 else { return nil }
         if let mm = Optional(d.nums("m")), mm.count == 6 {
@@ -279,7 +285,7 @@ enum InkConvert {
         var i = 0, k = 0
         while i + 2 < pts.count {
             let m = CGFloat(pts[i + 2])
-            let size = max(1.0, w * 1.6 * (m > 0 ? min(1.4, m / 0.64) : 1))
+            let size = mirrored ? max(0.5, w * max(0.05, m)) : max(1.0, w * 1.6 * (m > 0 ? min(1.4, m / 0.64) : 1))
             points.append(PKStrokePoint(location: CGPoint(x: pts[i] + offset.x, y: pts[i + 1] + offset.y), timeOffset: TimeInterval(k) * 0.008, size: CGSize(width: size, height: size), opacity: o, force: min(1, max(0.1, m)), azimuth: 0, altitude: .pi / 2))
             i += 3; k += 1
         }

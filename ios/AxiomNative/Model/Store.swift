@@ -44,6 +44,8 @@ final class Store {
         guard let id = meta.str("id"), let m = JSONIO.data(meta) else { return }
         try? m.write(to: metaURL(id), options: .atomic)
     }
+    /// the document and its library entry only (its ink stays, for Recently Deleted)
+    func removeDocFiles(_ id: String) { try? fm.removeItem(at: docURL(id)); try? fm.removeItem(at: metaURL(id)) }
     func deleteDoc(_ id: String) {
         try? fm.removeItem(at: docURL(id)); try? fm.removeItem(at: metaURL(id))
         for f in ["ink_" + id, "inkbak_" + id] { deleteFile(f) }

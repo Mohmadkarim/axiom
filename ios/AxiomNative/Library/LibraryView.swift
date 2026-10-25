@@ -2,7 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 enum LibSection: Hashable {
-    case home, books, notebooks, canvases, course(String), unfiled
+    case home, books, notebooks, canvases, course(String), unfiled, trash
 }
 
 struct LibraryView: View {
@@ -70,6 +70,7 @@ struct LibraryView: View {
                         courseRow(s)
                     }
                     navRow("Unfiled", "tray", .unfiled, lib.notes.filter { $0.subject == nil }.count + lib.books.filter { $0.subject == nil }.count)
+                    if !lib.trash.isEmpty { navRow("Recently deleted", "trash", .trash, lib.trash.count) }
                 }
             }
             Spacer(minLength: 0)
@@ -129,6 +130,7 @@ struct LibraryView: View {
         case .canvases: return "Canvases"
         case .course(let id): return lib.subject(id)?.name ?? "Course"
         case .unfiled: return "Unfiled"
+        case .trash: return "Recently deleted"
         }
     }
     private var greeting: String {
@@ -163,6 +165,7 @@ struct LibraryView: View {
                     case .canvases: noteGrid(filteredNotes(lib.notes.filter { !$0.isNotebook }))
                     case .course(let id): courseContent(id)
                     case .unfiled: courseContent(nil)
+                    case .trash: trashGrid
                     }
                 }
                 .padding(.horizontal, 32).padding(.vertical, 18)
@@ -242,6 +245,29 @@ struct LibraryView: View {
         }
     }
 
+    private var trashGrid: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Deleted notebooks and canvases stay here for 30 days.").font(Theme.ui(14)).foregroundStyle(Theme.muted)
+            LazyVGrid(columns: cols, alignment: .leading, spacing: 26) {
+                ForEach(lib.trash, id: \.self.description) { t in
+                    let id = t.str("id") ?? ""
+                    VStack(alignment: .leading, spacing: 8) {
+                        Color.white.aspectRatio(t.str("kind") == "notebook" ? 0.75 : 1.33, contentMode: .fit)
+                            .overlay { if let img = UIImage.fromDataURL(t.str("thumb")) { Image(uiImage: img).resizable().scaledToFill() } }
+                            .clipShape(RoundedRectangle(cornerRadius: 12)).opacity(0.75)
+                        Text(t.str("name") ?? "Untitled").font(Theme.ui(15, .semibold)).lineLimit(1)
+                        let left = max(0, 30 - Int((Date().ms - (t.num("deleted") ?? 0)) / 86_400_000))
+                        Text("\(left) day\(left == 1 ? "" : "s") left").font(Theme.ui(12)).foregroundStyle(Theme.muted)
+                        HStack {
+                            Button("Restore") { lib.restoreFromTrash(id) }.buttonStyle(.bordered)
+                            Button("Delete now", role: .destructive) { lib.purge(id) }.buttonStyle(.bordered)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private let cols = [GridItem(.adaptive(minimum: 180, maximum: 240), spacing: 22, alignment: .top)]
 
     private func noteGrid(_ notes: [NoteMeta]) -> some View {
@@ -269,7 +295,7 @@ struct LibraryView: View {
         Button(n.fav ? "Remove from favourites" : "Favourite", systemImage: n.fav ? "star.slash" : "star") { lib.toggleFav(n.id) }
         Button("Duplicate", systemImage: "plus.square.on.square") { lib.duplicate(n.id) }
         Divider()
-        Button("Delete", systemImage: "trash", role: .destructive) { lib.delete(n.id) }
+        Button("Delete", systemImage: "trash", role: .destructive) { lib.delete(n.id); app.say("Moved to Recently deleted", 1.6) }
     }
     @ViewBuilder private func bookMenu(_ b: BookMeta) -> some View {
         Button("Rename", systemImage: "pencil") { renaming = RenameTarget(id: b.id, name: b.name, isBook: true) }

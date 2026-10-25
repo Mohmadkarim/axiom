@@ -106,6 +106,55 @@ final class EditorController: UIViewController, PKCanvasViewDelegate, UIGestureR
         model.recordings = doc.recordings
         model.activeRec = doc.recordings.last?.str("id")
         replayTimer = Timer.scheduledTimer(withTimeInterval: 0.12, repeats: true) { [weak self] _ in self?.updateReplay() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in self?.snapshotVersion("Opened") }
+    }
+
+    // MARK: - version history (ver_<id>: up to 15 snapshots, on opening and every ten minutes of editing)
+
+    private var lastVersion = Date()
+    func versions() -> [JSON] { (Store.shared.loadFile("ver_" + doc.id).flatMap(JSONIO.parse) as? [Any])?.compactMap { $0 as? JSON } ?? [] }
+    func snapshotVersion(_ label: String = "") {
+        lastVersion = Date()
+        var list = versions()
+        let j = doc.json(viewState: surface.viewState)
+        var snap: JSON = [:]
+        for k in ["layers", "pages", "page", "artboards", "paper", "recordings"] { snap[k] = j[k] ?? NSNull() }
+        guard let sd = JSONIO.data(snap), let data = String(data: sd, encoding: .utf8) else { return }
+        let ink = fullDrawing.dataRepresentation().base64EncodedString()
+        if let last = list.last, last.str("data") == data, last.str("ink") == ink { return }
+        if data.count + ink.count > 25_000_000 { return }
+        let thumb = Thumbnail.render(doc: doc, drawing: fullDrawing, width: 180)?.jpegData(compressionQuality: 0.6)?.dataURL(mime: "image/jpeg")
+        list.append(["t": Date().ms, "label": label, "pages": doc.pages.count, "thumb": thumb ?? NSNull(), "data": data, "ink": ink])
+        while list.count > 15 { list.removeFirst() }
+        if let d = JSONIO.data(list) { Store.shared.saveFile("ver_" + doc.id, d) }
+    }
+    /// bring a version back (undoable; the current state is kept as a version first)
+    func restoreVersion(_ v: JSON) {
+        snapshotVersion("Before restore")
+        guard let data = v.str("data")?.data(using: .utf8), let snap = JSONIO.object(data) else { return }
+        endSelection()
+        let before = snapshot()
+        var drawing = PKDrawing()
+        if let b64 = v.str("ink"), let d = Data(base64Encoded: b64), let dr = try? PKDrawing(data: d) { drawing = dr }
+        else {
+            // a version from the earlier app: its copy of the ink becomes PencilKit ink
+            let o = surface.origin
+            let items = snap.arr("layers").filter { $0.bool("pk") }.flatMap { $0.arr("items") }
+            drawing = PKDrawing(strokes: items.compactMap { InkConvert.stroke(from: $0, offset: o, mirrored: true) })
+            if items.isEmpty { drawing = fullDrawing }
+        }
+        var els: [Element] = []
+        for l in snap.arr("layers") where !l.bool("pk") { for it in l.arr("items") { if let e = Element(it) { els.append(e) } } }
+        doc.elements = els
+        doc.pages = snap.arr("pages").map(PageInfo.init)
+        if doc.isNotebook && doc.pages.isEmpty { doc.pages = [PageInfo()] }
+        if let p = snap.obj("page") { doc.template = p.str("template") ?? doc.template; doc.pageColor = p.str("color") ?? doc.pageColor }
+        if let p = snap.obj("paper") { doc.paperColor = p.str("bg") ?? doc.paperColor }
+        setDrawing(drawing)
+        surface.rebuildPages(); surface.rebuildElements(); surface.redrawPages()
+        model.pageCount = doc.pages.count
+        commit(from: before, name: "Restore version")
+        AppState.shared.say("Version restored", 1.4)
     }
     private var replayTimer: Timer?
 
@@ -247,6 +296,12 @@ final class EditorController: UIViewController, PKCanvasViewDelegate, UIGestureR
             guard let self, let rec = self.activeRecording else { return "no rec" }
             let start = Date(ms: rec.num("created") ?? 0)
             return (self.replayOriginal ?? self.surface.canvas.drawing).strokes.map { $0.path.creationDate.timeIntervalSince(start) }
+        }
+        d.handlers["restore"] = { [weak self] a in
+            guard let self else { return "" }
+            let list = self.versions(); let i = list.count - 1 - (Int(a.first ?? "1") ?? 1)
+            guard list.indices.contains(i) else { return "no such version" }
+            self.restoreVersion(list[i]); return ["strokes": self.surface.canvas.drawing.strokes.count, "elements": self.doc.elements.count, "pages": self.doc.pages.count]
         }
         d.handlers["tool"] = { [weak self] a in self?.model.select(Int(a.first ?? "0") ?? 0); self?.applyTool(); return self?.model.tool.kind.rawValue ?? "" }
         d.handlers["undo"] = { [weak self] _ in self?.performUndo(); return "ok" }
@@ -1294,6 +1349,7 @@ final class EditorController: UIViewController, PKCanvasViewDelegate, UIGestureR
 
     private func changed() {
         dirty = true
+        if Date().timeIntervalSince(lastVersion) > 600 { DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in if let s = self, Date().timeIntervalSince(s.lastVersion) > 600 { s.snapshotVersion() } } }
         syncUndo()
         scheduleSave()
     }

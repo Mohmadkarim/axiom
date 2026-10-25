@@ -118,7 +118,7 @@ final class Library {
     var subjects: [Subject] = []
     private(set) var settings: JSON = [:]
 
-    private init() { reload() }
+    private init() { reload(); purgeOld() }
 
     func reload() {
         settings = store.loadSettings()
@@ -232,10 +232,32 @@ final class Library {
         if let ink = store.loadFile("ink_" + id) { store.saveFile("ink_" + nid, ink) }
         save(doc: doc, thumb: notes.first { $0.id == id }?.thumb)
     }
+    /// to Recently Deleted (kept 30 days)
     func delete(_ id: String) {
-        store.deleteDoc(id)
+        let meta = notes.first { $0.id == id }
+        if let doc = store.loadDoc(id), let d = JSONIO.data(doc) {
+            store.saveFile("trash_" + id, d)
+            var trash = settings.arr("trash")
+            trash.append(["id": id, "name": meta?.name ?? doc.str("name") ?? "Untitled", "kind": doc.str("kind") ?? "canvas", "deleted": Date().ms, "thumb": meta?.thumb ?? NSNull()])
+            set("trash", trash)
+            store.removeDocFiles(id)
+        } else { store.deleteDoc(id) }
         notes.removeAll { $0.id == id }
     }
+    var trash: [JSON] { settings.arr("trash") }
+    func restoreFromTrash(_ id: String) {
+        guard let d = store.loadFile("trash_" + id), let doc = JSONIO.object(d) else { return }
+        let thumb = trash.first { $0.str("id") == id }?.str("thumb")
+        save(doc: doc, thumb: thumb)
+        store.deleteFile("trash_" + id)
+        set("trash", trash.filter { $0.str("id") != id })
+    }
+    func purge(_ id: String) {
+        for f in ["trash_", "ink_", "inkbak_", "ver_", "tutor_note:"] { store.deleteFile(f + id) }
+        set("trash", trash.filter { $0.str("id") != id })
+    }
+    /// older than 30 days: gone for good
+    func purgeOld() { for t in trash where Date().ms - (t.num("deleted") ?? 0) > 30 * 86_400_000 { if let id = t.str("id") { purge(id) } } }
 
     // MARK: books
 

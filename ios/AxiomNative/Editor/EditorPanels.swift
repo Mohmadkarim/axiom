@@ -211,6 +211,43 @@ enum Exporter {
     }
 }
 
+// MARK: - version history
+
+struct VersionsSheet: View {
+    let controller: EditorController
+    @Environment(\.dismiss) private var dismiss
+    @State private var list: [JSON] = []
+    @State private var confirm: JSON?
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                if list.isEmpty {
+                    Text("No earlier versions yet. Axiom keeps a snapshot each time you open this notebook and every ten minutes while you edit.").foregroundStyle(Theme.muted).padding(30)
+                }
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 170), spacing: 18)], spacing: 22) {
+                    ForEach(Array(list.enumerated()), id: \.offset) { _, v in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Color.white.aspectRatio(0.75, contentMode: .fit)
+                                .overlay { if let img = UIImage.fromDataURL(v.str("thumb")) { Image(uiImage: img).resizable().scaledToFill() } }
+                                .clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.line))
+                            Text(Date(ms: v.num("t") ?? 0).formatted(date: .abbreviated, time: .shortened)).font(Theme.ui(13, .semibold))
+                            Text([v.int("pages").map { "\($0) pages" }, v.str("label").flatMap { $0.isEmpty ? nil : $0 }].compactMap { $0 }.joined(separator: " · ")).font(Theme.ui(12)).foregroundStyle(Theme.muted)
+                            Button("Restore") { confirm = v }.buttonStyle(.bordered)
+                        }
+                    }
+                }
+                .padding(24)
+            }
+            .navigationTitle("Version history").navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .confirmationDialog("Restore this version? The current state is kept as a version too, so you can switch back.", isPresented: Binding(get: { confirm != nil }, set: { if !$0 { confirm = nil } }), titleVisibility: .visible) {
+                Button("Restore") { if let v = confirm { controller.restoreVersion(v); dismiss() } }
+            }
+            .onAppear { list = controller.versions().reversed() }
+        }
+    }
+}
+
 // MARK: - lecture audio
 
 struct RecordingPill: View {

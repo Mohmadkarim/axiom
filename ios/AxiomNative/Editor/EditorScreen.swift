@@ -32,6 +32,7 @@ struct EditorScreen: View {
     @State private var newName = ""
     @State private var paperSheet = false
     @State private var cropTarget: Element?
+    @State private var showVersions = false
 
     init(docID: String) {
         self.docID = docID
@@ -76,6 +77,7 @@ struct EditorScreen: View {
             Button("Rename") { let n = newName.trimmingCharacters(in: .whitespaces); if !n.isEmpty { session.doc?.name = n; model.title = n; session.controller?.scheduleSave() } }
         }
         .sheet(isPresented: $paperSheet) { if let c = session.controller { PaperSheet(controller: c) } }
+        .sheet(isPresented: $showVersions) { if let c = session.controller { VersionsSheet(controller: c) } }
         .fullScreenCover(item: Binding(get: { cropTarget.map { CropItem(element: $0) } }, set: { cropTarget = $0?.element })) { item in
             CropView(element: item.element) { rect in
                 cropTarget = nil
@@ -173,6 +175,7 @@ struct EditorScreen: View {
                 Toggle(isOn: Binding(get: { model.ruler }, set: { model.ruler = $0; session.controller?.applyTool() })) { Label("Ruler", systemImage: "ruler") }
                 Toggle(isOn: Binding(get: { model.shapes }, set: { model.shapes = $0; Library.shared.set("shapeHold", $0) })) { Label("Draw and hold for shapes", systemImage: "circle.square") }
                 Toggle(isOn: Binding(get: { model.fingerDraws }, set: { model.fingerDraws = $0; Library.shared.set("fingerAction", $0 ? "draw" : "auto"); session.controller?.applyTool() })) { Label("Draw with finger", systemImage: "hand.draw") }
+                Button("Version history", systemImage: "clock.arrow.circlepath") { session.controller?.flush(); showVersions = true }
                 Divider()
                 Button("Share as PDF", systemImage: "square.and.arrow.up") { session.controller?.flush(); if let d = session.doc { Exporter.sharePDF(doc: d, drawing: session.controller?.surface.canvas.drawing) } }
             } label: {

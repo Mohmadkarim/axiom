@@ -104,6 +104,7 @@ final class NoteCanvasView: UIView, UIScrollViewDelegate {
     func load(_ d: NoteDocument, drawing: PKDrawing) {
         doc = d
         canvas.drawing = drawing
+        updatePaperSnap()
         applyInkAppearance()
         superview?.backgroundColor = deskColor
         if d.isNotebook {
@@ -115,13 +116,15 @@ final class NoteCanvasView: UIView, UIScrollViewDelegate {
             canvas.showsVerticalScrollIndicator = false
             let half = NoteDocument.canvasHalf
             let g = TiledView(frame: CGRect(x: 0, y: 0, width: half * 2, height: half * 2), levels: 8, bias: 6)
+            // tiles draw on background threads: they only read the snapshot, never the document or the app state
             g.drawContent = { [weak self] ctx, rect, hair in
-                guard let self, let doc = self.doc else { return }
-                let bg = self.canvasPaper
-                ctx.setFillColor(bg.cgColor); ctx.fill(rect)
+                guard let p = self?.paperSnap else { return }
+                ctx.setFillColor(p.bg.cgColor); ctx.fill(rect)
                 ctx.saveGState()
-                ctx.translateBy(x: self.origin.x, y: self.origin.y)
-                PaperRenderer.drawCanvasGrid(ctx, rect: rect.offsetBy(dx: -self.origin.x, dy: -self.origin.y), type: doc.gridType, spacing: doc.gridSpacing, divisions: doc.gridDivisions, bg: bg, hair: hair)
+                ctx.translateBy(x: p.origin.x, y: p.origin.y)
+                let w = rect.offsetBy(dx: -p.origin.x, dy: -p.origin.y)
+                PaperRenderer.drawCanvasGrid(ctx, rect: w, type: p.grid, spacing: p.spacing, divisions: p.divisions, bg: p.bg, hair: hair)
+                PaperRenderer.drawArtboards(ctx, p.artboards, in: w, bg: p.bg, hair: hair)
                 ctx.restoreGState()
             }
             paper.insertSubview(g, at: 0)
@@ -152,8 +155,32 @@ final class NoteCanvasView: UIView, UIScrollViewDelegate {
         return traitCollection.userInterfaceStyle == .dark ? UIColor(css: "#0d0f13") : UIColor(css: "#e4e6eb")
     }
 
+    /// what the paper tiles draw, copied on the main thread
+    struct PaperSnap {
+        var bg = UIColor.black, grid = "none", spacing: CGFloat = 24, divisions = 5
+        var artboards: [JSON] = [], origin = CGPoint.zero
+        var pages: [(String, UIColor)] = [], pageSize = CGSize.zero
+    }
+    private let snapLock = NSLock()
+    private var _snap = PaperSnap()
+    var paperSnap: PaperSnap { snapLock.lock(); defer { snapLock.unlock() }; return _snap }
+    func updatePaperSnap() {
+        guard let doc else { return }
+        var p = PaperSnap()
+        p.bg = canvasPaper; p.grid = doc.gridType; p.spacing = doc.gridSpacing; p.divisions = doc.gridDivisions
+        p.artboards = doc.artboards; p.origin = origin
+        p.pages = doc.pages.indices.map { (doc.template(of: $0), UIColor(css: doc.color(of: $0))) }
+        p.pageSize = doc.pageSize
+        snapLock.lock(); _snap = p; snapLock.unlock()
+    }
+    override func traitCollectionDidChange(_ previous: UITraitCollection?) {
+        super.traitCollectionDidChange(previous)
+        if previous?.userInterfaceStyle != traitCollection.userInterfaceStyle { updatePaperSnap(); applyInkAppearance(); redrawPages(); superview?.backgroundColor = deskColor }
+    }
+
     func rebuildPages() {
         guard doc.isNotebook else { return }
+        updatePaperSnap()
         pageViews.forEach { $0.removeFromSuperview() }
         pageViews = []
         for i in doc.pages.indices {
@@ -161,10 +188,10 @@ final class NoteCanvasView: UIView, UIScrollViewDelegate {
             let v = TiledView(frame: r, levels: 4, bias: 4)
             let index = i
             v.drawContent = { [weak self] ctx, rect, hair in
-                guard let self, let doc = self.doc, index < doc.pages.count else { return }
-                let bg = UIColor(css: doc.color(of: index))
+                guard let p = self?.paperSnap, index < p.pages.count else { return }
+                let (template, bg) = p.pages[index]
                 ctx.setFillColor(bg.cgColor); ctx.fill(rect)
-                PaperRenderer.drawTemplate(ctx, rect: CGRect(origin: .zero, size: doc.pageSize), template: doc.template(of: index), bg: bg, hair: hair)
+                PaperRenderer.drawTemplate(ctx, rect: CGRect(origin: .zero, size: p.pageSize), template: template, bg: bg, hair: hair)
             }
             v.layer.shadowColor = UIColor.black.cgColor
             v.layer.shadowOpacity = traitCollection.userInterfaceStyle == .dark ? 0.5 : 0.16
@@ -178,7 +205,7 @@ final class NoteCanvasView: UIView, UIScrollViewDelegate {
         paper.bounds = CGRect(x: 0, y: 0, width: bb.maxX, height: bb.maxY)
         layoutContent()
     }
-    func redrawPages() { pageViews.forEach { $0.redraw() }; gridView?.redraw() }
+    func redrawPages() { updatePaperSnap(); pageViews.forEach { $0.redraw() }; gridView?.redraw() }
 
     func rebuildElements() {
         elementViews.values.forEach { $0.removeFromSuperview() }
@@ -273,7 +300,7 @@ final class NoteCanvasView: UIView, UIScrollViewDelegate {
         layoutSubviewsIfNeeded()
         layoutContent()     // zoom limits first, or the zoom below is clamped to the defaults
         if doc.isNotebook {
-            let z = doc.view.zoom > fit * 0.3 && doc.view.zoom < fit * 6 && abs(doc.view.zoom - 1) > 0.0001 ? doc.view.zoom : fit
+            let z = doc.fitZoom.map { min(6, max(0.3, $0)) * fit } ?? (doc.view.zoom > fit * 0.3 && doc.view.zoom < fit * 6 && abs(doc.view.zoom - 1) > 0.0001 ? doc.view.zoom : fit)
             canvas.zoomScale = z
             layoutContent()
             let zz = canvas.zoomScale
@@ -292,7 +319,7 @@ final class NoteCanvasView: UIView, UIScrollViewDelegate {
     /// what to save: zoom and the screen position of the world origin
     var viewState: (CGFloat, CGFloat, CGFloat, CGFloat) {
         let z = canvas.zoomScale
-        if doc?.isNotebook == true { return (z, 0, (canvas.contentOffset.y + insets.top) / z, 0) }
+        if doc?.isNotebook == true { doc?.savedFit = fit; return (z, 0, (canvas.contentOffset.y + insets.top) / z, 0) }
         return (z, origin.x * z - canvas.contentOffset.x, origin.y * z - canvas.contentOffset.y, 0)
     }
 

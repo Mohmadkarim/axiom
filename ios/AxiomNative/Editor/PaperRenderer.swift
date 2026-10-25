@@ -104,6 +104,27 @@ enum PaperRenderer {
         }
     }
 
+    /// page-sized frames on a canvas, with their name and size above
+    static func drawArtboards(_ ctx: CGContext, _ boards: [JSON], in rect: CGRect, bg: UIColor, hair: CGFloat) {
+        let dark = isDark(bg)
+        for a in boards {
+            let r = CGRect(x: a.num("x") ?? 0, y: a.num("y") ?? 0, width: a.num("w") ?? 0, height: a.num("h") ?? 0)
+            guard r.width > 0, r.insetBy(dx: -40, dy: -40).intersects(rect) else { continue }
+            ctx.saveGState()
+            ctx.setShadow(offset: CGSize(width: 0, height: 3 * hair), blur: 14 * hair, color: UIColor.black.withAlphaComponent(dark ? 0.55 : 0.18).cgColor)
+            ctx.setFillColor(bg.cgColor); ctx.fill(r)
+            ctx.restoreGState()
+            if dark { ctx.setFillColor(UIColor.white.withAlphaComponent(0.045).cgColor); ctx.fill(r) }
+            ctx.setStrokeColor((dark ? UIColor.white.withAlphaComponent(0.3) : UIColor(red: 30 / 255, green: 40 / 255, blue: 60 / 255, alpha: 0.24)).cgColor)
+            ctx.setLineWidth(hair); ctx.stroke(r)
+            let mmPerCm = 96 / 25.4 * 10
+            let label = "Artboard · \(a.str("name") ?? "") · \(String(format: "%.1f × %.1f cm", r.width / mmPerCm, r.height / mmPerCm))"
+            UIGraphicsPushContext(ctx)
+            (label as NSString).draw(at: CGPoint(x: r.minX + 2, y: r.minY - 20), withAttributes: [.font: UIFont.systemFont(ofSize: 12, weight: .semibold), .foregroundColor: dark ? UIColor.white.withAlphaComponent(0.72) : UIColor(red: 30 / 255, green: 40 / 255, blue: 60 / 255, alpha: 0.66)])
+            UIGraphicsPopContext()
+        }
+    }
+
     /// canvas background grid over a world rect. type: dot | grid | graph | iso | none ; spacing in world units
     static func drawCanvasGrid(_ ctx: CGContext, rect: CGRect, type: String, spacing: CGFloat, divisions: Int, bg: UIColor, hair: CGFloat, opacity: CGFloat = 1) {
         guard type != "none", spacing > 0 else { return }
