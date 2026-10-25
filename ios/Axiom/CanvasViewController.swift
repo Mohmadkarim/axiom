@@ -10,6 +10,7 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
     #if DEBUG
     private var debugBridge: DebugBridge?
     #endif
+    private var inkView: LiveInkView?
     private lazy var audio: AudioBridge = {
         let a = AudioBridge(filesDir: { [store] in store.filesDir })
         a.onTick = { [weak self] json in self?.runJS("window.__axiomAudio && __axiomAudio(\(json))") }
@@ -53,6 +54,20 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         webView.addInteraction(pencil)
 
         let capture = PencilCaptureRecognizer()
+        // native live ink: drawn straight from the Pencil so it sits on the tip
+        let ink = LiveInkView(frame: .zero)
+        ink.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        webView.addSubview(ink)
+        inkView = ink
+        capture.onTouches = { [weak self] phase, coalesced, predicted in
+            guard let self, let ink = self.inkView else { return }
+            switch phase {
+            case "b": ink.began(coalesced, in: self.webView)
+            case "m": ink.moved(coalesced, predicted: predicted, in: self.webView)
+            case "e": ink.ended(coalesced, in: self.webView)
+            default: ink.cancelled()
+            }
+        }
         capture.onSamples = { [weak self] phase, samples, predicted in
             self?.runJS("window.__axiomPen && __axiomPen('\(phase)', \(samples), \(predicted))")
         }
@@ -170,6 +185,26 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
             UIApplication.shared.isIdleTimerDisabled = body["on"] as? Bool ?? false
             replyHandler(true, nil)
             return
+        case "inkStyle":
+            if let ink = inkView {
+                var st = LiveInkView.Style()
+                st.enabled = body["enabled"] as? Bool ?? false
+                st.color = Self.color(body["color"] as? String ?? "#000000")
+                st.alpha = CGFloat(body["alpha"] as? Double ?? 1)
+                st.width = CGFloat(body["width"] as? Double ?? 2)
+                st.minMul = CGFloat(body["minMul"] as? Double ?? 0.6)
+                st.maxMul = CGFloat(body["maxMul"] as? Double ?? 1.2)
+                st.dx = CGFloat(body["dx"] as? Double ?? 0)
+                st.dy = CGFloat(body["dy"] as? Double ?? 0)
+                st.cap = (body["cap"] as? String) == "butt" ? .butt : .round
+                ink.style = st
+                if !st.enabled { ink.clearIfIdle() }
+            }
+            replyHandler(true, nil); return
+        case "inkClear":
+            inkView?.clearIfIdle(); replyHandler(true, nil); return
+        case "inkSuspend":
+            inkView?.suspend(); replyHandler(true, nil); return
         case "snapshot":
             // a picture of part of the page, including embedded sites (Desmos) that the page itself cannot read
             let cfg = WKSnapshotConfiguration()
@@ -261,15 +296,30 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
     }
 }
 
+extension CanvasViewController {
+    static func color(_ hex: String) -> UIColor {
+        var h = hex.trimmingCharacters(in: .whitespaces); if h.hasPrefix("#") { h.removeFirst() }
+        if h.count == 3 { h = h.map { "\($0)\($0)" }.joined() }
+        guard h.count == 6, let v = UInt32(h, radix: 16) else { return .black }
+        return UIColor(red: CGFloat((v >> 16) & 255) / 255, green: CGFloat((v >> 8) & 255) / 255, blue: CGFloat(v & 255) / 255, alpha: 1)
+    }
+}
+
 /// Watches Apple Pencil touches on the web view without consuming them and forwards every
 /// coalesced (up to 240 Hz) and predicted sample to the page.
 final class PencilCaptureRecognizer: UIGestureRecognizer, UIGestureRecognizerDelegate {
     var onSamples: ((String, String, String) -> Void)?
+    var onTouches: ((String, [UITouch], [UITouch]) -> Void)?
+    static var fingerIsPencil = false
     private weak var tracked: UITouch?
 
     init() {
         super.init(target: nil, action: nil)
         allowedTouchTypes = [NSNumber(value: UITouch.TouchType.pencil.rawValue)]
+        #if DEBUG
+        // simulator testing: `defaults write com.mohmadkarim.axiom debugDirectInk -bool YES` lets a finger stand in for the Pencil
+        if UserDefaults.standard.bool(forKey: "debugDirectInk") { allowedTouchTypes.append(NSNumber(value: UITouch.TouchType.direct.rawValue)); Self.fingerIsPencil = true }
+        #endif
         cancelsTouchesInView = false
         delaysTouchesBegan = false
         delaysTouchesEnded = false
@@ -294,11 +344,12 @@ final class PencilCaptureRecognizer: UIGestureRecognizer, UIGestureRecognizerDel
     private func send(_ phase: String, _ touch: UITouch, _ event: UIEvent) {
         let coalesced = event.coalescedTouches(for: touch) ?? [touch]
         let predicted = phase == "m" ? (event.predictedTouches(for: touch) ?? []) : []
+        onTouches?(phase, coalesced.isEmpty ? [touch] : coalesced, predicted)
         onSamples?(phase, encode(coalesced.isEmpty ? [touch] : coalesced), encode(predicted))
     }
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
-        guard tracked == nil, let t = touches.first(where: { $0.type == .pencil }) else { return }
+        guard tracked == nil, let t = touches.first(where: { $0.type == .pencil || (Self.fingerIsPencil && $0.type == .direct) }) else { return }
         tracked = t
         send("b", t, event)
     }

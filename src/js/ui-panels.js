@@ -769,7 +769,7 @@
       tabs.forEach(([id, l, icon]) => nav.append(h('button', { class: id === cur ? 'on' : '', onclick: () => { cur = id; rebuild(); } }, A.iconEl(icon), l)));
       nav.append(h('div', { class: 'grow' }), h('div', { class: 'small muted set-ver num' }, `Axiom ${A.VERSION} · ${window.AXIOM_BUILD || 'dev'}`));
       content.innerHTML = '';
-      const add = (...x) => content.append(...x);
+      const add = (...x) => content.append(...x.filter(Boolean));
       if (cur === 'workspace') {
         add(h('h5', null, 'Appearance'),
           row('Theme', null, sel('theme', [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']], UI.applyTheme)),
@@ -795,6 +795,7 @@
       } else if (cur === 'interaction') {
         add(h('h5', null, 'Touch input'),
           row('Apple Pencil calibration', S.penOffset ? `Correcting ${S.penOffset.x} pt across, ${S.penOffset.y} pt down` : 'Tap five targets so ink sits exactly under the tip', h('button', { class: 'btn', onclick: () => A.IN.calibratePen() }, S.penOffset ? 'Recalibrate' : 'Calibrate')),
+          NATIVE ? row('Fast ink', 'Draw the stroke you are writing natively, right under the Pencil tip', toggleSw(S.nativeInk !== false, (v) => { set('nativeInk', v); A.IN.syncInk(); }, 's-ink')) : null,
           row('Finger action', 'What your finger does when you use an Apple Pencil', sel('fingerAction', [['none', 'Do nothing'], ['pan', 'Pan'], ['draw', 'Draw'], ['select', 'Select'], ['auto', 'Auto']])),
           row('Two fingers: canvas rotation', 'Twist to rotate canvases (notebooks never rotate)', toggleSw(S.allowRotate && !S.rotLock, (v) => { set('allowRotate', true); set('rotLock', !v); A.emit('view'); }, 's-rot')),
           row('Two fingers: canvas zoom', 'Turn off to lock the zoom level', toggleSw(!S.zoomLock, (v) => { set('zoomLock', !v); A.emit('view'); }, 's-zoom')),

@@ -156,6 +156,7 @@
         // Concepts-style tap+hold: switch to lasso selection
         this.done = true;
         IN.liveDraw = null;
+        if (this.rec.id === 7777) IN.inkSuspend();
         action = new LassoAction(this.rec, this.lastS, { temp: true });
         action.owner = this.rec.id;
         R.renderOverlay();
@@ -170,6 +171,7 @@
       const r = G.recognize(this.pts);
       if (r) {
         this.shape = r;
+        if (this.rec.id === 7777) IN.inkSuspend();
         const [hx, hy] = R.toWorld(this.lastS.x, this.lastS.y);
         this.shapeHold = [hx, hy];
         if (r.kind === 'line' || r.kind === 'arc' || r.kind === 'polyline') this.shapePivot = [r.pts[0], r.pts[1]];
@@ -324,13 +326,14 @@
       D.commit();
       R.appendItem(item, layer);
       R.renderOverlayNow();
+      if (this.rec.id === 7777) IN.inkDone();
       if (D.doc.precision.measure && G.count(pts) >= 2 && !this.cat.mask) {
         IN.lastMeasure = { item, until: performance.now() + 2200 };
         setTimeout(() => R.renderOverlay(), 2300);
       }
       A.emit('layers:thumbs');
     }
-    cancel() { this.done = true; clearTimeout(this.holdTimer); IN.liveDraw = null; R.renderOverlay(); }
+    cancel() { this.done = true; clearTimeout(this.holdTimer); IN.liveDraw = null; if (this.rec.id === 7777) IN.inkSuspend(); R.renderOverlay(); }
   }
 
   /* ---- slice eraser / stroke eraser ---- */
@@ -1097,6 +1100,7 @@
     const withLists = (ev, list, pred) => { ev.getCoalescedEvents = () => list.map((s) => nativeEv(s, 'pointermove')); ev.getPredictedEvents = () => (pred || []).map((s) => nativeEv(s, 'pointermove')); return ev; };
     if (phase === 'b') {
       onDown(nativeEv(samples[0], 'pointerdown'));
+      if (IN.inkOn && !(action instanceof DrawAction)) IN.inkSuspend();
       if (samples.length > 1) onMove(withLists(nativeEv(last, 'pointermove'), samples.slice(1), []));
     } else if (phase === 'm') {
       onMove(withLists(nativeEv(last, 'pointermove'), samples, predicted));
@@ -1151,14 +1155,45 @@
     });
   };
 
+  /* ---------- native live ink: tell the iPad layer what the current pen looks like ---------- */
+  let inkKey = '', inkT = 0;
+  IN.inkOn = false;
+  const post = (msg) => { if (A.native) A.native.post(msg).catch(() => {}); };
+  IN.inkSuspend = () => post({ op: 'inkSuspend' });
+  IN.inkDone = () => requestAnimationFrame(() => requestAnimationFrame(() => post({ op: 'inkClear' })));
+  const displayColor = (c) => { const old = B.lift; B.lift = !B.dark && R.paperIsDark(); const v = B.col(c); B.lift = old; return v; };
+  const inkStyle = () => {
+    if (!A.native || !IN.nativePen || A.settings.nativeInk === false) return { enabled: false };
+    const rv = A.$('#reader-view');
+    if ((rv && !rv.hidden) || !D.doc || A.$('#canvas-view').hidden) return { enabled: false };
+    const slot = B.slot(), c = slot && B.catalog[slot.b];
+    if (!c || !(c.kind === 'var' || c.kind === 'line') || c.mask || c.soft || slot.b === 'tape' || GU.active()) return { enabled: false };
+    const z = D.doc.view.zoom, o = A.settings.penOffset || { x: 0, y: 0 };
+    return { enabled: true, color: displayColor(slot.color), alpha: slot.opacity == null ? c.opacity : slot.opacity, width: slot.size * z,
+      minMul: B.widthMul(slot.b, 0.15, 0, true), maxMul: B.widthMul(slot.b, 1, 0, true), cap: c.cap === 'butt' ? 'butt' : 'round', dx: o.x, dy: o.y };
+  };
+  IN.syncInk = () => {
+    if (inkT) return;
+    inkT = requestAnimationFrame(() => {
+      inkT = 0;
+      const st = inkStyle(), key = JSON.stringify(st);
+      IN.inkOn = !!st.enabled;
+      if (key === inkKey) return;
+      inkKey = key;
+      post(Object.assign({ op: 'inkStyle' }, st));
+    });
+  };
+  ['slot', 'slot:live', 'slot:size', 'slot:select', 'tool:select', 'view', 'theme', 'doc:open', 'open', 'doc:close', 'go:gallery', 'read', 'precision', 'stage:resize'].forEach((ev) => A.on(ev, IN.syncInk));
+  setInterval(IN.syncInk, 1500); // catches anything the events miss (cheap: only posts when the style changes)
+
   IN.cancelAll = () => { if (action && action.cancel) action.cancel(); action = null; pointers.clear(); };
 
   /* ================= overlay painter ================= */
   const paint = (ctx) => {
     const doc = D.doc;
     const accent = R.accent();
-    // live stroke
-    if (IN.liveDraw) {
+    // live stroke (the native ink layer draws Pencil strokes itself, right on the tip)
+    if (IN.liveDraw && !(IN.inkOn && IN.liveDraw.rec.id === 7777 && !IN.liveDraw.shape)) {
       const d = IN.liveDraw;
       const it = d.liveItem();
       if (it.pts.length) {
