@@ -1528,3 +1528,7 @@ h5, .g-sec-h h2, .sub, .nb-fly-h, .pp-h, .bk-up-h { font-size: 11px !important; 
 .md-table table { border-collapse: collapse; font-size: 14px; min-width: 60%; }
 .md-table th, .md-table td { border: 1px solid var(--line-strong); padding: 6px 10px; text-align: left; vertical-align: top; }
 .md-table th { background: var(--panel-2); font-weight: 650; }
+
+/* ===== notebooks on PencilKit: the page is transparent over the pages; the native view shows through ===== */
+html.pk-on, html.pk-on body, html.pk-on #app, html.pk-on #canvas-view, html.pk-on #stage { background: transparent !important; }
+#canvas-view.pk #main { visibility: hidden; }

@@ -252,13 +252,15 @@
     artboards: (D.doc.artboards || []).slice(),
   });
   const restore = (s) => {
-    D.doc.layers = s.layers.map((l) => Object.assign({}, l, { items: l.items.slice() }));
+    const ink = D.doc.layers.find((l) => l.pk); // the PencilKit ink copy follows PencilKit's own undo, not the page's
+    D.doc.layers = s.layers.map((l) => (l.pk && ink ? ink : Object.assign({}, l, { items: l.items.slice() })));
     D.doc.activeLayerId = s.active;
     if (s.pages) { D.doc.pages = s.pages.map((p) => Object.assign({}, p)); A.emit('pages'); }
     if (s.artboards) { D.doc.artboards = s.artboards.slice(); A.emit('artboards'); }
   };
   D.resetHistory = () => { H.undo = []; H.redo = []; H.pending = null; A.emit('history'); };
   D.begin = () => { if (!H.pending) H.pending = snap(); };
+  D.hasPending = () => !!H.pending;
   D.commit = (kind = 'items') => {
     if (!H.pending) return;
     H.undo.push(H.pending);

@@ -52,7 +52,7 @@
       if (e.built) loadPrep(e.id).then((p) => {
         card.querySelector('.ex-bar i').style.width = Math.round(progressOf(p) * 100) + '%';
         const today = sessions(p).filter((s) => s.day === isoDate(Date.now()) && !p.done[s.key]);
-        card.querySelector('.ex-today').textContent = today.length ? 'Today: ' + today[0].task : daysLeft(e.date) > 0 ? 'Nothing left for today' : '';
+        card.querySelector('.ex-today').textContent = today.length ? 'Today: ' + today[0].task.replace(/[*_`#]/g, '').replace(/\$([^$]*)\$/g, '$1') : daysLeft(e.date) > 0 ? 'Nothing left for today' : '';
       });
     });
     sec.append(row);

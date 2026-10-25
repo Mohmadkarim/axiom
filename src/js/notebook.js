@@ -109,6 +109,7 @@
   const courseLabel = () => { const n = A.SU.name(D.doc.subject); return (n ? n + ' · ' : '') + D.formats[D.doc.page.size].name; };
   function syncHistory() {
     if (!els.undo) return;
+    if (A.PK && A.PK.active) { els.undo.disabled = !A.PK.order.length; els.redo.disabled = !A.PK.redoOrder.length; return; }
     els.undo.disabled = !D.history.undo.length && !D.history.pending;
     els.redo.disabled = !D.history.redo.length;
   }

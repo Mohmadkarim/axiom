@@ -316,8 +316,8 @@
     renderSelMenu();
   };
   const cmds = {
-    undo() { D.undo(); },
-    redo() { D.redo(); },
+    undo() { if (A.PK && A.PK.active) A.PK.undo(); else D.undo(); },
+    redo() { if (A.PK && A.PK.active) A.PK.redo(); else D.redo(); },
     selectAll() {
       const ids = [];
       for (const l of D.doc.layers) if (l.visible && !l.locked && (!A.IN.selLayerOnly || l.id === D.doc.activeLayerId)) for (const it of l.items) if (B.isBox(it) || !B.catalog[it.b].mask) ids.push(it.id);

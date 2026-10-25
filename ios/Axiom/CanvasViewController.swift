@@ -11,6 +11,8 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
     private var debugBridge: DebugBridge?
     #endif
     private var inkView: LiveInkView?
+    private var notebook: NotebookInkView?
+    private var passthroughWeb: PassthroughWebView? { webView as? PassthroughWebView }
     private lazy var audio: AudioBridge = {
         let a = AudioBridge(filesDir: { [store] in store.filesDir })
         a.onTick = { [weak self] json in self?.runJS("window.__axiomAudio && __axiomAudio(\(json))") }
@@ -27,7 +29,7 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         let settings = store.loadSettings() ?? "null"
         let locked = UserDefaults.standard.object(forKey: "orientationLock") as? Int
         if let m = locked { orientationLock = UIInterfaceOrientationMask(rawValue: UInt(m)) }
-        let boot = "window.AXIOM_NATIVE = { pen: true, platform: 'ios', audio: true, orientationLock: \(locked != nil) }; window.AXIOM_SETTINGS = \(settings);"
+        let boot = "window.AXIOM_NATIVE = { pen: true, platform: 'ios', audio: true, pencilkit: true, orientationLock: \(locked != nil) }; window.AXIOM_SETTINGS = \(settings);"
         content.addUserScript(WKUserScript(source: boot, injectionTime: .atDocumentStart, forMainFrameOnly: true))
 
         let config = WKWebViewConfiguration()
@@ -39,10 +41,11 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
             schemeHandler = handler
         }
 
-        webView = WKWebView(frame: .zero, configuration: config)
+        webView = PassthroughWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = self
         webView.isOpaque = false
-        webView.backgroundColor = UIColor(red: 0.07, green: 0.075, blue: 0.09, alpha: 1)
+        webView.backgroundColor = .clear              // the root view paints the desk; notebooks show through
+        webView.scrollView.backgroundColor = .clear
         webView.scrollView.isScrollEnabled = false
         webView.scrollView.bounces = false
         webView.scrollView.contentInsetAdjustmentBehavior = .never
@@ -71,9 +74,26 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         capture.onSamples = { [weak self] phase, samples, predicted in
             self?.runJS("window.__axiomPen && __axiomPen('\(phase)', \(samples), \(predicted))")
         }
-        webView.addGestureRecognizer(capture)
 
-        view = webView
+        // notebooks draw with PencilKit underneath a transparent web view
+        let root = UIView()
+        root.backgroundColor = UIColor(red: 0.07, green: 0.075, blue: 0.09, alpha: 1)
+        let nb = NotebookInkView(frame: .zero)
+        nb.save = { [weak self] id, data in try? self?.store.writeFile(id: id, data: data) }
+        nb.load = { [weak self] id in self.flatMap { try? Data(contentsOf: $0.store.fileURL(id)) } }
+        nb.onView = { [weak self] z, tx, ty in self?.runJS("window.__axiomPK && __axiomPK('view', {zoom: \(z), tx: \(tx), ty: \(ty)})") }
+        nb.onNeedPage = { [weak self] i, sc in self?.runJS("window.__axiomPK && __axiomPK('needPage', {i: \(i), scale: \(sc)})") }
+        nb.onStrokes = { [weak self] json in self?.runJS("window.__axiomPK && __axiomPK('strokes', \(json))") }
+        nb.onChanged = { [weak self] in self?.runJS("window.__axiomPK && __axiomPK('changed', null)") }
+        notebook = nb
+        webView.frame = root.bounds
+        webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        root.addSubview(nb)
+        root.addSubview(webView)
+        root.addGestureRecognizer(capture)
+        NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in self?.notebook?.flush() }
+
+        view = root
         #if DEBUG
         debugBridge = DebugBridge(webView: webView)
         #endif
@@ -201,6 +221,58 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
                 if !st.enabled { ink.clearIfIdle() }
             }
             replyHandler(true, nil); return
+        case "pkOpen":
+            guard let nb = notebook else { replyHandler(false, nil); return }
+            let rects = (body["pages"] as? [[Double]] ?? []).map { CGRect(x: $0[0], y: $0[1], width: $0[2] - $0[0], height: $0[3] - $0[1]) }
+            let f = body["frame"] as? [Double] ?? [0, 0, Double(view.bounds.width), Double(view.bounds.height)]
+            nb.frame = CGRect(x: f[0], y: f[1], width: f[2], height: f[3])
+            let ins = body["insets"] as? [Double] ?? [70, 16, 90, 66]
+            nb.open(id: body["id"] as? String ?? "doc", rects: rects, zoom: CGFloat(body["zoom"] as? Double ?? 1), tx: CGFloat(body["tx"] as? Double ?? 0), ty: CGFloat(body["ty"] as? Double ?? 0),
+                    legacy: body["legacy"] as? [[String: Any]] ?? [], dark: body["dark"] as? Bool ?? false, desk: Self.color(body["desk"] as? String ?? "#111317"),
+                    insets: UIEdgeInsets(top: ins[0], left: ins[1], bottom: ins[2], right: ins[3]))
+            passthroughWeb?.passthrough = true
+            replyHandler(nb.currentView(), nil); return
+        case "pkClose":
+            notebook?.close(); passthroughWeb?.passthrough = false; view.backgroundColor = UIColor(red: 0.07, green: 0.075, blue: 0.09, alpha: 1)
+            replyHandler(true, nil); return
+        case "pkFrame":
+            if let f = body["frame"] as? [Double] { notebook?.frame = CGRect(x: f[0], y: f[1], width: f[2], height: f[3]) }
+            if let ins = body["insets"] as? [Double] { notebook?.setInsets(UIEdgeInsets(top: ins[0], left: ins[1], bottom: ins[2], right: ins[3])) }
+            if let dark = body["dark"] as? Bool { notebook?.setAppearance(dark: dark, desk: Self.color(body["desk"] as? String ?? "#111317")) }
+            replyHandler(true, nil); return
+        case "pkPages":
+            let rects = (body["pages"] as? [[Double]] ?? []).map { CGRect(x: $0[0], y: $0[1], width: $0[2] - $0[0], height: $0[3] - $0[1]) }
+            notebook?.setPages(rects); replyHandler(true, nil); return
+        case "pkPage":
+            if let b64 = body["data"] as? String, let data = Data(base64Encoded: b64) { notebook?.setPageImage(body["i"] as? Int ?? 0, data: data, scale: CGFloat(body["scale"] as? Double ?? 1)) }
+            replyHandler(true, nil); return
+        case "pkDirty":
+            notebook?.markDirty(body["all"] as? Bool ?? true, body["pages"] as? [Int] ?? []); replyHandler(true, nil); return
+        case "pkTool":
+            notebook?.setTool(body)
+            // text, laser, tape: the page handles the Pencil (and pans by finger through the native view's API)
+            if notebook?.isOpen == true { passthroughWeb?.passthrough = (body["tool"] as? String ?? "none") != "none" }
+            replyHandler(true, nil); return
+        case "pkView":
+            notebook?.setView(zoom: CGFloat(body["zoom"] as? Double ?? 1), tx: CGFloat(body["tx"] as? Double ?? 0), ty: CGFloat(body["ty"] as? Double ?? 0)); replyHandler(true, nil); return
+        case "pkChrome":
+            passthroughWeb?.chrome = (body["rects"] as? [[Double]] ?? []).map { CGRect(x: $0[0], y: $0[1], width: $0[2], height: $0[3]) }
+            replyHandler(true, nil); return
+        case "pkMove":
+            let moves = (body["moves"] as? [[String: Any]] ?? []).compactMap { m -> (CGRect, CGPoint)? in
+                guard let f = m["from"] as? [Double], let t = m["to"] as? [Double], f.count == 4, t.count >= 2 else { return nil }
+                return (CGRect(x: f[0], y: f[1], width: f[2] - f[0], height: f[3] - f[1]), CGPoint(x: t[0], y: t[1]))
+            }
+            notebook?.move(moves); replyHandler(true, nil); return
+        case "pkCopy":
+            if let f = body["from"] as? [Double], let t = body["to"] as? [Double], f.count == 4, t.count >= 2 {
+                notebook?.copy(from: CGRect(x: f[0], y: f[1], width: f[2] - f[0], height: f[3] - f[1]), to: CGPoint(x: t[0], y: t[1]))
+            }
+            replyHandler(true, nil); return
+        case "pkUndo":
+            notebook?.undo(); replyHandler(true, nil); return
+        case "pkRedo":
+            notebook?.redo(); replyHandler(true, nil); return
         case "inkClear":
             inkView?.clearIfIdle(); replyHandler(true, nil); return
         case "inkSuspend":

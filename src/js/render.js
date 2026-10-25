@@ -67,6 +67,7 @@
     if (v.rot != null) doc.view.rot = v.rot;
     if (v.tx != null) doc.view.tx = v.tx;
     if (v.ty != null) doc.view.ty = v.ty;
+    if (R.pk && A.PK) { A.PK.setView(doc.view); A.emit('view'); R.renderOverlay(); return; }
     if (D.isNotebook(doc)) R.constrainNotebook();
     A.emit('view');
     R.render();
@@ -79,6 +80,7 @@
     return horiz ? Math.min((R.h - 130) / ph, (free - 170) / pw) : Math.min((free - (free > 900 ? 190 : 120)) / pw, 1.8);
   };
   R.constrainNotebook = () => {
+    if (R.pk) return;
     const v = D.doc.view;
     const fit = R.fitPageZoom();
     if (v.rot) {
@@ -420,6 +422,7 @@
       for (const it of l.items) {
         if (o.onlyIds && !o.onlyIds.has(it.id)) continue;
         if (o.hideId && it.id === o.hideId) continue;
+        if (o.noStrokes && it.t === 's') continue;
         if (sel && sel.has(it.id)) { selected.push(it); continue; }
         if (!G.bbHit(it.bb, vbb)) continue;
         const f = B.isBox(it) ? 1 : fade; // dim ink only; pages and images stay as they are
@@ -457,6 +460,7 @@
   };
   R.renderNow = (force = false) => {
     if (!D.doc || !R.main) return;
+    if (R.pk) { R.mctx.setTransform(1, 0, 0, 1, 0, 0); R.mctx.clearRect(0, 0, R.main.width, R.main.height); R.renderOverlay(); return; }
     const t0 = performance.now();
     const m = R.dmatrix(D.doc.view);
     const W = R.main.width, H = R.main.height;
@@ -534,7 +538,7 @@
   };
 
   /* ---------- offscreen rendering for export / thumbnails ---------- */
-  R.renderRegion = (doc, bb, scale, { bg = true, grid = false, onlyIds = null, maxPx = 8192 } = {}) => {
+  R.renderRegion = (doc, bb, scale, { bg = true, grid = false, onlyIds = null, maxPx = 8192, noStrokes = false } = {}) => {
     const bw = Math.max(1, bb[2] - bb[0]), bh = Math.max(1, bb[3] - bb[1]);
     let s = scale;
     const lim = Math.min(maxPx, 16384);
@@ -546,7 +550,7 @@
     const sc = document.createElement('canvas'); sc.width = W; sc.height = H;
     const m = [s, 0, 0, s, -bb[0] * s, -bb[1] * s];
     R.drawScene(c.getContext('2d'), {
-      m, w: W, h: H, doc, bg: bg && !D.isNotebook(doc) ? doc.paper.bg : null, pageBg: bg && D.isNotebook(doc), grid, scratch: sc, sctx: sc.getContext('2d'), dpr: Math.max(1, s), onlyIds, noArtboards: true,
+      m, w: W, h: H, doc, bg: bg && !D.isNotebook(doc) ? doc.paper.bg : null, pageBg: bg && D.isNotebook(doc), grid, scratch: sc, sctx: sc.getContext('2d'), dpr: Math.max(1, s), onlyIds, noArtboards: true, noStrokes, hideId: noStrokes ? R.hideId : null,
     });
     return c;
   };

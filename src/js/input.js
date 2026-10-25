@@ -1095,6 +1095,7 @@
   });
   window.__axiomPen = (phase, samples, predicted) => {
     if (!samples || !samples.length) return;
+    if (A.PK && A.PK.ownsPen()) return; // PencilKit draws, erases or lassos this stroke itself
     if (!D.doc || A.$('#canvas-view').hidden) return;
     const last = samples[samples.length - 1];
     const withLists = (ev, list, pred) => { ev.getCoalescedEvents = () => list.map((s) => nativeEv(s, 'pointermove')); ev.getPredictedEvents = () => (pred || []).map((s) => nativeEv(s, 'pointermove')); return ev; };
@@ -1163,7 +1164,7 @@
   IN.inkDone = () => requestAnimationFrame(() => requestAnimationFrame(() => post({ op: 'inkClear' })));
   const displayColor = (c) => { const old = B.lift; B.lift = !B.dark && R.paperIsDark(); const v = B.col(c); B.lift = old; return v; };
   const inkStyle = () => {
-    if (!A.native || !IN.nativePen || A.settings.nativeInk === false) return { enabled: false };
+    if (!A.native || !IN.nativePen || A.settings.nativeInk === false || (A.PK && A.PK.active)) return { enabled: false };
     const rv = A.$('#reader-view');
     if ((rv && !rv.hidden) || !D.doc || A.$('#canvas-view').hidden) return { enabled: false };
     const slot = B.slot(), c = slot && B.catalog[slot.b];
