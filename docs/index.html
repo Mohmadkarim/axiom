@@ -1565,6 +1565,19 @@ html.pk-on .panel, html.pk-on #nb-ui .panel, html.pk-on .rd-group.panel, html.pk
 /* active buttons in the bars: separate rounded chips, never touching */
 .nb-tr, .rd-top .rd-group { gap: 3px; }
 .nb-tr .ibtn, .rd-top .ibtn { border-radius: 12px; }
+/* the ask box: the send button sits inside the field's right end (the shared .ab-row padding pushed it over the edge) */
+.rd-actions.ask-bar .ab-row { padding: 0; gap: 0; }
+.rd-actions.ask-bar .ab-send { top: 50%; right: 5px; transform: translateY(-50%); }
+/* the reader's display menu (Aa): the interface font, clear sections, one action button at the bottom */
+.menu.rd-display { width: 272px; padding: 12px; display: flex; flex-direction: column; gap: 10px; font: 500 14px var(--ff-ui); }
+.menu.rd-display .sub { padding: 0 2px; margin: 2px 0 -2px; font-size: 11px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--label); }
+.menu.rd-display .rd-swatches { padding: 2px 0; }
+.menu.rd-display .rd-swatch { font: 600 12px var(--ff-ui); }
+.menu.rd-display .rd-beside { margin-top: 4px; height: 42px; width: 100%; justify-content: center; gap: 8px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font: 600 14px var(--ff-ui); }
+.menu.rd-display .rd-beside .ic { width: 18px; height: 18px; }
+.menu.rd-display .rd-swatch { height: auto; min-height: 0; padding: 2px 0 0; background: none; }
+.menu.rd-display .rd-beside { white-space: nowrap; margin-top: 6px; }
+.rd-actions.ask-bar .ab-send:disabled { opacity: .35; }
 </style>
 </head>
 <body>
@@ -1586,7 +1599,7 @@ html.pk-on .panel, html.pk-on #nb-ui .panel, html.pk-on .rd-group.panel, html.pk
 </div>
 <div id="toasts" aria-live="polite"></div>
 
-<script>window.AXIOM_BUILD = 'mvnzlzsf';
+<script>window.AXIOM_BUILD = 'mvo19x1i';
 /* ---- core.js ---- */
 /* Axiom core: namespace, math, color, events, DOM helpers */
 'use strict';
@@ -3876,9 +3889,12 @@ A.fmtDate = (t) => {
         ctx.save();
         ctx.shadowColor = o.dark ? 'rgba(0,0,0,0.55)' : 'rgba(20,30,50,0.18)';
         ctx.shadowBlur = 16 * (o.dpr || A.dpr); ctx.shadowOffsetY = 3 * (o.dpr || A.dpr);
+        // on dark paper the sheet is a shade lighter than the desk around it, so it reads as a sheet
+        const dk = o.dark || A.C.luminance(o.bg) < 0.35;
         ctx.fillStyle = o.bg; ctx.fillRect(a.x, a.y, a.w, a.h);
+        if (dk) { ctx.fillStyle = 'rgba(255,255,255,0.045)'; ctx.fillRect(a.x, a.y, a.w, a.h); }
         ctx.restore();
-        ctx.strokeStyle = o.dark ? 'rgba(255,255,255,0.22)' : 'rgba(30,40,60,0.22)';
+        ctx.strokeStyle = dk ? 'rgba(255,255,255,0.3)' : 'rgba(30,40,60,0.24)';
         ctx.lineWidth = hair; ctx.strokeRect(a.x, a.y, a.w, a.h);
       }
     }
@@ -5091,7 +5107,7 @@ A.fmtDate = (t) => {
     const out = [];
     for (const a of D.doc.artboards) {
       const [sx, sy] = R.toScreen(a.x, a.y);
-      const txt = `${a.name}  ${(a.w / D.MM / 10).toFixed(1)} × ${(a.h / D.MM / 10).toFixed(1)} cm`;
+      const txt = `Artboard · ${a.name} · ${(a.w / D.MM / 10).toFixed(1)} × ${(a.h / D.MM / 10).toFixed(1)} cm`;
       out.push({ a, x: sx, y: sy - 24, w: Math.min(260, 14 + txt.length * 6.6), h: 20, txt });
     }
     return out;
@@ -5100,7 +5116,7 @@ A.fmtDate = (t) => {
     for (const L of abLabels()) {
       ctx.save();
       ctx.font = '600 11.5px -apple-system, system-ui, sans-serif';
-      ctx.fillStyle = R.darkActive() ? 'rgba(255,255,255,0.62)' : 'rgba(30,40,60,0.62)';
+      ctx.fillStyle = R.darkActive() || R.paperIsDark() ? 'rgba(255,255,255,0.72)' : 'rgba(30,40,60,0.66)'; // dark paper too, not only dark mode
       ctx.fillText(L.txt, L.x + 2, L.y + 14);
       ctx.restore();
     }
@@ -7424,7 +7440,8 @@ A.fmtDate = (t) => {
   A.on('cmd', (c) => { if (A.PK && A.PK.cmd && A.PK.cmd(c, cmds)) return; if (cmds[c]) cmds[c](); });
 
   /* long-press menu (finger held still, then lifted) */
-  A.on('canvas:menu', ({ x, y }) => {
+  const pasteAt = (w) => { if (!(A.PK && A.PK.cmd && A.PK.cmd('paste', cmds))) cmds.paste(w); };
+  A.on('canvas:menu', ({ x, y, sysImage }) => {
     const w = R.toWorld(x, y);
     const box = h('div', { class: 'menu' });
     const it = (icon, label, fn, cls) => { const b = h('button', { class: cls || '', onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); box.append(b); };
@@ -7434,13 +7451,15 @@ A.fmtDate = (t) => {
       it('copy', 'Copy', () => cmds.copy());
       it('clear', 'Cut', () => cmds.cut());
       it('duplicate', 'Duplicate', () => cmds.duplicate());
-      if (hasClip) it('paste', 'Paste here', () => cmds.paste(w));
+      if (hasClip) it('paste', 'Paste here', () => pasteAt(w));
       box.append(h('hr'));
       it('trash', 'Delete', () => cmds.delete(), 'danger');
     } else {
       const hit = A.IN.pickItem(w[0], w[1], 12 / D.doc.view.zoom);
       if (hit) { A.SEL.set([hit.id]); return; }
-      if (hasClip) it('paste', `Paste here (${A.clip.items.length})`, () => cmds.paste(w));
+      if (hasClip) it('paste', 'Paste', () => pasteAt(w));
+      if (sysImage) it('image', 'Paste image', () => A.PK.pasteSystemImage(w));
+      if (hasClip || sysImage) box.append(h('hr'));
       it('selectall', 'Select all', () => cmds.selectAll());
       it('lasso', 'Select with the Pencil', () => A.emit('tool:select'));
       box.append(h('hr'));
@@ -9975,6 +9994,19 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
     st.main.scrollLeft += r.left + a.rx * r.width - a.cx;
     st.main.scrollTop += r.top + a.ry * r.height - a.cy;
   }
+  /* a canvas's memory is only returned when it is emptied (removing it waits for garbage collection, and a book's
+     pages add up to gigabytes: the system then closes the page and the app starts over) */
+  const freeCanvas = (c) => { if (!c) return; c.width = 0; c.height = 0; c.remove(); };
+  const KEEP = 3; // rendered pages kept around the current one
+  function evictFar() {
+    if (!st) return;
+    st.pages.forEach((q) => {
+      if (Math.abs(q.n - st.page) <= KEEP || q.visible) return;
+      if (q.canvas) { freeCanvas(q.canvas); q.canvas = null; q.el.classList.remove('rendered'); st.pdf.getPage(q.n).then((pg) => pg.cleanup()).catch(() => {}); }
+      if (q.ink) { freeCanvas(q.ink); q.ink = null; }
+      if (q.live) { freeCanvas(q.live); q.live = null; }
+    });
+  }
   /* two passes: an instant low-resolution preview, then the sharp page; the old bitmap stays until the new one is ready */
   async function renderPage(p) {
     if (!st) return;
@@ -9988,7 +10020,7 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
       const vp1 = page.getViewport({ scale: 1 });
       if (Math.abs(vp1.height / vp1.width - p.aspect) > 0.01) { p.aspect = vp1.height / vp1.width; p.el.style.height = Math.round(w * p.aspect) + 'px'; }
       const draw = async (scale) => {
-        scale = Math.min(scale, 4096 / vp1.width, 4096 / vp1.height, Math.sqrt(10e6 / (vp1.width * vp1.height)));
+        scale = Math.min(scale, 4096 / vp1.width, 4096 / vp1.height, Math.sqrt((S.lowMem && Date.now() - S.lowMem < 864e5 ? 3e6 : 6e6) / (vp1.width * vp1.height)));
         const vp = page.getViewport({ scale });
         const c = h('canvas', { class: 'rd-canvas' });
         c.width = Math.max(1, Math.round(vp.width)); c.height = Math.max(1, Math.round(vp.height));
@@ -10000,7 +10032,7 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
         if (!st || token !== st.token) return;
         const old = p.canvas;
         p.el.insertBefore(c, p.ink || p.ov);
-        if (old) { c.classList.add('rd-fade'); setTimeout(() => old.remove(), 140); }
+        if (old) { c.classList.add('rd-fade'); setTimeout(() => freeCanvas(old), 140); }
         p.canvas = c; p.w = w; p.low = low;
         p.el.classList.add('rendered');
       };
@@ -10008,7 +10040,7 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       swap(await draw((w / vp1.width) * dpr), false);
       drawInkPage(p);
-      st.pages.forEach((q) => { if (q.canvas && Math.abs(q.n - st.page) > 6) { q.canvas.remove(); q.canvas = null; q.el.classList.remove('rendered'); } });
+      evictFar();
     } catch (e) { /* keep what is there */ }
     p.busy = false;
     if (p.again) { p.again = false; if (p.visible) renderPage(p); }
@@ -10372,6 +10404,7 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
   const dropActions = () => { const a = host && host.querySelector('.rd-actions'); if (!a) return; a.remove(); if (st && st.focus) { const n = st.focus.page; st.focus = null; drawOverlays(n); } };
   document.addEventListener('pointerdown', (e) => { if (host && host.querySelector('.rd-actions') && !e.target.closest('.rd-actions')) setTimeout(() => { if (!document.activeElement || !document.activeElement.closest('.rd-actions')) dropActions(); }, 0); }, true);
   A.on('pk:touch', dropActions);
+  RD._showActions = (n, r) => showActions(n, r); // for testing the ask box
   function showActions(n, r) {
     clearActions();
     const p = st.pages[n - 1], pr = p.el.getBoundingClientRect(), hr = host.getBoundingClientRect();
@@ -10379,7 +10412,8 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
     const inp = h('input', { class: 'ab-in', placeholder: 'Ask about this…', enterkeyhint: 'send', autocomplete: 'off' });
     const go = () => { const q = inp.value.trim(); if (q) ask('ask', n, r, q); };
     inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') go(); if (e.key === 'Escape') { st.focus = null; drawOverlays(n); clearActions(); } });
-    const send = h('button', { class: 'ab-send', 'aria-label': 'Send question', html: A.icon('send'), onclick: go });
+    const send = h('button', { class: 'ab-send', 'aria-label': 'Send question', html: A.icon('send'), onclick: go, disabled: true });
+    inp.addEventListener('input', () => { send.disabled = !inp.value.trim(); });
     const chip = (label, fn) => h('button', { class: 'ab-chip', onclick: fn }, label);
     bar.append(
       h('div', { class: 'ab-head' }, h('span', null, 'Ask about this selection'),
@@ -10536,6 +10570,7 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
     if (byUser && Math.abs(dy) > 6 && !st.tool.startsWith('w')) host.classList.toggle('chrome-hidden', dy > 0 && y > 120 && !host.querySelector('.rd-actions'));
     if (n !== st.page) {
       st.page = n;
+      evictFar();
       setPageLabel(n);
       st.scrub.value = n;
       clearTimeout(st._sv);
@@ -10836,17 +10871,17 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
       const m = h('div', { class: 'menu' });
       const val = h('span', { class: 'rd-zoomval num' }, isEpub ? Math.round((S.epubFont || 1) * 100) + '%' : Math.round(st.zoom * 100) + '%');
       const bump = (dir) => { if (isEpub) { S.epubFont = A.clamp((S.epubFont || 1) + dir * 0.1, 0.7, 2); A.saveSettings(); applyEpubTheme(); val.textContent = Math.round(S.epubFont * 100) + '%'; } else { st.zoom = A.clamp(st.zoom * (dir > 0 ? 1.2 : 1 / 1.2), 0.5, 3); layout(); val.textContent = Math.round(st.zoom * 100) + '%'; } };
-      m.classList.add('rd-aa');
+      m.classList.add('rd-display');
       m.append(h('div', { class: 'sub' }, isEpub ? 'Text size' : 'Zoom'),
         h('div', { class: 'rd-zoomrow' }, h('button', { class: 'ibtn', 'aria-label': 'Smaller', html: A.icon('minus'), onclick: () => bump(-1) }), val, h('button', { class: 'ibtn', 'aria-label': 'Larger', html: A.icon('plus'), onclick: () => bump(1) })));
       if (!isEpub) m.append(h('div', { class: 'seg rd-fitseg' }, ...[['width', 'Fit width'], ['page', 'Fit page']].map(([v, l]) => h('button', { class: st.fit === v ? 'on' : '', onclick: () => { st.fit = v; S.readerFit = v; A.saveSettings(); st.zoom = 1; layout(); val.textContent = '100%'; [...m.querySelectorAll('.rd-fitseg button')].forEach((b) => b.classList.toggle('on', b.textContent === l)); } }, l))));
-      m.append(h('div', { class: 'sub' }, 'Page'));
+      m.append(h('div', { class: 'sub' }, 'Page colour'));
       const sw = h('div', { class: 'rd-swatches' });
       [['paper', 'Paper'], ['sepia', 'Sepia'], ['night', 'Night']].forEach(([id, l]) => sw.append(h('button', { class: 'rd-swatch ' + id + ((S.readerTheme || 'paper') === id ? ' on' : ''), onclick: () => { S.readerTheme = id; A.saveSettings(); host.dataset.theme = id; applyEpubTheme(); RD.pkTheme(); sw.querySelectorAll('.rd-swatch').forEach((b) => b.classList.toggle('on', b.classList.contains(id))); } }, h('i', { html: A.icon('check') }), h('span', null, l))));
       m.append(sw);
-      if (false) m.append(h('hr'));
       if (!isEpub) {
-        m.append(h('hr'), h('button', { onclick: () => { A.closePopovers(); A.UI.solveBeside(A.ST.doc(meta.id), st.page); } }, A.iconEl('rename'), 'Solve beside this page…'));
+        // an action, not a display setting: a clear button of its own at the bottom
+        m.append(h('button', { class: 'rd-beside', onclick: () => { A.closePopovers(); A.UI.solveBeside(A.ST.doc(meta.id), st.page); } }, A.iconEl('notebook'), h('span', null, 'Solve in a notebook beside')));
       }
       A.popover(m, e.currentTarget, { side: 'down' });
     });
@@ -12076,7 +12111,7 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
     let t;
     if (slot.b === 'eraser') t = { tool: 'eraser', mode: 'vector' };
     else if (slot.b === 'slice') t = { tool: 'eraser', mode: 'bitmap', width: Math.max(4, slot.size) };
-    else if (slot.b === 'select') t = { tool: 'lasso' };
+    else if (slot.b === 'select') t = { tool: 'none', web: true }; // the page's own lasso: ink and pictures together, one menu
     else if ((c.kind === 'var' || c.kind === 'line') && !c.mask && slot.b !== 'tape') t = { tool: 'ink', ink: INK[slot.b] || 'pen', color: slot.color, alpha: slot.b === 'highlighter' ? Math.min(0.5, slot.opacity == null ? c.opacity : slot.opacity) : (slot.opacity == null ? 1 : slot.opacity), width: slot.size * (slot.b === 'highlighter' || slot.b === 'marker' ? 1 : 1.15) };
     else t = { tool: 'none' }; // text, laser, tape: the page handles the Pencil
     t.finger = S.fingerAction === 'draw';
@@ -12088,7 +12123,7 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
   ['slot', 'slot:live', 'slot:size', 'slot:select', 'tool:select', 'precision', 'settings', 'view:lock'].forEach((ev) => A.on(ev, () => setTimeout(syncTool, 0)));
   /* the page ignores the Pencil while PencilKit draws, erases or lassos */
   PK.ownsPen = () => PK.active && !!B.slot() && ['ink', 'eraser', 'lasso'].includes(kindOf(B.slot()));
-  const kindOf = (slot) => { const c = B.catalog[slot.b] || {}; if (slot.b === 'eraser' || slot.b === 'slice') return 'eraser'; if (slot.b === 'select') return 'lasso'; if ((c.kind === 'var' || c.kind === 'line') && !c.mask && slot.b !== 'tape') return 'ink'; return 'none'; };
+  const kindOf = (slot) => { const c = B.catalog[slot.b] || {}; if (slot.b === 'eraser' || slot.b === 'slice') return 'eraser'; if (slot.b === 'select') return 'none'; if ((c.kind === 'var' || c.kind === 'line') && !c.mask && slot.b !== 'tape') return 'ink'; return 'none'; };
 
   /* ---------- undo: one order across ink (PencilKit) and page edits (the page) ---------- */
   PK.order = []; PK.redoOrder = [];
@@ -12204,31 +12239,66 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
     if (boxes.length) { const keep = A.clip; A.clip = { items: boxes }; cmds.paste(); A.clip = keep; }
     return true;
   }
-  /* finger held still on the page: select what is under it, lasso as it moves on, or the page menu */
-  /* two- and three-finger taps on PencilKit pages: undo / redo, as the page does */
-  function fingers(n) {
-    if (PK.alt) { if (n === 2 && S.twoFingerUndo !== false && A.RD && A.RD.inkUndo) A.RD.inkUndo(); return; }
-    if (!PK.active) return;
-    if (n === 2 && S.twoFingerUndo) { if (PK.undo()) A.toast('Undo', 700); }
-    else if (n === 3 && S.threeFingerRedo) { if (PK.redo()) A.toast('Redo', 700); }
+  /* finger held still on the page (Apple Notes style):
+     - on ink or a picture: it is selected (ink: the word it belongs to) and the same finger can drag it
+     - on empty paper: the page menu opens when the finger lifts (Paste, Select all, Insert…); moving on just scrolls */
+  let hold = null;
+  function wordAround(hit) {
+    const l = D.doc.layers.find((x) => x.pk);
+    if (!hit.pk || !l) return [hit.id];
+    // strokes that touch or nearly touch, on the same line: the word or formula written in one go
+    const pad = Math.max(8, Math.min(40, (hit.bb[3] - hit.bb[1]) * 0.45));
+    const out = new Set([hit.id]);
+    let box = hit.bb.slice(), grew = true;
+    while (grew) {
+      grew = false;
+      for (const it of l.items) {
+        if (out.has(it.id)) continue;
+        const b = it.bb, h0 = box[3] - box[1];
+        const near = b[0] <= box[2] + pad && b[2] >= box[0] - pad && b[1] <= box[3] + pad * 0.4 && b[3] >= box[1] - pad * 0.4;
+        if (near && (b[3] - b[1]) < Math.max(h0 * 2.5, 60)) { out.add(it.id); box = [Math.min(box[0], b[0]), Math.min(box[1], b[1]), Math.max(box[2], b[2]), Math.max(box[3], b[3])]; grew = true; }
+      }
+    }
+    return [...out];
   }
-  let holdStart = null;
   function held(d) {
     if (!PK.active || !D.doc) return;
     const o = A.$('#stage').getBoundingClientRect(), x = d.x - o.left, y = d.y - o.top;
     if (d.phase === 'b') {
       A.closePopovers();
       const [wx, wy] = R.toWorld(x, y), hit = A.IN.pickItem(wx, wy, 14 / D.doc.view.zoom);
-      if (hit) { holdStart = null; A.SEL.set(R.sel.has(hit.id) ? [...R.sel] : [hit.id]); return; }
-      holdStart = { x, y };
-      A.IN.extLasso.begin(x, y);
-    } else if (d.phase === 'm') { if (holdStart) A.IN.extLasso.move(x, y); }
-    else if (d.phase === 'e') {
-      if (!holdStart) return;
-      const s0 = holdStart; holdStart = null;
-      if (!A.IN.extLasso.end()) A.emit('canvas:menu', { x: s0.x, y: s0.y });
-    } else { holdStart = null; A.IN.extLasso.cancel(); }
+      if (hit) {
+        const ids = R.sel.has(hit.id) ? [...R.sel] : (B.isBox(hit) ? [hit.id] : wordAround(hit));
+        A.SEL.set(ids);
+        post({ op: 'pkHoldDrag' });
+        hold = { drag: true, w0: [wx, wy] };
+      } else hold = { drag: false, x, y };
+      return;
+    }
+    if (!hold) return;
+    if (d.phase === 'm') {
+      if (!hold.drag) return;
+      const [wx, wy] = R.toWorld(x, y);
+      R.selPreview = A.M.translate(wx - hold.w0[0], wy - hold.w0[1]);
+      A.emit('selpopup:hide');
+      R.render();
+      return;
+    }
+    const h0 = hold; hold = null;
+    if (h0.drag) { if (R.selPreview) A.IN.commitSelTransform(); else A.emit('selection'); return; }
+    if (d.phase === 'e') pageMenu(h0.x, h0.y);
   }
+  /* the press-and-hold menu, with the system clipboard's picture when there is one */
+  async function pageMenu(x, y) {
+    let sys = null;
+    try { sys = await post({ op: 'pasteboard' }); } catch (e) { /* none */ }
+    A.emit('canvas:menu', { x, y, sysImage: !!(sys && sys.image) });
+  }
+  PK.pasteSystemImage = async (at) => {
+    const r = await post({ op: 'pasteboard', read: true });
+    if (!r || !r.image) return A.toast('Nothing to paste');
+    A.UI.placeImage('data:image/png;base64,' + r.image, r.w / 2, r.h / 2, at ? { at: [at[0] - r.w / 4, at[1] - r.h / 4] } : {});
+  };
 
   /* ---------- where the interface is: touches there stay with the page, everywhere else goes to PencilKit ---------- */
   let chromeKey = '', chromeT = 0;
@@ -13329,11 +13399,28 @@ Rules: assume ONLY what appears in the guide above the line (given below). If yo
       setTimeout(() => A.toast('Welcome to Axiom. Draw with Apple Pencil, and pinch with two fingers to move around.', 4200), 600);
     } else {
       await showGallery();
+      resumeAfterRecovery();
     }
 
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost') && window.top === window && !window.AXIOM_NO_SW) {
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
+  }
+  /* what is open, so that after the system closes the page (low memory) the app reopens it instead of the library */
+  const remember = (t, id) => { S.session = t ? { t, id, at: Date.now() } : null; A.saveSettings(); };
+  A.on('doc:open', () => { if (D.doc) remember('doc', D.doc.id); });
+  A.on('read', (id) => remember('read', id));
+  A.on('go:gallery', () => { if (S.session) remember(null); });
+  function resumeAfterRecovery() {
+    const rec = /[?&]recover=1/.test(location.search), loop = /[?&]recover=0/.test(location.search);
+    if (rec || loop) history.replaceState(null, '', location.pathname);
+    if (loop) { remember(null); setTimeout(() => A.toast('Axiom restarted to free memory. Large books open at a lower resolution for now.', 3600), 600); S.lowMem = Date.now(); }
+    const ss = S.session;
+    if (!rec || !ss || Date.now() - ss.at > 12 * 3600e3) return;
+    if (ss.t === 'read' && A.ST.doc(ss.id)) A.emit('read', ss.id);
+    else if (ss.t === 'doc') A.emit('open', ss.id);
+    else return;
+    setTimeout(() => A.toast('Reopened where you were', 1800), 900);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
