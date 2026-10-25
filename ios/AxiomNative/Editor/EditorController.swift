@@ -1,4 +1,5 @@
 import PencilKit
+import SwiftUI
 import PhotosUI
 import UIKit
 
@@ -100,6 +101,56 @@ final class EditorController: UIViewController, PKCanvasViewDelegate, UIGestureR
         #if DEBUG
         installDebug()
         #endif
+        connectTutor()
+    }
+
+    // MARK: - tutor
+
+    func connectTutor() {
+        let t = Tutor.shared
+        t.focus(key: "note:" + doc.id, title: doc.name, subjectLine: doc.isNotebook
+            ? "They are in a notebook called \"\(doc.name)\" with \(doc.pages.count) pages of handwritten notes (page images are attached when relevant)."
+            : "They are working on a canvas called \"\(doc.name)\" (pictures of it are attached when relevant).")
+        t.pageProvider = { [weak self] in
+            guard let self else { return nil }
+            let d = self.fullDrawing
+            if self.doc.isNotebook {
+                let i = self.surface.currentPage
+                return Thumbnail.page(doc: self.doc, drawing: d, index: i, width: 1400).map { ($0, "page \(i + 1) of \(self.doc.name)", nil) }
+            }
+            return Thumbnail.region(doc: self.doc, drawing: d, rect: self.surface.visibleWorld, pixelWidth: 1400, background: UIColor(css: self.doc.paperColor), grid: true).map { ($0, "the canvas \(self.doc.name)", nil) }
+        }
+    }
+    var fullDrawing: PKDrawing { selection.map { $0.drawingWith(origin: surface.origin) } ?? surface.canvas.drawing }
+
+    /// pages with writing, nearest to the current one first (up to 12)
+    func writtenPageImages(limit: Int = 12) -> [UIImage] {
+        guard doc.isNotebook else { return Tutor.shared.pageProvider?().map { [$0.image] } ?? [] }
+        let d = fullDrawing, o = surface.origin
+        let used = doc.pages.indices.filter { i in
+            let r = doc.pageRect(i)
+            return d.strokes.contains { r.intersects($0.renderBounds.offsetBy(dx: -o.x, dy: -o.y)) } || doc.elements.contains { r.intersects($0.bounds) }
+        }
+        let cur = surface.currentPage
+        return used.sorted { abs($0 - cur) < abs($1 - cur) }.prefix(limit).sorted().compactMap { Thumbnail.page(doc: doc, drawing: d, index: $0, width: 1400) }
+    }
+    func learn(_ kind: String) {
+        let t = Tutor.shared
+        switch kind {
+        case "chat":
+            t.focus(key: "note:" + doc.id, title: doc.name, subjectLine: t.subjectLine)
+            withAnimation(.snappy(duration: 0.25)) { t.isOpen = true }
+        case "notes":
+            t.ask("Turn my handwritten notes into clean, well-structured smart notes: headings, key definitions, theorems and formulas in LaTeX, and worked examples. Point out anything that looks wrong or incomplete.", about: .notebook(docID: doc.id, name: doc.name, images: writtenPageImages(), label: "my notes"), mode: .explain)
+        case "quiz":
+            t.ask("Make 6 multiple-choice practice questions from my notes, from easier to harder, with explanations.", about: .notebook(docID: doc.id, name: doc.name, images: writtenPageImages(), label: "my notes"), mode: .quiz)
+        case "cards":
+            t.ask("Make 12 flashcards from my notes (definitions, theorems, formulas, key facts).", about: .notebook(docID: doc.id, name: doc.name, images: writtenPageImages(), label: "my notes"), mode: .explain)
+        case "check":
+            let imgs = Tutor.shared.pageProvider?().map { [$0.image] } ?? []
+            t.ask("Check my work on this page. Point out mistakes precisely and say what is correct.", about: .notebook(docID: doc.id, name: doc.name, images: imgs, label: doc.isNotebook ? "page \(surface.currentPage + 1)" : "the canvas"), mode: .check)
+        default: break
+        }
     }
     #if DEBUG
     private func installDebug() {

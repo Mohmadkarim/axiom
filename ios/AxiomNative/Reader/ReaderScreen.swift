@@ -69,6 +69,9 @@ struct ReaderScreen: View {
     private var title: String { session.book.map { cleanTitle($0.name) } ?? "" }
 
     @ViewBuilder private var chrome: some View {
+        GeometryReader { geo in chromeBody(compact: geo.size.width < 700) }
+    }
+    @ViewBuilder private func chromeBody(compact: Bool) -> some View {
         VStack(spacing: 0) {
             HStack(alignment: .top, spacing: 10) {
                 HStack(spacing: 4) {
@@ -76,17 +79,18 @@ struct ReaderScreen: View {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(title).font(Theme.ui(15, .semibold)).lineLimit(1)
                         if let a = session.book?.author { Text(a).font(Theme.ui(11)).foregroundStyle(Theme.muted).lineLimit(1) }
-                    }.frame(maxWidth: 240, alignment: .leading).padding(.trailing, 10)
+                    }.frame(maxWidth: compact ? 110 : 240, alignment: .leading).padding(.trailing, compact ? 4 : 10)
                 }.padding(4).floating()
-                Spacer()
-                modePicker
-                Spacer()
+                Spacer(minLength: 6)
+                modePicker(compact: compact)
+                Spacer(minLength: 6)
                 HStack(spacing: 2) {
                     IconButton(symbol: "magnifyingglass", label: "Search", on: model.showSearch) { model.showSearch.toggle(); model.rail = nil }
                     IconButton(symbol: "sidebar.left", label: "Pages and contents", on: model.rail != nil) { withAnimation(.snappy(duration: 0.2)) { model.rail = model.rail == nil ? .pages : nil }; model.showSearch = false }
                     Button { model.showDisplay.toggle() } label: { Text("Aa").font(.system(size: 16, weight: .semibold)).foregroundStyle(model.showDisplay ? Theme.accent : Theme.fg).frame(width: 40, height: 40) }
                         .buttonStyle(.plain)
                         .popover(isPresented: Bindable(model).showDisplay) { DisplayMenu(model: model, controller: session.controller, book: session.book).presentationCompactAdaptation(.popover) }
+                    IconButton(symbol: "sparkles", label: "Tutor", on: Tutor.shared.isOpen, tint: Theme.accent) { withAnimation(.snappy(duration: 0.25)) { Tutor.shared.isOpen.toggle() } }
                 }.padding(4).floating()
             }
             .padding(.horizontal, 14).padding(.top, 10)
@@ -103,18 +107,19 @@ struct ReaderScreen: View {
         if let a = model.ask, let c = session.controller { AskBox(target: a, controller: c, model: model, book: session.book!) }
     }
 
-    private var modePicker: some View {
+    private func modePicker(compact: Bool) -> some View {
         HStack(spacing: 2) {
-            modeButton(.read, "Read", "book")
-            modeButton(.highlight, "Highlight", "highlighter")
-            modeButton(.write, "Write", "pencil.tip")
+            modeButton(.read, "Read", "book", compact)
+            modeButton(.highlight, "Highlight", "highlighter", compact)
+            modeButton(.write, "Write", "pencil.tip", compact)
         }
         .padding(4).floating()
     }
-    private func modeButton(_ m: ReaderMode, _ t: String, _ icon: String) -> some View {
+    private func modeButton(_ m: ReaderMode, _ t: String, _ icon: String, _ compact: Bool) -> some View {
         Button { model.mode = m; model.ask = nil; session.controller?.applyMode() } label: {
-            Label(t, systemImage: icon).font(Theme.ui(13, .semibold)).foregroundStyle(model.mode == m ? Theme.fg : Theme.muted)
-                .padding(.horizontal, 12).frame(height: 34)
+            Group { if compact { Image(systemName: icon) } else { Label(t, systemImage: icon) } }
+                .font(Theme.ui(13, .semibold)).foregroundStyle(model.mode == m ? Theme.fg : Theme.muted)
+                .padding(.horizontal, compact ? 10 : 12).frame(height: 34)
                 .background(model.mode == m ? Theme.panel2 : .clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         }.buttonStyle(.plain)
     }

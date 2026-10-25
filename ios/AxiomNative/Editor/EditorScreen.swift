@@ -134,6 +134,18 @@ struct EditorScreen: View {
             IconButton(symbol: "arrow.uturn.backward", label: "Undo", tint: model.canUndo ? Theme.fg : Theme.faint) { session.controller?.performUndo() }.disabled(!model.canUndo)
             IconButton(symbol: "arrow.uturn.forward", label: "Redo", tint: model.canRedo ? Theme.fg : Theme.faint) { session.controller?.performRedo() }.disabled(!model.canRedo)
             Rectangle().fill(Theme.lineStrong).frame(width: 1, height: 22).padding(.horizontal, 4)
+            Menu {
+                Section("Learn from this \(model.isNotebook ? "notebook" : "canvas")") {
+                    Button("Chat with your notes", systemImage: "bubble.left.and.text.bubble.right") { session.controller?.learn("chat") }
+                    Button("Smart notes", systemImage: "doc.text.magnifyingglass") { session.controller?.learn("notes") }
+                    Button("Practice questions", systemImage: "checklist") { session.controller?.learn("quiz") }
+                    Button("Flashcards", systemImage: "rectangle.on.rectangle.angled") { session.controller?.learn("cards") }
+                    Button(model.isNotebook ? "Check this page" : "Check my work", systemImage: "checkmark.seal") { session.controller?.learn("check") }
+                }
+            } label: {
+                Image(systemName: "sparkles").font(.system(size: 17, weight: .medium)).foregroundStyle(Theme.accent).frame(width: 40, height: 40).contentShape(Rectangle())
+            }
+            .accessibilityLabel("Learn")
             if model.isNotebook {
                 IconButton(symbol: "rectangle.portrait.on.rectangle.portrait", label: "Pages", on: model.showPages) { withAnimation(.snappy(duration: 0.22)) { model.showPages.toggle() } }
             }

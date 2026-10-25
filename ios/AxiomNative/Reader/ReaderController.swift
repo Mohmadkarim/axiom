@@ -100,6 +100,13 @@ final class ReaderController: UIViewController, PDFDocumentDelegate, PDFPageOver
         NotificationCenter.default.addObserver(self, selector: #selector(flush), name: .axiomFlush, object: nil)
         installGestures()
         applyMode()
+        let title = cleanTitle(book.name)
+        Tutor.shared.focus(key: "book:" + book.id, title: title, subjectLine: "They are reading the book \"\(title)\"\(book.author.map { " by \($0)" } ?? "") (\(doc.pageCount) pages).")
+        Tutor.shared.pageProvider = { [weak self] in
+            guard let self else { return nil }
+            let i = self.model.page
+            return self.pageImage(i).map { ($0, "p. \(i + 1) of \(title)", self.pageText(i)) }
+        }
     }
     deinit { NotificationCenter.default.removeObserver(self) }
 
@@ -113,9 +120,13 @@ final class ReaderController: UIViewController, PDFDocumentDelegate, PDFPageOver
         startIndex = nil
         pdfView.layoutDocumentView()
         pdfView.go(to: p)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+        settle(on: p, tries: 0)
+    }
+    /// PDFKit can ignore the first jumps while it lays pages out: try again until it is on the page
+    private func settle(on p: PDFPage, tries: Int) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
             guard let self else { return }
-            if self.pdfView.currentPage != p { self.pdfView.go(to: p) }
+            if self.pdfView.currentPage != p && tries < 20 { self.pdfView.go(to: p); self.settle(on: p, tries: tries + 1); return }
             self.ready = true
             self.pageChanged()
         }
@@ -185,8 +196,9 @@ final class ReaderController: UIViewController, PDFDocumentDelegate, PDFPageOver
     func pdfView(_ view: PDFView, overlayViewFor page: PDFPage) -> UIView? {
         guard let doc = document else { return nil }
         let i = doc.index(for: page)
-        if let c = canvases[i] { return c }
-        let c = PKCanvasView()
+        if let c = canvases[i], let holder = c.superview { return holder }
+        let holder = PageInkHolder(pageSize: page.bounds(for: .cropBox).size)
+        let c = holder.canvas
         c.backgroundColor = .clear
         c.isOpaque = false
         c.isScrollEnabled = false
@@ -195,10 +207,10 @@ final class ReaderController: UIViewController, PDFDocumentDelegate, PDFPageOver
         c.drawing = store.drawing(for: i)
         configure(c)
         canvases[i] = c
-        return c
+        return holder
     }
     func pdfView(_ pdfView: PDFView, willEndDisplayingOverlayView overlayView: UIView, for page: PDFPage) {
-        guard let doc = document, let c = overlayView as? PKCanvasView else { return }
+        guard let doc = document, let c = (overlayView as? PageInkHolder)?.canvas else { return }
         let i = doc.index(for: page)
         store.setDrawing(c.drawing, for: i)
         canvases[i] = nil
@@ -392,3 +404,28 @@ struct AskTarget: Equatable {
 }
 struct SearchHit: Identifiable { let id = UUID(); let page: Int; let snippet: String; let selection: PDFSelection }
 struct OutlineItem: Identifiable { let id = UUID(); let title: String; let page: Int; let level: Int }
+
+/// A page's handwriting, always in page points: PDFKit resizes this view with the page, the canvas inside is scaled.
+final class PageInkHolder: UIView {
+    let canvas = PKCanvasView()
+    let pageSize: CGSize
+    init(pageSize: CGSize) {
+        self.pageSize = pageSize
+        super.init(frame: .zero)
+        backgroundColor = .clear
+        addSubview(canvas)
+    }
+    required init?(coder: NSCoder) { fatalError() }
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard pageSize.width > 0, bounds.width > 0 else { return }
+        let s = bounds.width / pageSize.width
+        canvas.transform = .identity
+        canvas.bounds = CGRect(origin: .zero, size: pageSize)
+        canvas.center = CGPoint(x: bounds.midX, y: bounds.midY)
+        canvas.transform = CGAffineTransform(scaleX: s, y: s)
+    }
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        canvas.isUserInteractionEnabled ? super.hitTest(point, with: event) : nil
+    }
+}

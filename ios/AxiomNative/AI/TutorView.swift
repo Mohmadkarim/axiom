@@ -2,6 +2,7 @@ import SwiftUI
 
 /// The tutor beside the page: one conversation per notebook or book, answers with real math, interactive practice.
 struct TutorPanel: View {
+    var width: CGFloat = 420
     @Bindable var tutor = Tutor.shared
     @Environment(Library.self) private var lib
     @State private var showSettings = false
@@ -27,7 +28,7 @@ struct TutorPanel: View {
             }
             input
         }
-        .frame(width: 430)
+        .frame(width: width)
         .background(.regularMaterial)
         .overlay(alignment: .leading) { Rectangle().fill(Theme.line).frame(width: 0.5) }
         .sheet(isPresented: $showSettings) { SettingsView() }

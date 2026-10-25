@@ -74,20 +74,24 @@ struct RootView: View {
         ZStack {
             LibraryView()
             if let r = app.route {
-                Group {
-                    switch r {
-                    case .note(let id): EditorScreen(docID: id).id(id)
-                    case .book(let id, let page): ReaderScreen(bookID: id, startPage: page).id(id)
+                // the tutor docks beside the page; the page narrows instead of being covered
+                GeometryReader { geo in
+                    let tw: CGFloat = Tutor.shared.isOpen ? min(420, max(340, geo.size.width * 0.42)) : 0
+                    HStack(spacing: 0) {
+                        Group {
+                            switch r {
+                            case .note(let id): EditorScreen(docID: id).id(id)
+                            case .book(let id, let page): ReaderScreen(bookID: id, startPage: page).id(id)
+                            }
+                        }
+                        .frame(width: geo.size.width - tw)
+                        .clipped()
+                        if Tutor.shared.isOpen { TutorPanel(width: tw).transition(.move(edge: .trailing)) }
                     }
                 }
+                .ignoresSafeArea()
                 .transition(.opacity.combined(with: .scale(scale: 0.985)))
                 .zIndex(1)
-            }
-            if Tutor.shared.isOpen {
-                HStack(spacing: 0) { Spacer(); TutorPanel() }
-                    .ignoresSafeArea(edges: .vertical)
-                    .transition(.move(edge: .trailing))
-                    .zIndex(1.5)
             }
                         if let t = app.toast {
                 VStack {

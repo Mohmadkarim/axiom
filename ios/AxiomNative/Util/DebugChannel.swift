@@ -16,6 +16,11 @@ final class DebugChannel {
         handlers["book"] = { a in AppState.shared.open(.book(a.first ?? "", page: a.count > 1 ? Int(a[1]) : nil)); return "ok" }
         handlers["close"] = { _ in AppState.shared.close(); return "ok" }
         handlers["notes"] = { _ in Library.shared.notes.map { ["id": $0.id, "name": $0.name, "kind": $0.kind] } }
+        handlers["tutor"] = { a in
+            if a.first == "open" { Tutor.shared.isOpen = true }
+            if a.first == "ask" { Tutor.shared.draft = a.dropFirst().joined(separator: " "); Tutor.shared.sendDraft(attachPage: true) }
+            return ["open": Tutor.shared.isOpen, "key": Tutor.shared.key, "msgs": Tutor.shared.messages.count, "hasPage": Tutor.shared.pageProvider != nil] as [String: Any]
+        }
         handlers["books"] = { _ in Library.shared.books.map { ["id": $0.id, "name": $0.name, "type": $0.type] } }
     }
     private func poll() {
