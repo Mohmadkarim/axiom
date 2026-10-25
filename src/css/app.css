@@ -1549,3 +1549,16 @@ html.pk-on .panel, html.pk-on #nb-ui .panel, html.pk-on .rd-group.panel, html.pk
 /* active buttons in the bars: separate rounded chips, never touching */
 .nb-tr, .rd-top .rd-group { gap: 3px; }
 .nb-tr .ibtn, .rd-top .ibtn { border-radius: 12px; }
+/* the ask box: the send button sits inside the field's right end (the shared .ab-row padding pushed it over the edge) */
+.rd-actions.ask-bar .ab-row { padding: 0; gap: 0; }
+.rd-actions.ask-bar .ab-send { top: 50%; right: 5px; transform: translateY(-50%); }
+/* the reader's display menu (Aa): the interface font, clear sections, one action button at the bottom */
+.menu.rd-display { width: 272px; padding: 12px; display: flex; flex-direction: column; gap: 10px; font: 500 14px var(--ff-ui); }
+.menu.rd-display .sub { padding: 0 2px; margin: 2px 0 -2px; font-size: 11px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--label); }
+.menu.rd-display .rd-swatches { padding: 2px 0; }
+.menu.rd-display .rd-swatch { font: 600 12px var(--ff-ui); }
+.menu.rd-display .rd-beside { margin-top: 4px; height: 42px; width: 100%; justify-content: center; gap: 8px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font: 600 14px var(--ff-ui); }
+.menu.rd-display .rd-beside .ic { width: 18px; height: 18px; }
+.menu.rd-display .rd-swatch { height: auto; min-height: 0; padding: 2px 0 0; background: none; }
+.menu.rd-display .rd-beside { white-space: nowrap; margin-top: 6px; }
+.rd-actions.ask-bar .ab-send:disabled { opacity: .35; }

@@ -192,7 +192,7 @@
     let t;
     if (slot.b === 'eraser') t = { tool: 'eraser', mode: 'vector' };
     else if (slot.b === 'slice') t = { tool: 'eraser', mode: 'bitmap', width: Math.max(4, slot.size) };
-    else if (slot.b === 'select') t = { tool: 'lasso' };
+    else if (slot.b === 'select') t = { tool: 'none', web: true }; // the page's own lasso: ink and pictures together, one menu
     else if ((c.kind === 'var' || c.kind === 'line') && !c.mask && slot.b !== 'tape') t = { tool: 'ink', ink: INK[slot.b] || 'pen', color: slot.color, alpha: slot.b === 'highlighter' ? Math.min(0.5, slot.opacity == null ? c.opacity : slot.opacity) : (slot.opacity == null ? 1 : slot.opacity), width: slot.size * (slot.b === 'highlighter' || slot.b === 'marker' ? 1 : 1.15) };
     else t = { tool: 'none' }; // text, laser, tape: the page handles the Pencil
     t.finger = S.fingerAction === 'draw';
@@ -204,7 +204,7 @@
   ['slot', 'slot:live', 'slot:size', 'slot:select', 'tool:select', 'precision', 'settings', 'view:lock'].forEach((ev) => A.on(ev, () => setTimeout(syncTool, 0)));
   /* the page ignores the Pencil while PencilKit draws, erases or lassos */
   PK.ownsPen = () => PK.active && !!B.slot() && ['ink', 'eraser', 'lasso'].includes(kindOf(B.slot()));
-  const kindOf = (slot) => { const c = B.catalog[slot.b] || {}; if (slot.b === 'eraser' || slot.b === 'slice') return 'eraser'; if (slot.b === 'select') return 'lasso'; if ((c.kind === 'var' || c.kind === 'line') && !c.mask && slot.b !== 'tape') return 'ink'; return 'none'; };
+  const kindOf = (slot) => { const c = B.catalog[slot.b] || {}; if (slot.b === 'eraser' || slot.b === 'slice') return 'eraser'; if (slot.b === 'select') return 'none'; if ((c.kind === 'var' || c.kind === 'line') && !c.mask && slot.b !== 'tape') return 'ink'; return 'none'; };
 
   /* ---------- undo: one order across ink (PencilKit) and page edits (the page) ---------- */
   PK.order = []; PK.redoOrder = [];
@@ -320,31 +320,66 @@
     if (boxes.length) { const keep = A.clip; A.clip = { items: boxes }; cmds.paste(); A.clip = keep; }
     return true;
   }
-  /* finger held still on the page: select what is under it, lasso as it moves on, or the page menu */
-  /* two- and three-finger taps on PencilKit pages: undo / redo, as the page does */
-  function fingers(n) {
-    if (PK.alt) { if (n === 2 && S.twoFingerUndo !== false && A.RD && A.RD.inkUndo) A.RD.inkUndo(); return; }
-    if (!PK.active) return;
-    if (n === 2 && S.twoFingerUndo) { if (PK.undo()) A.toast('Undo', 700); }
-    else if (n === 3 && S.threeFingerRedo) { if (PK.redo()) A.toast('Redo', 700); }
+  /* finger held still on the page (Apple Notes style):
+     - on ink or a picture: it is selected (ink: the word it belongs to) and the same finger can drag it
+     - on empty paper: the page menu opens when the finger lifts (Paste, Select all, Insert…); moving on just scrolls */
+  let hold = null;
+  function wordAround(hit) {
+    const l = D.doc.layers.find((x) => x.pk);
+    if (!hit.pk || !l) return [hit.id];
+    // strokes that touch or nearly touch, on the same line: the word or formula written in one go
+    const pad = Math.max(8, Math.min(40, (hit.bb[3] - hit.bb[1]) * 0.45));
+    const out = new Set([hit.id]);
+    let box = hit.bb.slice(), grew = true;
+    while (grew) {
+      grew = false;
+      for (const it of l.items) {
+        if (out.has(it.id)) continue;
+        const b = it.bb, h0 = box[3] - box[1];
+        const near = b[0] <= box[2] + pad && b[2] >= box[0] - pad && b[1] <= box[3] + pad * 0.4 && b[3] >= box[1] - pad * 0.4;
+        if (near && (b[3] - b[1]) < Math.max(h0 * 2.5, 60)) { out.add(it.id); box = [Math.min(box[0], b[0]), Math.min(box[1], b[1]), Math.max(box[2], b[2]), Math.max(box[3], b[3])]; grew = true; }
+      }
+    }
+    return [...out];
   }
-  let holdStart = null;
   function held(d) {
     if (!PK.active || !D.doc) return;
     const o = A.$('#stage').getBoundingClientRect(), x = d.x - o.left, y = d.y - o.top;
     if (d.phase === 'b') {
       A.closePopovers();
       const [wx, wy] = R.toWorld(x, y), hit = A.IN.pickItem(wx, wy, 14 / D.doc.view.zoom);
-      if (hit) { holdStart = null; A.SEL.set(R.sel.has(hit.id) ? [...R.sel] : [hit.id]); return; }
-      holdStart = { x, y };
-      A.IN.extLasso.begin(x, y);
-    } else if (d.phase === 'm') { if (holdStart) A.IN.extLasso.move(x, y); }
-    else if (d.phase === 'e') {
-      if (!holdStart) return;
-      const s0 = holdStart; holdStart = null;
-      if (!A.IN.extLasso.end()) A.emit('canvas:menu', { x: s0.x, y: s0.y });
-    } else { holdStart = null; A.IN.extLasso.cancel(); }
+      if (hit) {
+        const ids = R.sel.has(hit.id) ? [...R.sel] : (B.isBox(hit) ? [hit.id] : wordAround(hit));
+        A.SEL.set(ids);
+        post({ op: 'pkHoldDrag' });
+        hold = { drag: true, w0: [wx, wy] };
+      } else hold = { drag: false, x, y };
+      return;
+    }
+    if (!hold) return;
+    if (d.phase === 'm') {
+      if (!hold.drag) return;
+      const [wx, wy] = R.toWorld(x, y);
+      R.selPreview = A.M.translate(wx - hold.w0[0], wy - hold.w0[1]);
+      A.emit('selpopup:hide');
+      R.render();
+      return;
+    }
+    const h0 = hold; hold = null;
+    if (h0.drag) { if (R.selPreview) A.IN.commitSelTransform(); else A.emit('selection'); return; }
+    if (d.phase === 'e') pageMenu(h0.x, h0.y);
   }
+  /* the press-and-hold menu, with the system clipboard's picture when there is one */
+  async function pageMenu(x, y) {
+    let sys = null;
+    try { sys = await post({ op: 'pasteboard' }); } catch (e) { /* none */ }
+    A.emit('canvas:menu', { x, y, sysImage: !!(sys && sys.image) });
+  }
+  PK.pasteSystemImage = async (at) => {
+    const r = await post({ op: 'pasteboard', read: true });
+    if (!r || !r.image) return A.toast('Nothing to paste');
+    A.UI.placeImage('data:image/png;base64,' + r.image, r.w / 2, r.h / 2, at ? { at: [at[0] - r.w / 4, at[1] - r.h / 4] } : {});
+  };
 
   /* ---------- where the interface is: touches there stay with the page, everywhere else goes to PencilKit ---------- */
   let chromeKey = '', chromeT = 0;

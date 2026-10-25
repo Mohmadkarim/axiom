@@ -377,9 +377,12 @@
         ctx.save();
         ctx.shadowColor = o.dark ? 'rgba(0,0,0,0.55)' : 'rgba(20,30,50,0.18)';
         ctx.shadowBlur = 16 * (o.dpr || A.dpr); ctx.shadowOffsetY = 3 * (o.dpr || A.dpr);
+        // on dark paper the sheet is a shade lighter than the desk around it, so it reads as a sheet
+        const dk = o.dark || A.C.luminance(o.bg) < 0.35;
         ctx.fillStyle = o.bg; ctx.fillRect(a.x, a.y, a.w, a.h);
+        if (dk) { ctx.fillStyle = 'rgba(255,255,255,0.045)'; ctx.fillRect(a.x, a.y, a.w, a.h); }
         ctx.restore();
-        ctx.strokeStyle = o.dark ? 'rgba(255,255,255,0.22)' : 'rgba(30,40,60,0.22)';
+        ctx.strokeStyle = dk ? 'rgba(255,255,255,0.3)' : 'rgba(30,40,60,0.24)';
         ctx.lineWidth = hair; ctx.strokeRect(a.x, a.y, a.w, a.h);
       }
     }

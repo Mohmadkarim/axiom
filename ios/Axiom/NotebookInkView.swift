@@ -5,8 +5,13 @@ import WebKit
 /// A notebook drawn with Apple's PencilKit: the pages (paper, templates, pictures and text, rendered by the page
 /// code as images) sit under a PKCanvasView that owns the ink, the Pencil and finger scrolling/zooming.
 /// The web interface floats above with transparent holes over the pages.
+/// PencilKit's own edit menus ("Select All / Insert Space", "Paste") never appear: the page has one menu system of its own
+final class AxiomCanvas: PKCanvasView {
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool { false }
+}
+
 final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate, UIGestureRecognizerDelegate {
-    let canvas = PKCanvasView()
+    let canvas = AxiomCanvas()
     private let stage = UIView()                 // pages + ink; rotated as one on canvases
     private(set) var rot: CGFloat = 0
     var rotateEnabled = false
@@ -82,16 +87,19 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
         tap.delegate = self
         addGestureRecognizer(tap)
         // two-finger tap: undo, three-finger tap: redo (as on the page)
+        var taps: [UITapGestureRecognizer] = []
         for n in [2, 3] {
             let t = UITapGestureRecognizer(target: self, action: #selector(fingersTapped(_:)))
             t.numberOfTouchesRequired = n
             t.cancelsTouchesInView = false
             t.delegate = self
             addGestureRecognizer(t)
+            taps.append(t)
         }
+        taps[0].require(toFail: taps[1])
         let hold = UILongPressGestureRecognizer(target: self, action: #selector(held(_:)))
-        hold.minimumPressDuration = 0.45
-        hold.allowableMovement = 12
+        hold.minimumPressDuration = 0.5
+        hold.allowableMovement = 8
         hold.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.direct.rawValue)]
         hold.delegate = self
         addGestureRecognizer(hold)
@@ -233,6 +241,11 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
         let want = wantedScale
         for (i, r) in pageRects.enumerated() where r.intersects(visible) {
             if dirty.contains(i) || pageScale[i] + 0.01 < want { onNeedPage?(i, want); pageScale[i] = want; dirty.remove(i) }
+        }
+        // page pictures far from the view are let go (a long book would otherwise keep hundreds in memory)
+        let keep = visible.insetBy(dx: 0, dy: -3 * canvas.bounds.height / z)
+        for (i, r) in pageRects.enumerated() where pageScale[i] > 0 && !r.intersects(keep) {
+            pageViews[i].image = nil; pageViews[i].backgroundColor = placeholder; pageScale[i] = 0
         }
     }
 
@@ -385,8 +398,12 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
     }
 
     var onFingers: ((Int) -> Void)?
-    @objc private func fingersTapped(_ g: UITapGestureRecognizer) { if isOpen, g.state == .ended { onFingers?(g.numberOfTouchesRequired) } }
-    @objc private func tapped(_ g: UITapGestureRecognizer) { if isOpen, g.state == .ended { dismissLassoMenu(); onTouch?(g.location(in: self)) } }
+    private var lastMotion: CFTimeInterval = 0
+    @objc private func fingersTapped(_ g: UITapGestureRecognizer) {
+        guard isOpen, g.state == .ended, CACurrentMediaTime() - lastMotion > 0.4, !canvas.isZooming, !canvas.isDragging else { return }
+        onFingers?(g.numberOfTouchesRequired)
+    }
+    @objc private func tapped(_ g: UITapGestureRecognizer) { if isOpen, g.state == .ended { quietPencilKitHolds(); dismissLassoMenu(); onTouch?(g.location(in: self)) } }
     func canvasViewDidBeginUsingTool(_ canvasView: PKCanvasView) { heldView = nil; if isOpen { onTouch?(nil) } }
     func canvasViewDidEndUsingTool(_ canvasView: PKCanvasView) { if !hiddenOriginals.isEmpty { hideStrokes([]) } }
 
@@ -397,8 +414,8 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
         pages.frame.origin = CGPoint(x: -canvas.contentOffset.x, y: -canvas.contentOffset.y)
         CATransaction.commit()
     }
-    func scrollViewDidZoom(_ scrollView: UIScrollView) { layoutContent(); placePages(); report(); if isCanvas, CACurrentMediaTime() - lastTileAsk > 0.2 { requestBg() } }
-    func scrollViewDidScroll(_ scrollView: UIScrollView) { placePages(); report(); if isCanvas, CACurrentMediaTime() - lastTileAsk > 0.12 { requestBg() } }
+    func scrollViewDidZoom(_ scrollView: UIScrollView) { lastMotion = CACurrentMediaTime(); layoutContent(); placePages(); report(); if isCanvas, CACurrentMediaTime() - lastTileAsk > 0.2 { requestBg() } }
+    func scrollViewDidScroll(_ scrollView: UIScrollView) { lastMotion = CACurrentMediaTime(); placePages(); report(); if isCanvas, CACurrentMediaTime() - lastTileAsk > 0.12 { requestBg() } }
     func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) { requestVisible() }
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) { requestVisible() }
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) { if !decelerate { requestVisible() } }
@@ -407,10 +424,12 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
 
     // MARK: - tools
 
-    /// PencilKit's own press-and-hold (its "Select All / Insert Space" menu) gives way to the page's long-press
+    /// PencilKit's own menus ("Select All / Insert Space", "Paste") and press-and-hold give way to the page's: one menu
+    /// system, never two popups fighting (Apple Notes-style press-and-hold is done by the page)
     private func quietPencilKitHolds() {
         func walk(_ v: UIView) {
             for g in v.gestureRecognizers ?? [] where g is UILongPressGestureRecognizer && g !== canvas.drawingGestureRecognizer { g.isEnabled = false }
+            for i in v.interactions where i is UIEditMenuInteraction { v.removeInteraction(i) }
             v.subviews.forEach(walk)
         }
         walk(canvas)
@@ -420,6 +439,8 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
         let kind = t["tool"] as? String ?? "none"
         quietPencilKitHolds()
         canvas.drawingGestureRecognizer.isEnabled = kind != "none"
+        // scrolling is always the fingers' job: with PencilKit's drawing off, the Pencil belongs to the page (lasso, text)
+        canvas.panGestureRecognizer.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.direct.rawValue)]
         canvas.drawingPolicy = (t["finger"] as? Bool ?? false) ? .anyInput : .pencilOnly
         canvas.isRulerActive = t["ruler"] as? Bool ?? false
         switch kind {
@@ -617,6 +638,7 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
     private func setSilently(_ d: PKDrawing) {
         loading = true
         canvas.undoManager?.disableUndoRegistration()
+        canvas.drawing = PKDrawing()   // iPadOS 27 can skip redrawing strokes it thinks it already drew: start blank
         canvas.drawing = d
         canvas.undoManager?.enableUndoRegistration()
         loading = false
@@ -670,7 +692,7 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
     }
 
     /// true while Apple's lasso has ink selected (its own menu then belongs to that selection)
-    private var lassoHasSelection: Bool { canvas.canPerformAction(#selector(UIResponderStandardEditActions.delete(_:)), withSender: nil) }
+    private var lassoHasSelection: Bool { false } // Apple's lasso is not used (the page selects ink itself)
     /// a plain tap with the lasso brings up "Select All / Insert Space": not wanted, the page has its own long-press menu
     private func dismissLassoMenu(anyTool: Bool = false) {
         guard anyTool || canvas.tool is PKLassoTool, !lassoHasSelection else { return }
@@ -682,18 +704,21 @@ final class NotebookInkView: UIView, PKCanvasViewDelegate, UIScrollViewDelegate,
     }
 
     // finger held still: the page selects what is under it, or lassos as the finger moves on
-    var onHold: ((String, CGPoint) -> Void)?                    // phase (b, m, e, c), point in this view
+    var onHold: ((String, CGPoint) -> Void)?                    // phase (b, m, e = lifted in place, x = lifted after moving, c), point in this view
+    private var holdStart = CGPoint.zero, holdMoved: CGFloat = 0
+    /// the hold landed on something the page selected: the finger now drags it instead of scrolling
+    func holdDrags() { canvas.isScrollEnabled = false; canvas.panGestureRecognizer.isEnabled = false; canvas.panGestureRecognizer.isEnabled = true }
     @objc private func held(_ g: UILongPressGestureRecognizer) {
         guard isOpen else { return }
         let p = g.location(in: self)
         switch g.state {
         case .began:
-            canvas.isScrollEnabled = false   // the finger now lassos instead of scrolling
+            holdStart = p; holdMoved = 0
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             dismissLassoMenu(anyTool: true)   // PencilKit's own "Select All / Insert Space": the page's menu or selection instead
             onHold?("b", p)
-        case .changed: onHold?("m", p)
-        case .ended: canvas.isScrollEnabled = true; dismissLassoMenu(anyTool: true); onHold?("e", p)
+        case .changed: holdMoved = max(holdMoved, hypot(p.x - holdStart.x, p.y - holdStart.y)); onHold?("m", p)
+        case .ended: canvas.isScrollEnabled = true; dismissLassoMenu(anyTool: true); onHold?(holdMoved > 10 ? "x" : "e", p)
         case .cancelled, .failed: canvas.isScrollEnabled = true; onHold?("c", p)
         default: break
         }

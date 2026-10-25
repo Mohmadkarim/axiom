@@ -311,6 +311,19 @@
     st.main.scrollLeft += r.left + a.rx * r.width - a.cx;
     st.main.scrollTop += r.top + a.ry * r.height - a.cy;
   }
+  /* a canvas's memory is only returned when it is emptied (removing it waits for garbage collection, and a book's
+     pages add up to gigabytes: the system then closes the page and the app starts over) */
+  const freeCanvas = (c) => { if (!c) return; c.width = 0; c.height = 0; c.remove(); };
+  const KEEP = 3; // rendered pages kept around the current one
+  function evictFar() {
+    if (!st) return;
+    st.pages.forEach((q) => {
+      if (Math.abs(q.n - st.page) <= KEEP || q.visible) return;
+      if (q.canvas) { freeCanvas(q.canvas); q.canvas = null; q.el.classList.remove('rendered'); st.pdf.getPage(q.n).then((pg) => pg.cleanup()).catch(() => {}); }
+      if (q.ink) { freeCanvas(q.ink); q.ink = null; }
+      if (q.live) { freeCanvas(q.live); q.live = null; }
+    });
+  }
   /* two passes: an instant low-resolution preview, then the sharp page; the old bitmap stays until the new one is ready */
   async function renderPage(p) {
     if (!st) return;
@@ -324,7 +337,7 @@
       const vp1 = page.getViewport({ scale: 1 });
       if (Math.abs(vp1.height / vp1.width - p.aspect) > 0.01) { p.aspect = vp1.height / vp1.width; p.el.style.height = Math.round(w * p.aspect) + 'px'; }
       const draw = async (scale) => {
-        scale = Math.min(scale, 4096 / vp1.width, 4096 / vp1.height, Math.sqrt(10e6 / (vp1.width * vp1.height)));
+        scale = Math.min(scale, 4096 / vp1.width, 4096 / vp1.height, Math.sqrt((S.lowMem && Date.now() - S.lowMem < 864e5 ? 3e6 : 6e6) / (vp1.width * vp1.height)));
         const vp = page.getViewport({ scale });
         const c = h('canvas', { class: 'rd-canvas' });
         c.width = Math.max(1, Math.round(vp.width)); c.height = Math.max(1, Math.round(vp.height));
@@ -336,7 +349,7 @@
         if (!st || token !== st.token) return;
         const old = p.canvas;
         p.el.insertBefore(c, p.ink || p.ov);
-        if (old) { c.classList.add('rd-fade'); setTimeout(() => old.remove(), 140); }
+        if (old) { c.classList.add('rd-fade'); setTimeout(() => freeCanvas(old), 140); }
         p.canvas = c; p.w = w; p.low = low;
         p.el.classList.add('rendered');
       };
@@ -344,7 +357,7 @@
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       swap(await draw((w / vp1.width) * dpr), false);
       drawInkPage(p);
-      st.pages.forEach((q) => { if (q.canvas && Math.abs(q.n - st.page) > 6) { q.canvas.remove(); q.canvas = null; q.el.classList.remove('rendered'); } });
+      evictFar();
     } catch (e) { /* keep what is there */ }
     p.busy = false;
     if (p.again) { p.again = false; if (p.visible) renderPage(p); }
@@ -708,6 +721,7 @@
   const dropActions = () => { const a = host && host.querySelector('.rd-actions'); if (!a) return; a.remove(); if (st && st.focus) { const n = st.focus.page; st.focus = null; drawOverlays(n); } };
   document.addEventListener('pointerdown', (e) => { if (host && host.querySelector('.rd-actions') && !e.target.closest('.rd-actions')) setTimeout(() => { if (!document.activeElement || !document.activeElement.closest('.rd-actions')) dropActions(); }, 0); }, true);
   A.on('pk:touch', dropActions);
+  RD._showActions = (n, r) => showActions(n, r); // for testing the ask box
   function showActions(n, r) {
     clearActions();
     const p = st.pages[n - 1], pr = p.el.getBoundingClientRect(), hr = host.getBoundingClientRect();
@@ -715,7 +729,8 @@
     const inp = h('input', { class: 'ab-in', placeholder: 'Ask about this…', enterkeyhint: 'send', autocomplete: 'off' });
     const go = () => { const q = inp.value.trim(); if (q) ask('ask', n, r, q); };
     inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') go(); if (e.key === 'Escape') { st.focus = null; drawOverlays(n); clearActions(); } });
-    const send = h('button', { class: 'ab-send', 'aria-label': 'Send question', html: A.icon('send'), onclick: go });
+    const send = h('button', { class: 'ab-send', 'aria-label': 'Send question', html: A.icon('send'), onclick: go, disabled: true });
+    inp.addEventListener('input', () => { send.disabled = !inp.value.trim(); });
     const chip = (label, fn) => h('button', { class: 'ab-chip', onclick: fn }, label);
     bar.append(
       h('div', { class: 'ab-head' }, h('span', null, 'Ask about this selection'),
@@ -872,6 +887,7 @@
     if (byUser && Math.abs(dy) > 6 && !st.tool.startsWith('w')) host.classList.toggle('chrome-hidden', dy > 0 && y > 120 && !host.querySelector('.rd-actions'));
     if (n !== st.page) {
       st.page = n;
+      evictFar();
       setPageLabel(n);
       st.scrub.value = n;
       clearTimeout(st._sv);
@@ -1172,17 +1188,17 @@
       const m = h('div', { class: 'menu' });
       const val = h('span', { class: 'rd-zoomval num' }, isEpub ? Math.round((S.epubFont || 1) * 100) + '%' : Math.round(st.zoom * 100) + '%');
       const bump = (dir) => { if (isEpub) { S.epubFont = A.clamp((S.epubFont || 1) + dir * 0.1, 0.7, 2); A.saveSettings(); applyEpubTheme(); val.textContent = Math.round(S.epubFont * 100) + '%'; } else { st.zoom = A.clamp(st.zoom * (dir > 0 ? 1.2 : 1 / 1.2), 0.5, 3); layout(); val.textContent = Math.round(st.zoom * 100) + '%'; } };
-      m.classList.add('rd-aa');
+      m.classList.add('rd-display');
       m.append(h('div', { class: 'sub' }, isEpub ? 'Text size' : 'Zoom'),
         h('div', { class: 'rd-zoomrow' }, h('button', { class: 'ibtn', 'aria-label': 'Smaller', html: A.icon('minus'), onclick: () => bump(-1) }), val, h('button', { class: 'ibtn', 'aria-label': 'Larger', html: A.icon('plus'), onclick: () => bump(1) })));
       if (!isEpub) m.append(h('div', { class: 'seg rd-fitseg' }, ...[['width', 'Fit width'], ['page', 'Fit page']].map(([v, l]) => h('button', { class: st.fit === v ? 'on' : '', onclick: () => { st.fit = v; S.readerFit = v; A.saveSettings(); st.zoom = 1; layout(); val.textContent = '100%'; [...m.querySelectorAll('.rd-fitseg button')].forEach((b) => b.classList.toggle('on', b.textContent === l)); } }, l))));
-      m.append(h('div', { class: 'sub' }, 'Page'));
+      m.append(h('div', { class: 'sub' }, 'Page colour'));
       const sw = h('div', { class: 'rd-swatches' });
       [['paper', 'Paper'], ['sepia', 'Sepia'], ['night', 'Night']].forEach(([id, l]) => sw.append(h('button', { class: 'rd-swatch ' + id + ((S.readerTheme || 'paper') === id ? ' on' : ''), onclick: () => { S.readerTheme = id; A.saveSettings(); host.dataset.theme = id; applyEpubTheme(); RD.pkTheme(); sw.querySelectorAll('.rd-swatch').forEach((b) => b.classList.toggle('on', b.classList.contains(id))); } }, h('i', { html: A.icon('check') }), h('span', null, l))));
       m.append(sw);
-      if (false) m.append(h('hr'));
       if (!isEpub) {
-        m.append(h('hr'), h('button', { onclick: () => { A.closePopovers(); A.UI.solveBeside(A.ST.doc(meta.id), st.page); } }, A.iconEl('rename'), 'Solve beside this page…'));
+        // an action, not a display setting: a clear button of its own at the bottom
+        m.append(h('button', { class: 'rd-beside', onclick: () => { A.closePopovers(); A.UI.solveBeside(A.ST.doc(meta.id), st.page); } }, A.iconEl('notebook'), h('span', null, 'Solve in a notebook beside')));
       }
       A.popover(m, e.currentTarget, { side: 'down' });
     });

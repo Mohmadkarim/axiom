@@ -405,7 +405,8 @@
   A.on('cmd', (c) => { if (A.PK && A.PK.cmd && A.PK.cmd(c, cmds)) return; if (cmds[c]) cmds[c](); });
 
   /* long-press menu (finger held still, then lifted) */
-  A.on('canvas:menu', ({ x, y }) => {
+  const pasteAt = (w) => { if (!(A.PK && A.PK.cmd && A.PK.cmd('paste', cmds))) cmds.paste(w); };
+  A.on('canvas:menu', ({ x, y, sysImage }) => {
     const w = R.toWorld(x, y);
     const box = h('div', { class: 'menu' });
     const it = (icon, label, fn, cls) => { const b = h('button', { class: cls || '', onclick: () => { A.closePopovers(); fn(); } }); b.innerHTML = A.icon(icon); b.append(label); box.append(b); };
@@ -415,13 +416,15 @@
       it('copy', 'Copy', () => cmds.copy());
       it('clear', 'Cut', () => cmds.cut());
       it('duplicate', 'Duplicate', () => cmds.duplicate());
-      if (hasClip) it('paste', 'Paste here', () => cmds.paste(w));
+      if (hasClip) it('paste', 'Paste here', () => pasteAt(w));
       box.append(h('hr'));
       it('trash', 'Delete', () => cmds.delete(), 'danger');
     } else {
       const hit = A.IN.pickItem(w[0], w[1], 12 / D.doc.view.zoom);
       if (hit) { A.SEL.set([hit.id]); return; }
-      if (hasClip) it('paste', `Paste here (${A.clip.items.length})`, () => cmds.paste(w));
+      if (hasClip) it('paste', 'Paste', () => pasteAt(w));
+      if (sysImage) it('image', 'Paste image', () => A.PK.pasteSystemImage(w));
+      if (hasClip || sysImage) box.append(h('hr'));
       it('selectall', 'Select all', () => cmds.selectAll());
       it('lasso', 'Select with the Pencil', () => A.emit('tool:select'));
       box.append(h('hr'));

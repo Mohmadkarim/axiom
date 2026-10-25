@@ -28,8 +28,7 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         let settings = store.loadSettings() ?? "null"
         let locked = UserDefaults.standard.object(forKey: "orientationLock") as? Int
         if let m = locked { orientationLock = UIInterfaceOrientationMask(rawValue: UInt(m)) }
-        let boot = "window.AXIOM_NATIVE = { pen: true, platform: 'ios', audio: true, pencilkit: true, orientationLock: \(locked != nil) }; window.AXIOM_SETTINGS = \(settings);"
-        content.addUserScript(WKUserScript(source: boot, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        content.addUserScript(WKUserScript(source: Self.bootScript(settings: settings, locked: locked != nil), injectionTime: .atDocumentStart, forMainFrameOnly: true))
 
         let config = WKWebViewConfiguration()
         config.userContentController = content
@@ -109,6 +108,50 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         } else if let url = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "web") {
             webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         }
+    }
+
+    // MARK: - the page's process was closed by the system (memory): reopen where the user was, with a visible wait
+
+    static func bootScript(settings: String, locked: Bool) -> String {
+        "window.AXIOM_NATIVE = { pen: true, platform: 'ios', audio: true, pencilkit: true, orientationLock: \(locked) }; window.AXIOM_SETTINGS = \(settings);"
+    }
+
+    private var recoverOverlay: UIView?
+    private var crashTimes: [Date] = []
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        notebook?.flush(); notebook?.close()
+        passthroughWeb?.passthrough = false
+        // two closures within a minute: start at the library instead of reopening (no crash loop)
+        let now = Date()
+        crashTimes = crashTimes.filter { now.timeIntervalSince($0) < 60 } + [now]
+        let reopen = crashTimes.count < 2
+        showRecoverOverlay()
+        // the boot script carries the settings as they are now (the open document, recent changes), not as at launch
+        let content = webView.configuration.userContentController
+        content.removeAllUserScripts()
+        content.addUserScript(WKUserScript(source: Self.bootScript(settings: store.loadSettings() ?? "null", locked: orientationLock != nil), injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        if schemeHandler != nil, let url = URL(string: AppSchemeHandler.startURL.absoluteString + (reopen ? "?recover=1" : "?recover=0")) { webView.load(URLRequest(url: url)) }
+        else { webView.reload() }
+    }
+    private func showRecoverOverlay() {
+        guard recoverOverlay == nil else { return }
+        let o = UIView(frame: view.bounds)
+        o.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        o.backgroundColor = UIColor(red: 0.07, green: 0.075, blue: 0.09, alpha: 1)
+        let spin = UIActivityIndicatorView(style: .large); spin.color = .white; spin.startAnimating()
+        let label = UILabel(); label.text = "Reopening where you were…"; label.textColor = UIColor(white: 1, alpha: 0.75); label.font = .systemFont(ofSize: 15, weight: .medium)
+        let stack = UIStackView(arrangedSubviews: [spin, label]); stack.axis = .vertical; stack.spacing = 14; stack.alignment = .center
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        o.addSubview(stack)
+        NSLayoutConstraint.activate([stack.centerXAnchor.constraint(equalTo: o.centerXAnchor), stack.centerYAnchor.constraint(equalTo: o.centerYAnchor)])
+        view.addSubview(o)
+        recoverOverlay = o
+    }
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        guard let o = recoverOverlay else { return }
+        recoverOverlay = nil
+        // the page reopens the document itself; give it a moment so the library never flashes
+        UIView.animate(withDuration: 0.3, delay: 1.2, options: []) { o.alpha = 0 } completion: { _ in o.removeFromSuperview() }
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -246,7 +289,8 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
         case "pkTool":
             notebook?.setTool(body)
             // text, laser, tape: the page handles the Pencil (and pans by finger through the native view's API)
-            if notebook?.isOpen == true { passthroughWeb?.passthrough = (body["tool"] as? String ?? "none") != "none" }
+            // "web": the page takes the Pencil (through the Pencil stream) while fingers still scroll PencilKit
+            if notebook?.isOpen == true { passthroughWeb?.passthrough = (body["tool"] as? String ?? "none") != "none" || (body["web"] as? Bool ?? false) }
             replyHandler(true, nil); return
         case "pkView":
             notebook?.releaseHeld()
@@ -289,6 +333,12 @@ final class CanvasViewController: UIViewController, WKScriptMessageHandlerWithRe
             if let nb = notebook { nb.zoomToggle(at: nb.convert(CGPoint(x: body["x"] as? Double ?? 0, y: body["y"] as? Double ?? 0), to: nb.canvas)) }
             #endif
             replyHandler(true, nil); return
+        case "pkHoldDrag":
+            notebook?.holdDrags(); replyHandler(true, nil); return
+        case "pasteboard":
+            let pb = UIPasteboard.general
+            if body["read"] as? Bool == true, let img = pb.image, let data = img.pngData() { replyHandler(["image": data.base64EncodedString(), "w": img.size.width * img.scale, "h": img.size.height * img.scale], nil); return }
+            replyHandler(["image": pb.hasImages, "text": pb.hasStrings], nil); return
         case "pkSelHide":
             notebook?.hideStrokes(body["indices"] as? [Int] ?? []); replyHandler(true, nil); return
         case "pkSelEdit":

@@ -729,7 +729,7 @@
     const out = [];
     for (const a of D.doc.artboards) {
       const [sx, sy] = R.toScreen(a.x, a.y);
-      const txt = `${a.name}  ${(a.w / D.MM / 10).toFixed(1)} × ${(a.h / D.MM / 10).toFixed(1)} cm`;
+      const txt = `Artboard · ${a.name} · ${(a.w / D.MM / 10).toFixed(1)} × ${(a.h / D.MM / 10).toFixed(1)} cm`;
       out.push({ a, x: sx, y: sy - 24, w: Math.min(260, 14 + txt.length * 6.6), h: 20, txt });
     }
     return out;
@@ -738,7 +738,7 @@
     for (const L of abLabels()) {
       ctx.save();
       ctx.font = '600 11.5px -apple-system, system-ui, sans-serif';
-      ctx.fillStyle = R.darkActive() ? 'rgba(255,255,255,0.62)' : 'rgba(30,40,60,0.62)';
+      ctx.fillStyle = R.darkActive() || R.paperIsDark() ? 'rgba(255,255,255,0.72)' : 'rgba(30,40,60,0.66)'; // dark paper too, not only dark mode
       ctx.fillText(L.txt, L.x + 2, L.y + 14);
       ctx.restore();
     }

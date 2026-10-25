@@ -218,11 +218,28 @@
       setTimeout(() => A.toast('Welcome to Axiom. Draw with Apple Pencil, and pinch with two fingers to move around.', 4200), 600);
     } else {
       await showGallery();
+      resumeAfterRecovery();
     }
 
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost') && window.top === window && !window.AXIOM_NO_SW) {
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
+  }
+  /* what is open, so that after the system closes the page (low memory) the app reopens it instead of the library */
+  const remember = (t, id) => { S.session = t ? { t, id, at: Date.now() } : null; A.saveSettings(); };
+  A.on('doc:open', () => { if (D.doc) remember('doc', D.doc.id); });
+  A.on('read', (id) => remember('read', id));
+  A.on('go:gallery', () => { if (S.session) remember(null); });
+  function resumeAfterRecovery() {
+    const rec = /[?&]recover=1/.test(location.search), loop = /[?&]recover=0/.test(location.search);
+    if (rec || loop) history.replaceState(null, '', location.pathname);
+    if (loop) { remember(null); setTimeout(() => A.toast('Axiom restarted to free memory. Large books open at a lower resolution for now.', 3600), 600); S.lowMem = Date.now(); }
+    const ss = S.session;
+    if (!rec || !ss || Date.now() - ss.at > 12 * 3600e3) return;
+    if (ss.t === 'read' && A.ST.doc(ss.id)) A.emit('read', ss.id);
+    else if (ss.t === 'doc') A.emit('open', ss.id);
+    else return;
+    setTimeout(() => A.toast('Reopened where you were', 1800), 900);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
