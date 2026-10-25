@@ -7,6 +7,19 @@ cd "$(dirname "$0")"
 (cd .. && node build.mjs >/dev/null)
 rm -rf web && mkdir web && cp ../dist/index.html ../dist/*.png web/ && cp -R ../dist/vendor web/vendor
 "$HOME/.local/share/xcodegen/xcodegen/bin/xcodegen" generate --quiet
+if [ "$1" = "native" ] || [ "$1" = "native-device" ]; then
+  "$HOME/.local/share/xcodegen/xcodegen/bin/xcodegen" generate --quiet
+  if [ "$1" = "native-device" ]; then
+    xcodebuild -project Axiom.xcodeproj -scheme AxiomNative -configuration Release -destination "generic/platform=iOS" \
+      -derivedDataPath build DEVELOPMENT_TEAM="$2" -allowProvisioningUpdates -quiet build
+    echo "$(pwd)/build/Build/Products/Release-iphoneos/Axiom.app"
+  else
+    xcodebuild -project Axiom.xcodeproj -scheme AxiomNative -configuration Debug -destination 'generic/platform=iOS Simulator' \
+      -derivedDataPath build/native CODE_SIGNING_ALLOWED=NO -quiet build
+    echo "$(pwd)/build/native/Build/Products/Debug-iphonesimulator/Axiom.app"
+  fi
+  exit 0
+fi
 if [ "$1" = "device" ]; then
   DEST="generic/platform=iOS"; REG=""; [ -n "$3" ] && DEST="platform=iOS,id=$3" && REG="-allowProvisioningUpdates -allowProvisioningDeviceRegistration"
   xcodebuild -project Axiom.xcodeproj -scheme Axiom -configuration Release -destination "$DEST" \
