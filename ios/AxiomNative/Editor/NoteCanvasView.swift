@@ -300,7 +300,8 @@ final class NoteCanvasView: UIView, UIScrollViewDelegate {
         layoutSubviewsIfNeeded()
         layoutContent()     // zoom limits first, or the zoom below is clamped to the defaults
         if doc.isNotebook {
-            let z = doc.fitZoom.map { min(6, max(0.3, $0)) * fit } ?? (doc.view.zoom > fit * 0.3 && doc.view.zoom < fit * 6 && abs(doc.view.zoom - 1) > 0.0001 ? doc.view.zoom : fit)
+            // a notebook from the earlier app opens fitted (its zoom was saved for a different layout)
+            let z = doc.fitZoom.map { min(6, max(0.3, $0)) * fit } ?? fit
             canvas.zoomScale = z
             layoutContent()
             let zz = canvas.zoomScale

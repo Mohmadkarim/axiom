@@ -11,8 +11,8 @@ if [ "$1" = "native" ] || [ "$1" = "native-device" ]; then
   "$HOME/.local/share/xcodegen/xcodegen/bin/xcodegen" generate --quiet
   if [ "$1" = "native-device" ]; then
     xcodebuild -project Axiom.xcodeproj -scheme AxiomNative -configuration Release -destination "generic/platform=iOS" \
-      -derivedDataPath build DEVELOPMENT_TEAM="$2" -allowProvisioningUpdates -quiet build
-    echo "$(pwd)/build/Build/Products/Release-iphoneos/Axiom.app"
+      -derivedDataPath build/native-device DEVELOPMENT_TEAM="$2" -allowProvisioningUpdates -quiet build
+    echo "$(pwd)/build/native-device/Build/Products/Release-iphoneos/Axiom.app"
   else
     xcodebuild -project Axiom.xcodeproj -scheme AxiomNative -configuration Debug -destination 'generic/platform=iOS Simulator' \
       -derivedDataPath build/native CODE_SIGNING_ALLOWED=NO -quiet build
